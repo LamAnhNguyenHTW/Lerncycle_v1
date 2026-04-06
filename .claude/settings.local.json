@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx next:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(node -e \"const t = require\\('@tiptap/react'\\); console.log\\(Object.keys\\(t\\)\\);\")",
+      "Bash(node -e \"const t = require\\('@tiptap/react'\\); console.log\\(JSON.stringify\\(Object.keys\\(t\\), null, 2\\)\\);\")"
     ]
   }
 }

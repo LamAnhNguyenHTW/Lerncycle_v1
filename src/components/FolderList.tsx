@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Course, Folder, PdfFile } from '@/lib/data';
 import { NotionIcon } from './NotionIcon';
 import { createFolder, deleteFolder } from '@/actions/folders';
@@ -78,7 +79,7 @@ export function FolderList({ course }: { course: Course }) {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {course.folders.map((folder) => (
-            <FolderView key={folder.id} folder={folder} />
+            <FolderView key={folder.id} folder={folder} courseId={course.id} />
           ))}
         </div>
       )}
@@ -105,7 +106,7 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
         {pdfs.length > 0 && (
           <div className="flex flex-col gap-2 mb-4">
             {pdfs.map((pdf) => (
-              <PdfRow key={pdf.id} pdf={pdf} />
+              <PdfRow key={pdf.id} pdf={pdf} courseId={courseId} />
             ))}
           </div>
         )}
@@ -127,7 +128,7 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
         ) : (
           <button
             onClick={() => setIsUploading(true)}
-            className="text-base font-medium text-muted-foreground hover:text-foreground hover:underline flex items-center gap-2 w-full justify-center py-5 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
+            className="text-base font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-5 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
           >
             Upload PDF directly
           </button>
@@ -139,7 +140,7 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
 
 // ─── Folder view ──────────────────────────────────────────────────────────────
 
-function FolderView({ folder }: { folder: Folder }) {
+function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) {
   const [isUploading, setIsUploading] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -170,7 +171,7 @@ function FolderView({ folder }: { folder: Folder }) {
           </button>
           <AlertDialogContent size="default">
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete folder "{folder.name}"?</AlertDialogTitle>
+              <AlertDialogTitle>Delete folder &quot;{folder.name}&quot;?</AlertDialogTitle>
               <AlertDialogDescription>
                 {hasPdfs
                   ? `This folder contains ${folder.pdfs.length} PDF${folder.pdfs.length === 1 ? '' : 's'}. What should happen to the files?`
@@ -204,7 +205,7 @@ function FolderView({ folder }: { folder: Folder }) {
         {folder.pdfs.length > 0 && (
           <div className="flex flex-col gap-2 mb-4">
             {folder.pdfs.map((pdf) => (
-              <PdfRow key={pdf.id} pdf={pdf} />
+              <PdfRow key={pdf.id} pdf={pdf} courseId={courseId} />
             ))}
           </div>
         )}
@@ -226,7 +227,7 @@ function FolderView({ folder }: { folder: Folder }) {
         ) : (
           <button
             onClick={() => setIsUploading(true)}
-            className="text-base font-medium text-muted-foreground hover:text-foreground hover:underline flex items-center gap-2 w-full justify-center py-5 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
+            className="text-base font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-5 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
           >
             Upload PDF
           </button>
@@ -238,9 +239,16 @@ function FolderView({ folder }: { folder: Folder }) {
 
 // ─── Shared PDF row ───────────────────────────────────────────────────────────
 
-function PdfRow({ pdf }: { pdf: PdfFile }) {
+function PdfRow({ pdf, courseId }: { pdf: PdfFile; courseId: string }) {
+  const router = useRouter();
+
   return (
-    <div className="flex items-center justify-between rounded-lg border border-border px-5 py-4 text-base hover:border-black/20 transition-colors group cursor-pointer">
+    <div
+      className="flex items-center justify-between rounded-lg border border-border px-5 py-4 text-base hover:border-black/20 transition-colors group cursor-pointer"
+      onClick={() => {
+        router.push(`/?courseId=${courseId}&tab=notetaking&pdfId=${pdf.id}`);
+      }}
+    >
       <div className="flex items-center gap-3">
         <NotionIcon name="ni-file-text" className="w-[24px] h-[24px] text-muted-foreground" />
         <span>{pdf.name}</span>

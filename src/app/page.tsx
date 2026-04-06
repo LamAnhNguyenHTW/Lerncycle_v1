@@ -1,4 +1,3 @@
-import {Suspense} from 'react';
 import {getCourses} from '@/lib/data';
 import {getProfile} from '@/actions/profile';
 import {LeftSidebar} from '@/components/sidebar/LeftSidebar';
@@ -6,13 +5,14 @@ import {DashboardPlaceholder} from '@/components/DashboardPlaceholder';
 import {FolderList} from '@/components/FolderList';
 import {ResponsiveLayout} from '@/components/ResponsiveLayout';
 import {ProfileView} from '@/components/ProfileView';
+import {StudyInterface} from '@/components/study/StudyInterface';
 
 interface Props {
-  searchParams: Promise<{courseId?: string; tab?: string}>;
+  searchParams: Promise<{courseId?: string; tab?: string; pdfId?: string}>;
 }
 
 export default async function Page({searchParams}: Props) {
-  const {courseId, tab = 'home'} = await searchParams;
+  const {courseId, tab = 'home', pdfId} = await searchParams;
   const courses = await getCourses();
   const profile = await getProfile();
 
@@ -31,7 +31,7 @@ export default async function Page({searchParams}: Props) {
         />
       }
     >
-      <main className="flex flex-1 flex-col overflow-y-auto px-4 sm:px-6 md:px-8 w-full position-relative">
+      <main className={`flex flex-1 flex-col w-full position-relative ${tab === 'notetaking' ? 'overflow-hidden p-0' : 'overflow-y-auto px-4 sm:px-6 md:px-8'}`}>
         <header className="hidden md:flex h-14 shrink-0 items-center justify-end border-b border-transparent px-4">
            {/* Top nav empty for now, maybe profile later */}
         </header>
@@ -46,7 +46,9 @@ export default async function Page({searchParams}: Props) {
                 <FolderList course={activeCourse} />
               </div>
             )}
-            {tab === 'notetaking' && <div className="py-8"><h1 className="text-2xl font-bold">Notetaking für {activeCourse.name}</h1><p className="text-muted-foreground mt-2">Hier kommt das Notizen-Tool hin.</p></div>}
+            {tab === 'notetaking' && activeCourse && (
+              <StudyInterface course={activeCourse} initialPdfId={pdfId} />
+            )}
             {tab === 'learn' && <div className="py-8"><h1 className="text-2xl font-bold">Learn & Research</h1><p className="text-muted-foreground mt-2">Chatbot und Q&A Interface.</p></div>}
             {tab === 'feynman' && <div className="py-8"><h1 className="text-2xl font-bold">Feynman Technique</h1><p className="text-muted-foreground mt-2">Lehre es einem 5-Jährigen.</p></div>}
             {tab === 'revision' && <div className="py-8"><h1 className="text-2xl font-bold">Revision</h1><p className="text-muted-foreground mt-2">Active Recall und Karteikarten.</p></div>}
@@ -61,4 +63,3 @@ export default async function Page({searchParams}: Props) {
     </ResponsiveLayout>
   );
 }
-
