@@ -11,70 +11,100 @@ export async function uploadPdf(
   targetType: 'course' | 'folder',
   formData: FormData,
 ): Promise<{error?: string}> {
-  const supabase = await createClient();
-  const {data: {user}} = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {data: {user}} = await supabase.auth.getUser();
 
-  if (!user) {
-    return {error: 'Not authenticated.'};
-  }
-
-  const file = formData.get('file');
-
-  if (!(file instanceof File)) {
-    return {error: 'No file provided.'};
-  }
-
-  if (file.type !== 'application/pdf') {
-    return {error: 'Only PDF files are allowed.'};
-  }
-
-  let courseId: string;
-  let folderId: string | null = null;
-
-  if (targetType === 'course') {
-    courseId = targetId;
-  } else {
-    const {data: folder, error: folderError} = await supabase
-      .from('folders')
-      .select('course_id')
-      .eq('id', targetId)
-      .single();
-
-    if (folderError || !folder) {
-      return {error: 'Folder not found.'};
+    if (!user) {
+      return {error: 'Not authenticated.'};
     }
 
-    courseId = folder.course_id;
-    folderId = targetId;
+    const file = formData.get('file');
+
+    if (!(file instanceof File)) {
+      return {error: 'No file provided.'};
+    }
+
+    if (file.type !== 'application/pdf') {
+      return {error: 'Only PDF files are allowed.'};
+    }
+
+    let courseId: string;
+    let folderId: string | null = null;
+
+    if (targetType === 'course') {
+      courseId = targetId;
+    } else {
+      const {data: folder, error: folderError} = await supabase
+        .from('folders')
+        .select('course_id')
+        .eq('id', targetId)
+        .single();
+
+      if (folderError || !folder) {
+        return {error: 'Folder not found.'};
+      }
+
+      courseId = folder.course_id;
+      folderId = targetId;
+    }
+
+    const safeName = file.name.replace(/[^\w.\-]+/g, '_');
+    const storagePath = `${user.id}/${targetId}/${Date.now()}_${safeName}`;
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+
+    let uploadErrorMessage: string | null = null;
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const {error: uploadError} = await supabase.storage
+        .from(BUCKET)
+        .upload(storagePath, fileBytes, {
+          contentType: 'application/pdf',
+          upsert: false,
+        });
+
+      if (!uploadError) {
+        uploadErrorMessage = null;
+        break;
+      }
+
+      uploadErrorMessage = uploadError.message;
+      const isRetryable = /fetch failed|network|timeout|connection/i.test(
+        uploadError.message,
+      );
+      if (!isRetryable || attempt === 2) {
+        break;
+      }
+    }
+
+    if (uploadErrorMessage) {
+      return {error: `Upload failed: ${uploadErrorMessage}`};
+    }
+
+    const {error: dbError} = await supabase.from('pdfs').insert({
+      user_id: user.id,
+      course_id: courseId,
+      folder_id: folderId,
+      name: file.name,
+      storage_path: storagePath,
+      size_bytes: file.size,
+    });
+
+    if (dbError) {
+      // Roll back the storage upload to avoid orphaned files.
+      await supabase.storage.from(BUCKET).remove([storagePath]);
+      return {error: dbError.message};
+    }
+
+    revalidatePath('/');
+    return {};
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? `Upload failed: ${error.message}`
+          : 'Upload failed unexpectedly.',
+    };
   }
-
-  const storagePath = `${user.id}/${targetId}/${Date.now()}_${file.name}`;
-
-  const {error: uploadError} = await supabase.storage
-    .from(BUCKET)
-    .upload(storagePath, file, {contentType: 'application/pdf', upsert: false});
-
-  if (uploadError) {
-    return {error: uploadError.message};
-  }
-
-  const {error: dbError} = await supabase.from('pdfs').insert({
-    user_id: user.id,
-    course_id: courseId,
-    folder_id: folderId,
-    name: file.name,
-    storage_path: storagePath,
-    size_bytes: file.size,
-  });
-
-  if (dbError) {
-    // Roll back the storage upload to avoid orphaned files.
-    await supabase.storage.from(BUCKET).remove([storagePath]);
-    return {error: dbError.message};
-  }
-
-  revalidatePath('/');
-  return {};
 }
 
 /** Generates a short-lived signed URL for viewing a private PDF. */

@@ -28,14 +28,21 @@ export function PdfDropzone({targetId, targetType, onUploaded}: Props) {
       const formData = new FormData();
       formData.set('file', accepted[0]);
 
-      const result = await uploadPdf(targetId, targetType, formData);
+      try {
+        const result = await uploadPdf(targetId, targetType, formData);
 
-      if (result.error) {
+        if (result.error) {
+          setState('error');
+          setErrorMsg(result.error);
+        } else {
+          setState('idle');
+          onUploaded?.();
+        }
+      } catch (error) {
         setState('error');
-        setErrorMsg(result.error);
-      } else {
-        setState('idle');
-        onUploaded?.();
+        setErrorMsg(
+          error instanceof Error ? error.message : 'Upload failed unexpectedly.',
+        );
       }
     },
     [targetId, targetType, onUploaded],
