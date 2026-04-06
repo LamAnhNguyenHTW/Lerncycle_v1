@@ -8,10 +8,6 @@ import {Button} from '@/components/ui/button';
 
 type State = {error?: string} | undefined;
 
-function initialState(): State {
-  return undefined;
-}
-
 /** Magic-link login page — Notion-style minimal design. */
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -19,7 +15,7 @@ export default function LoginPage() {
   const callbackError = searchParams.get('error');
 
   const [state, action, pending] = useActionState(
-    async (_prev: State, formData: FormData) => signInWithEmail(formData),
+    (_prev: State, formData: FormData) => signInWithEmail(formData),
     undefined,
   );
 
@@ -47,7 +43,7 @@ export default function LoginPage() {
 
         <h1 className="lc-auth-title">Welcome back</h1>
         <p className="lc-auth-subtitle">
-          Enter your email and we'll send you a magic link to sign in.
+          Enter your email and we&apos;ll send you a magic link to sign in.
         </p>
 
         <form action={action} className="lc-auth-form">

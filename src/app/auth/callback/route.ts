@@ -1,5 +1,4 @@
 import {createClient} from '@/lib/supabase/server';
-import {redirect} from 'next/navigation';
 
 /**
  * Auth callback route handler for Supabase magic link and OAuth flows.
