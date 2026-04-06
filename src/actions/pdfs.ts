@@ -7,7 +7,8 @@ const BUCKET = 'pdfs';
 
 /** Uploads a PDF to Supabase Storage and stores its metadata in the database. */
 export async function uploadPdf(
-  weekId: string,
+  targetId: string,
+  targetType: 'course' | 'folder',
   formData: FormData,
 ): Promise<{error?: string}> {
   const supabase = await createClient();
@@ -27,7 +28,27 @@ export async function uploadPdf(
     return {error: 'Only PDF files are allowed.'};
   }
 
-  const storagePath = `${user.id}/${weekId}/${Date.now()}_${file.name}`;
+  let courseId: string;
+  let folderId: string | null = null;
+
+  if (targetType === 'course') {
+    courseId = targetId;
+  } else {
+    const {data: folder, error: folderError} = await supabase
+      .from('folders')
+      .select('course_id')
+      .eq('id', targetId)
+      .single();
+
+    if (folderError || !folder) {
+      return {error: 'Folder not found.'};
+    }
+
+    courseId = folder.course_id;
+    folderId = targetId;
+  }
+
+  const storagePath = `${user.id}/${targetId}/${Date.now()}_${file.name}`;
 
   const {error: uploadError} = await supabase.storage
     .from(BUCKET)
@@ -38,8 +59,9 @@ export async function uploadPdf(
   }
 
   const {error: dbError} = await supabase.from('pdfs').insert({
-    week_id: weekId,
     user_id: user.id,
+    course_id: courseId,
+    folder_id: folderId,
     name: file.name,
     storage_path: storagePath,
     size_bytes: file.size,

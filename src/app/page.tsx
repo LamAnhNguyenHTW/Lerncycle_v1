@@ -1,120 +1,64 @@
 import {Suspense} from 'react';
-import {getSemesterTree} from '@/lib/data';
-import {SidebarTree} from '@/components/sidebar/SidebarTree';
-import {WeekContent} from '@/components/WeekContent';
-import {SignOutButton} from '@/components/SignOutButton';
-import {Skeleton} from '@/components/ui/skeleton';
+import {getCourses} from '@/lib/data';
+import {getProfile} from '@/actions/profile';
+import {LeftSidebar} from '@/components/sidebar/LeftSidebar';
+import {DashboardPlaceholder} from '@/components/DashboardPlaceholder';
+import {FolderList} from '@/components/FolderList';
+import {ResponsiveLayout} from '@/components/ResponsiveLayout';
+import {ProfileView} from '@/components/ProfileView';
 
 interface Props {
-  searchParams: Promise<{week?: string}>;
+  searchParams: Promise<{courseId?: string; tab?: string}>;
 }
 
-export default async function DashboardPage({searchParams}: Props) {
-  const {week: weekId} = await searchParams;
-  const tree = await getSemesterTree();
+export default async function Page({searchParams}: Props) {
+  const {courseId, tab = 'home'} = await searchParams;
+  const courses = await getCourses();
+  const profile = await getProfile();
 
-  // Resolve the active week name from the tree for display.
-  let activeWeekName: string | null = null;
-  if (weekId) {
-    outer: for (const semester of tree) {
-      for (const subject of semester.subjects) {
-        for (const week of subject.weeks) {
-          if (week.id === weekId) {
-            activeWeekName = week.name;
-            break outer;
-          }
-        }
+  const activeCourse = courseId 
+    ? courses.find(c => c.id === courseId) || courses[0] 
+    : courses[0];
+
+  return (
+    <ResponsiveLayout
+      sidebar={
+        <LeftSidebar 
+          courses={courses} 
+          activeCourseId={activeCourse?.id} 
+          activeTab={tab} 
+          profile={profile}
+        />
       }
-    }
-  }
-
-  return (
-    <div className="flex h-full flex-col">
-      {/* Top bar */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
-        <div className="flex items-center gap-2">
-          <span className="size-2 rounded-full bg-foreground" />
-          <span className="text-sm font-semibold tracking-tight">Lerncycle</span>
-        </div>
-        <SignOutButton />
-      </header>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="flex w-60 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border px-3 py-4">
-          <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Library
-          </p>
-          <SidebarTree tree={tree} />
-        </aside>
-
-        {/* Main content */}
-        <main className="flex flex-1 flex-col overflow-y-auto px-8 py-8">
-          {weekId && activeWeekName ? (
-            <Suspense fallback={<WeekContentSkeleton />}>
-              <WeekContent weekId={weekId} weekName={activeWeekName} />
-            </Suspense>
-          ) : (
-            <EmptyState hasSemesters={tree.length > 0} />
-          )}
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({hasSemesters}: {hasSemesters: boolean}) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-      <div className="flex size-12 items-center justify-center rounded-xl bg-muted">
-        <BookIcon className="size-6 text-muted-foreground" />
-      </div>
-      <div>
-        <p className="text-sm font-medium">
-          {hasSemesters ? 'Select a week to get started' : 'No semesters yet'}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {hasSemesters
-            ? 'Click a week in the sidebar to view its PDFs.'
-            : 'Add your first semester in the sidebar to begin organizing your studies.'}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function WeekContentSkeleton() {
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-4 w-24" />
-      </div>
-      <div className="flex flex-col gap-2">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-14 w-full rounded-lg" />
-        ))}
-      </div>
-      <Skeleton className="h-36 w-full rounded-lg" />
-    </div>
-  );
-}
-
-function BookIcon({className}: {className?: string}) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
     >
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-    </svg>
+      <main className="flex flex-1 flex-col overflow-y-auto px-4 sm:px-6 md:px-8 w-full position-relative">
+        <header className="hidden md:flex h-14 shrink-0 items-center justify-end border-b border-transparent px-4">
+           {/* Top nav empty for now, maybe profile later */}
+        </header>
+
+        {tab === 'profile' && profile ? (
+          <ProfileView profile={profile} />
+        ) : activeCourse ? (
+          <>
+            {tab === 'home' && (
+              <div className="max-w-4xl mx-auto w-full md:pt-4">
+                <DashboardPlaceholder courseId={activeCourse.id} courseName={activeCourse.name} displayName={profile?.display_name ?? 'there'} />
+                <FolderList course={activeCourse} />
+              </div>
+            )}
+            {tab === 'notetaking' && <div className="py-8"><h1 className="text-2xl font-bold">Notetaking für {activeCourse.name}</h1><p className="text-muted-foreground mt-2">Hier kommt das Notizen-Tool hin.</p></div>}
+            {tab === 'learn' && <div className="py-8"><h1 className="text-2xl font-bold">Learn & Research</h1><p className="text-muted-foreground mt-2">Chatbot und Q&A Interface.</p></div>}
+            {tab === 'feynman' && <div className="py-8"><h1 className="text-2xl font-bold">Feynman Technique</h1><p className="text-muted-foreground mt-2">Lehre es einem 5-Jährigen.</p></div>}
+            {tab === 'revision' && <div className="py-8"><h1 className="text-2xl font-bold">Revision</h1><p className="text-muted-foreground mt-2">Active Recall und Karteikarten.</p></div>}
+          </>
+        ) : (
+          <div className="flex flex-1 items-center justify-center flex-col text-center mt-20">
+            <h1 className="text-2xl font-semibold mb-2">Welcome to Learncycle</h1>
+            <p className="text-muted-foreground">Create your first course in the sidebar to get started.</p>
+          </div>
+        )}
+      </main>
+    </ResponsiveLayout>
   );
 }
+

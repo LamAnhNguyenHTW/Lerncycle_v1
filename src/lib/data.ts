@@ -1,65 +1,78 @@
 import {createClient} from '@/lib/supabase/server';
-import type {Pdf, SemesterTree} from '@/types';
 
-/**
- * Fetches the full semester → subject → week tree for the current user.
- * Returns an empty array when no user is authenticated.
- */
-export async function getSemesterTree(): Promise<SemesterTree[]> {
-  const supabase = await createClient();
-  const {data: {user}} = await supabase.auth.getUser();
-
-  if (!user) return [];
-
-  const {data: semesters} = await supabase
-    .from('semesters')
-    .select('*')
-    .order('created_at', {ascending: true});
-
-  if (!semesters || semesters.length === 0) return [];
-
-  const semesterIds = semesters.map((s) => s.id);
-
-  const {data: subjects} = await supabase
-    .from('subjects')
-    .select('*')
-    .in('semester_id', semesterIds)
-    .order('created_at', {ascending: true});
-
-  const subjectIds = (subjects ?? []).map((s) => s.id);
-
-  const {data: weeks} =
-    subjectIds.length > 0
-      ? await supabase
-          .from('weeks')
-          .select('*')
-          .in('subject_id', subjectIds)
-          .order('created_at', {ascending: true})
-      : {data: []};
-
-  return semesters.map((semester) => ({
-    ...semester,
-    subjects: (subjects ?? [])
-      .filter((s) => s.semester_id === semester.id)
-      .map((subject) => ({
-        ...subject,
-        weeks: (weeks ?? []).filter((w) => w.subject_id === subject.id),
-      })),
-  }));
+export interface PdfFile {
+  id: string;
+  name: string;
+  storage_path: string;
+  size_bytes: number;
+  created_at: string;
 }
 
-/** Fetches all PDFs for a given week. Returns empty array if not authenticated. */
-export async function getPdfsForWeek(weekId: string): Promise<Pdf[]> {
+export interface Folder {
+  id: string;
+  name: string;
+  created_at: string;
+  pdfs: PdfFile[];
+}
+
+export interface Course {
+  id: string;
+  name: string;
+  created_at: string;
+  /** PDFs uploaded directly to the course (not inside any folder). */
+  loose_pdfs: PdfFile[];
+  folders: Folder[];
+}
+
+export async function getCourses(): Promise<Course[]> {
   const supabase = await createClient();
   const {data: {user}} = await supabase.auth.getUser();
 
-  if (!user) return [];
+  if (!user) {
+    return [];
+  }
 
-  const {data} = await supabase
-    .from('pdfs')
-    .select('*')
-    .eq('week_id', weekId)
-    .order('created_at', {ascending: true});
+  const [coursesResult, loosePdfsResult] = await Promise.all([
+    supabase
+      .from('courses')
+      .select(`
+        id,
+        name,
+        created_at,
+        folders (
+          id,
+          name,
+          created_at,
+          pdfs (
+            id,
+            name,
+            storage_path,
+            size_bytes,
+            created_at
+          )
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', {ascending: true}),
+    supabase
+      .from('pdfs')
+      .select('id, name, storage_path, size_bytes, created_at, course_id')
+      .eq('user_id', user.id)
+      .is('folder_id', null)
+      .order('created_at', {ascending: true}),
+  ]);
 
-  return data ?? [];
+  if (!coursesResult.data) {
+    return [];
+  }
+
+  const loosePdfs = loosePdfsResult.data ?? [];
+
+  return coursesResult.data.map((course) => ({
+    ...course,
+    loose_pdfs: loosePdfs
+      .filter((p) => p.course_id === course.id)
+      .map(({course_id: _cid, ...p}) => p),
+    folders: (course.folders ?? []) as Folder[],
+  })) as Course[];
 }

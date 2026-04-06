@@ -6,14 +6,15 @@ import {uploadPdf} from '@/actions/pdfs';
 import {cn} from '@/lib/utils';
 
 interface Props {
-  weekId: string;
+  targetId: string;
+  targetType: 'course' | 'folder';
   onUploaded?: () => void;
 }
 
 type UploadState = 'idle' | 'uploading' | 'error';
 
-/** Drag-and-drop PDF upload zone for a specific week. */
-export function PdfDropzone({weekId, onUploaded}: Props) {
+/** Drag-and-drop PDF upload zone for a specific folder. */
+export function PdfDropzone({targetId, targetType, onUploaded}: Props) {
   const [state, setState] = useState<UploadState>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -27,7 +28,7 @@ export function PdfDropzone({weekId, onUploaded}: Props) {
       const formData = new FormData();
       formData.set('file', accepted[0]);
 
-      const result = await uploadPdf(weekId, formData);
+      const result = await uploadPdf(targetId, targetType, formData);
 
       if (result.error) {
         setState('error');
@@ -37,7 +38,7 @@ export function PdfDropzone({weekId, onUploaded}: Props) {
         onUploaded?.();
       }
     },
-    [weekId, onUploaded],
+    [targetId, targetType, onUploaded],
   );
 
   const {getRootProps, getInputProps, isDragActive, isDragReject} = useDropzone({
