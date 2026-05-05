@@ -2,10 +2,10 @@ import {type NextRequest, NextResponse} from 'next/server';
 import {createServerClient} from '@supabase/ssr';
 
 /**
- * Middleware that refreshes the Supabase auth session on every request
+ * Proxy that refreshes the Supabase auth session on every request
  * and redirects unauthenticated users to /login.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({request});
 
   const supabase = createServerClient(
@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // Refresh session — do NOT remove this.
+  // Refresh session â€” do NOT remove this.
   const {
     data: {user},
   } = await supabase.auth.getUser();

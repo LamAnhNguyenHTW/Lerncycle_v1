@@ -80,19 +80,35 @@ export async function uploadPdf(
       return {error: `Upload failed: ${uploadErrorMessage}`};
     }
 
-    const {error: dbError} = await supabase.from('pdfs').insert({
-      user_id: user.id,
-      course_id: courseId,
-      folder_id: folderId,
-      name: file.name,
-      storage_path: storagePath,
-      size_bytes: file.size,
-    });
+    const {data: pdfRow, error: dbError} = await supabase
+      .from('pdfs')
+      .insert({
+        user_id: user.id,
+        course_id: courseId,
+        folder_id: folderId,
+        name: file.name,
+        storage_path: storagePath,
+        size_bytes: file.size,
+      })
+      .select('id')
+      .single();
 
     if (dbError) {
       // Roll back the storage upload to avoid orphaned files.
       await supabase.storage.from(BUCKET).remove([storagePath]);
       return {error: dbError.message};
+    }
+
+    const {error: jobError} = await supabase.from('rag_index_jobs').insert({
+      user_id: user.id,
+      pdf_id: pdfRow.id,
+      status: 'pending',
+    });
+
+    if (jobError) {
+      return {
+        error: `PDF uploaded, but indexing could not be queued: ${jobError.message}`,
+      };
     }
 
     revalidatePath('/');

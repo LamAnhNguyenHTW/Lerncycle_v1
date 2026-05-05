@@ -1,0 +1,6 @@
+docling
+google-genai
+openai
+pytest
+python-dotenv
+supabase
