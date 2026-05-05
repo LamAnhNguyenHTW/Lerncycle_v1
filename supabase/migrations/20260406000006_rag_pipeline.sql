@@ -19,7 +19,12 @@ create unique index if not exists notes_id_key on public.notes(id);
 create table if not exists public.rag_index_jobs (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references auth.users(id) on delete cascade,
-  pdf_id        uuid not null references public.pdfs(id) on delete cascade,
+  source_type   text not null default 'pdf'
+    check (source_type in ('pdf', 'note', 'annotation_comment')),
+  source_id     uuid not null,
+  pdf_id        uuid references public.pdfs(id) on delete cascade,
+  note_id       uuid references public.notes(id) on delete cascade,
+  annotation_id uuid references public.pdf_annotations(id) on delete cascade,
   status        text not null default 'pending'
     check (status in ('pending', 'processing', 'completed', 'failed')),
   attempts      integer not null default 0,
@@ -37,6 +42,9 @@ create index if not exists rag_index_jobs_worker_idx
 
 create index if not exists rag_index_jobs_user_pdf_idx
   on public.rag_index_jobs(user_id, pdf_id, created_at desc);
+
+create index if not exists rag_index_jobs_user_source_idx
+  on public.rag_index_jobs(user_id, source_type, source_id, created_at desc);
 
 -- Status and debugging record for each source processed by the RAG pipeline.
 create table if not exists public.rag_documents (

@@ -101,6 +101,8 @@ export async function uploadPdf(
 
     const {error: jobError} = await supabase.from('rag_index_jobs').insert({
       user_id: user.id,
+      source_type: 'pdf',
+      source_id: pdfRow.id,
       pdf_id: pdfRow.id,
       status: 'pending',
     });

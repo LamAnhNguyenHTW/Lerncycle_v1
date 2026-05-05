@@ -23,6 +23,38 @@ export interface Annotation {
   created_at: string;
 }
 
+async function enqueueAnnotationIndexJob(
+  userId: string,
+  annotationId: string,
+  pdfId: string,
+): Promise<{error?: string}> {
+  const supabase = await createClient();
+
+  const {data: existing, error: existingError} = await supabase
+    .from('rag_index_jobs')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('source_type', 'annotation_comment')
+    .eq('source_id', annotationId)
+    .in('status', ['pending', 'processing'])
+    .maybeSingle();
+
+  if (existingError) return {error: existingError.message};
+  if (existing) return {};
+
+  const {error} = await supabase.from('rag_index_jobs').insert({
+    user_id: userId,
+    source_type: 'annotation_comment',
+    source_id: annotationId,
+    annotation_id: annotationId,
+    pdf_id: pdfId,
+    status: 'pending',
+  });
+
+  if (error && error.code !== '23505') return {error: error.message};
+  return {};
+}
+
 /** Fetches all annotations for a PDF owned by the current user. */
 export async function getAnnotations(
   pdfId: string,
@@ -75,6 +107,13 @@ export async function createAnnotation(
 
   if (error) return {error: error.message};
 
+  const {error: jobError} = await enqueueAnnotationIndexJob(
+    user.id,
+    row.id,
+    row.pdf_id,
+  );
+  if (jobError) return {error: jobError};
+
   revalidatePath('/');
   return {annotation: row as Annotation};
 }
@@ -95,6 +134,13 @@ export async function deleteAnnotation(
     .eq('user_id', user.id);
 
   if (error) return {error: error.message};
+
+  await supabase
+    .from('rag_chunks')
+    .delete()
+    .eq('source_type', 'annotation_comment')
+    .eq('source_id', id)
+    .eq('user_id', user.id);
 
   revalidatePath('/');
   return {};
@@ -126,6 +172,13 @@ export async function updateAnnotation(
     .single();
 
   if (error) return {error: error.message};
+
+  const {error: jobError} = await enqueueAnnotationIndexJob(
+    user.id,
+    row.id,
+    row.pdf_id,
+  );
+  if (jobError) return {error: jobError};
 
   revalidatePath('/');
   return {annotation: row as Annotation};
