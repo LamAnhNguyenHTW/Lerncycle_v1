@@ -1,0 +1,8 @@
+{
+  "track_id": "rag_hybrid_sparse_20260506",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-05-06T12:00:00Z",
+  "updated_at": "2026-05-06T12:00:00Z",
+  "description": "Extend the existing dense LearnCycle RAG pipeline with sparse BM25-style vectors (FastEmbed/Qdrant BM25) and hybrid (dense + sparse) retrieval with RRF fusion. Each Qdrant point in the existing 'learncycle_chunks' collection gains a named sparse vector 'sparse' alongside the existing 'dense' vector, with payload unchanged. A new Supabase migration adds sparse embedding metadata columns (sparse_embedding_status, sparse_embedding_model, sparse_embedded_at, sparse_embedding_error). The worker generates dense + sparse embeddings per chunk and upserts hybrid points; a reindex command rebuilds the collection from existing rag_chunks. Retrieval gains sparse-only and hybrid search functions that always filter by user_id, with optional source_type filtering, and a small evaluation helper compares dense vs sparse vs hybrid on a curated query set. Reranking, agentic retrieval, knowledge graph, web search, chat UI, and LLM answer generation remain out of scope."
+}

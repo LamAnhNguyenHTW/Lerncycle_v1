@@ -8,6 +8,7 @@ from typing import Any
 
 from rag_pipeline.models import RagChunk, SourceRef
 from rag_pipeline.refinement import SemanticRefiner
+from rag_pipeline.sparse_embeddings import SparseVectorData
 from rag_pipeline.worker import RagWorker
 
 
@@ -111,20 +112,39 @@ class FakeEmbedder:
         return [[float(index), 1.0] for index, _ in enumerate(texts)]
 
 
+class FakeSparseEmbedder:
+    def __init__(self, fail: bool = False) -> None:
+        self.fail = fail
+        self.calls: list[list[str]] = []
+
+    def embed(self, texts: list[str]) -> list[SparseVectorData]:
+        self.calls.append(texts)
+        if self.fail:
+            raise RuntimeError("sparse failed")
+        return [
+            SparseVectorData(indices=[index], values=[float(index + 1)])
+            for index, _ in enumerate(texts)
+        ]
+
+
 class FakeQdrantStore:
     def __init__(self, fail_upsert: bool = False) -> None:
         self.fail_upsert = fail_upsert
-        self.ensure_calls: list[int] = []
-        self.upsert_calls: list[list[dict[str, Any]]] = []
+        self.ensure_calls: list[tuple[int, bool]] = []
+        self.upsert_calls: list[tuple[list[dict[str, Any]], bool]] = []
         self.delete_calls: list[tuple[str, str, str]] = []
 
-    def ensure_collection(self, dim: int) -> None:
-        self.ensure_calls.append(dim)
+    def ensure_collection(self, dim: int, sparse_enabled: bool = False) -> None:
+        self.ensure_calls.append((dim, sparse_enabled))
 
-    def upsert_chunks(self, chunks: list[dict[str, Any]]) -> None:
+    def upsert_chunks(
+        self,
+        chunks: list[dict[str, Any]],
+        sparse_enabled: bool = False,
+    ) -> None:
         if self.fail_upsert:
             raise RuntimeError("qdrant failed")
-        self.upsert_calls.append(chunks)
+        self.upsert_calls.append((chunks, sparse_enabled))
 
     def delete_points_by_source(
         self,
@@ -203,15 +223,20 @@ class ChunkWorker(RagWorker):
         self,
         embedder: FakeEmbedder | None = None,
         qdrant_store: FakeQdrantStore | None = None,
+        sparse_embedder: FakeSparseEmbedder | None = None,
+        sparse_enabled: bool = False,
     ) -> None:
         self._config = SimpleNamespace(
             chunking_strategy="test_strategy",
             chunking_version="v1",
             qdrant_collection="learncycle_chunks",
             embedding_model="text-embedding-3-small",
+            sparse_enabled=sparse_enabled,
+            sparse_model="Qdrant/bm25",
         )
         self._supabase = FakeSupabase()
         self._embedder = embedder or FakeEmbedder()
+        self._sparse_embedder = sparse_embedder or FakeSparseEmbedder()
         self._qdrant_store = qdrant_store or FakeQdrantStore()
 
 
@@ -299,8 +324,8 @@ def test_worker_embeds_and_upserts_chunks_to_qdrant() -> None:
     worker._upsert_chunks("document-1", [_chunk()])
 
     assert worker._embedder.calls == [["Note text"]]
-    assert worker._qdrant_store.ensure_calls == [2]
-    upserted = worker._qdrant_store.upsert_calls[0][0]
+    assert worker._qdrant_store.ensure_calls == [(2, False)]
+    upserted = worker._qdrant_store.upsert_calls[0][0][0]
     assert upserted["id"] == "chunk-1"
     assert upserted["chunk_id"] == "chunk-1"
     assert upserted["text"] == "Note text"
@@ -409,6 +434,78 @@ def test_worker_does_not_mark_job_completed_when_embedding_fails() -> None:
     worker._replace_source_chunks = fail_replace
 
     with pytest.raises(RuntimeError, match="embedding failed"):
+        worker._process_job(
+            {
+                "id": "job-1",
+                "user_id": "user-1",
+                "source_type": "note",
+                "source_id": "note-1",
+                "note_id": "note-1",
+                "pdf_id": "pdf-1",
+            }
+        )
+
+    assert worker.completed_jobs == []
+
+
+def test_worker_generates_sparse_embeddings_for_chunks() -> None:
+    worker = ChunkWorker(sparse_enabled=True)
+
+    worker._upsert_chunks("document-1", [_chunk()])
+
+    assert worker._sparse_embedder.calls == [["Note text"]]
+
+
+def test_worker_upserts_dense_and_sparse_to_qdrant() -> None:
+    worker = ChunkWorker(sparse_enabled=True)
+
+    worker._upsert_chunks("document-1", [_chunk()])
+
+    assert worker._qdrant_store.ensure_calls == [(2, True)]
+    chunks, sparse_enabled = worker._qdrant_store.upsert_calls[0]
+    assert sparse_enabled is True
+    assert chunks[0]["embedding"] == [0.0, 1.0]
+    assert chunks[0]["sparse_embedding"] == SparseVectorData(
+        indices=[0],
+        values=[1.0],
+    )
+
+
+def test_worker_marks_sparse_embedding_completed() -> None:
+    worker = ChunkWorker(sparse_enabled=True)
+
+    worker._upsert_chunks("document-1", [_chunk()])
+
+    update = worker._supabase.chunk_updates[-1][1]
+    assert update["sparse_embedding_status"] == "completed"
+    assert update["sparse_embedding_model"] == "Qdrant/bm25"
+    assert update["sparse_embedded_at"] is not None
+    assert update["sparse_embedding_error"] is None
+
+
+def test_worker_marks_sparse_embedding_failed_when_sparse_embedder_fails() -> None:
+    worker = ChunkWorker(
+        sparse_enabled=True,
+        sparse_embedder=FakeSparseEmbedder(fail=True),
+    )
+
+    with pytest.raises(RuntimeError, match="sparse failed"):
+        worker._upsert_chunks("document-1", [_chunk()])
+
+    update = worker._supabase.chunk_updates[-1][1]
+    assert update["sparse_embedding_status"] == "failed"
+    assert update["sparse_embedding_error"] == "sparse failed"
+
+
+def test_worker_does_not_mark_job_completed_when_sparse_fails() -> None:
+    worker = RecordingWorker()
+
+    def fail_replace(_document_id, _source, _chunks) -> None:
+        raise RuntimeError("sparse failed")
+
+    worker._replace_source_chunks = fail_replace
+
+    with pytest.raises(RuntimeError, match="sparse failed"):
         worker._process_job(
             {
                 "id": "job-1",

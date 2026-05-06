@@ -16,3 +16,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Durable Embeddings & Qdrant Upserts for the RAG Pipeline**
 *Link: [./tracks/rag_qdrant_embeddings_20260506/](./tracks/rag_qdrant_embeddings_20260506/)*
+
+---
+
+- [ ] **Track: Sparse Vectors & Hybrid Search for the RAG Pipeline**
+*Link: [./tracks/rag_hybrid_sparse_20260506/](./tracks/rag_hybrid_sparse_20260506/)*

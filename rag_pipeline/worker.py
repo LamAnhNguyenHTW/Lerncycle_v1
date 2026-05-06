@@ -14,6 +14,8 @@ from rag_pipeline.embeddings import Embedder
 from rag_pipeline.models import RagChunk, SourceRef
 from rag_pipeline.qdrant_store import QdrantStore
 from rag_pipeline.refinement import SemanticRefiner
+from rag_pipeline.sparse_embeddings import SparseEmbedder
+from rag_pipeline.sparse_embeddings import SparseVectorData
 from rag_pipeline.source_ingestion import chunks_from_annotation
 from rag_pipeline.source_ingestion import chunks_from_note
 
@@ -30,6 +32,7 @@ class RagWorker:
         config: WorkerConfig,
         embedder: Embedder | None = None,
         qdrant_store: QdrantStore | None = None,
+        sparse_embedder: SparseEmbedder | None = None,
     ) -> None:
         """Create a worker.
 
@@ -66,6 +69,10 @@ class RagWorker:
             url=config.qdrant_url,
             api_key=config.qdrant_api_key,
             collection_name=config.qdrant_collection,
+        )
+        self._sparse_embedder = sparse_embedder or SparseEmbedder(
+            provider=config.sparse_provider,
+            model=config.sparse_model,
         )
 
     def run_once(self) -> bool:
@@ -383,6 +390,10 @@ class RagWorker:
                     "embedded_at": None,
                     "qdrant_collection": self._config.qdrant_collection,
                     "qdrant_point_id": None,
+                    "sparse_embedding_status": "pending",
+                    "sparse_embedding_model": None,
+                    "sparse_embedded_at": None,
+                    "sparse_embedding_error": None,
                     "updated_at": now,
                 }
             )
@@ -402,17 +413,43 @@ class RagWorker:
                 dim = len(embeddings[0])
             if dim is None:
                 return
-            self._qdrant_store.ensure_collection(dim)
+            sparse_enabled = bool(
+                getattr(self._config, "sparse_enabled", False)
+            )
+            sparse_embeddings: list[SparseVectorData | None] = [None] * len(chunks)
+            if sparse_enabled:
+                sparse_embeddings = self._sparse_embedder.embed(
+                    [chunk.content for chunk in chunks]
+                )
+                if len(sparse_embeddings) != len(chunks):
+                    raise RuntimeError(
+                        "Sparse embedding provider returned "
+                        f"{len(sparse_embeddings)} vectors for {len(chunks)} inputs."
+                    )
+            self._qdrant_store.ensure_collection(dim, sparse_enabled=sparse_enabled)
             qdrant_chunks = [
-                _qdrant_chunk_payload(row, chunk, index, embeddings[index])
+                _qdrant_chunk_payload(
+                    row,
+                    chunk,
+                    index,
+                    embeddings[index],
+                    sparse_embeddings[index],
+                )
                 for index, (chunk, row) in enumerate(zip(chunks, indexed_rows))
             ]
-            self._qdrant_store.upsert_chunks(qdrant_chunks)
-            self._mark_chunks_embedding_completed([row["id"] for row in indexed_rows])
+            self._qdrant_store.upsert_chunks(
+                qdrant_chunks,
+                sparse_enabled=sparse_enabled,
+            )
+            self._mark_chunks_embedding_completed(
+                [row["id"] for row in indexed_rows],
+                sparse_completed=sparse_enabled,
+            )
         except Exception as exc:
             self._mark_chunks_embedding_failed(
                 [row["id"] for row in indexed_rows],
                 str(exc),
+                sparse_failed=bool(getattr(self._config, "sparse_enabled", False)),
             )
             raise
 
@@ -457,35 +494,60 @@ class RagWorker:
             self._config.chunking_version,
         ).execute()
 
-    def _mark_chunks_embedding_completed(self, chunk_ids: list[str]) -> None:
+    def _mark_chunks_embedding_completed(
+        self,
+        chunk_ids: list[str],
+        sparse_completed: bool = False,
+    ) -> None:
         now = _utc_now()
         for chunk_id in chunk_ids:
-            self._supabase.table("rag_chunks").update(
-                {
-                    "embedding_status": "completed",
-                    "embedding_model": self._config.embedding_model,
-                    "embedded_at": now,
-                    "qdrant_collection": self._config.qdrant_collection,
-                    "qdrant_point_id": chunk_id,
-                    "embedding_error": None,
-                    "updated_at": now,
-                }
-            ).eq("id", chunk_id).execute()
+            update = {
+                "embedding_status": "completed",
+                "embedding_model": self._config.embedding_model,
+                "embedded_at": now,
+                "qdrant_collection": self._config.qdrant_collection,
+                "qdrant_point_id": chunk_id,
+                "embedding_error": None,
+                "updated_at": now,
+            }
+            if sparse_completed:
+                update.update(
+                    {
+                        "sparse_embedding_status": "completed",
+                        "sparse_embedding_model": self._config.sparse_model,
+                        "sparse_embedded_at": now,
+                        "sparse_embedding_error": None,
+                    }
+                )
+            self._supabase.table("rag_chunks").update(update).eq(
+                "id",
+                chunk_id,
+            ).execute()
 
     def _mark_chunks_embedding_failed(
         self,
         chunk_ids: list[str],
         error_message: str,
+        sparse_failed: bool = False,
     ) -> None:
         now = _utc_now()
         for chunk_id in chunk_ids:
-            self._supabase.table("rag_chunks").update(
-                {
-                    "embedding_status": "failed",
-                    "embedding_error": error_message[:4000],
-                    "updated_at": now,
-                }
-            ).eq("id", chunk_id).execute()
+            update = {
+                "embedding_status": "failed",
+                "embedding_error": error_message[:4000],
+                "updated_at": now,
+            }
+            if sparse_failed:
+                update.update(
+                    {
+                        "sparse_embedding_status": "failed",
+                        "sparse_embedding_error": error_message[:4000],
+                    }
+                )
+            self._supabase.table("rag_chunks").update(update).eq(
+                "id",
+                chunk_id,
+            ).execute()
 
 
     def _mark_job_completed(self, job_id: str) -> None:
@@ -564,11 +626,12 @@ def _qdrant_chunk_payload(
     chunk: RagChunk,
     chunk_index: int,
     embedding: list[float],
+    sparse_embedding: SparseVectorData | None = None,
 ) -> dict[str, Any]:
     source = chunk.source
     heading = " > ".join(chunk.heading_path) if chunk.heading_path else None
     metadata = dict(row.get("metadata") or chunk.metadata)
-    return {
+    payload = {
         "id": str(row["id"]),
         "embedding": embedding,
         "chunk_id": str(row["id"]),
@@ -588,6 +651,9 @@ def _qdrant_chunk_payload(
         "created_at": row.get("created_at"),
         "updated_at": row.get("updated_at"),
     }
+    if sparse_embedding is not None:
+        payload["sparse_embedding"] = sparse_embedding
+    return payload
 
 
 def main() -> None:

@@ -22,6 +22,13 @@ class WorkerConfig:
     qdrant_api_key: str | None = None
     qdrant_collection: str = "learncycle_chunks"
     embedding_batch_size: int = 100
+    sparse_provider: str = "fastembed"
+    sparse_model: str = "Qdrant/bm25"
+    sparse_vector_name: str = "sparse"
+    sparse_enabled: bool = True
+    hybrid_fusion: str = "rrf"
+    hybrid_prefetch_limit: int = 30
+    hybrid_top_k: int = 10
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -76,6 +83,16 @@ class WorkerConfig:
                 os.getenv("EMBEDDING_BATCH_SIZE")
             )
             or 100,
+            sparse_provider=os.getenv("SPARSE_PROVIDER", "fastembed"),
+            sparse_model=os.getenv("SPARSE_MODEL", "Qdrant/bm25"),
+            sparse_vector_name=os.getenv("SPARSE_VECTOR_NAME", "sparse"),
+            sparse_enabled=_optional_bool(os.getenv("SPARSE_ENABLED"), True),
+            hybrid_fusion=os.getenv("HYBRID_FUSION", "rrf"),
+            hybrid_prefetch_limit=_optional_int(
+                os.getenv("HYBRID_PREFETCH_LIMIT")
+            )
+            or 30,
+            hybrid_top_k=_optional_int(os.getenv("HYBRID_TOP_K")) or 10,
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",
@@ -100,3 +117,10 @@ def _optional_int(value: str | None) -> int | None:
     if not value:
         return None
     return int(value)
+
+
+def _optional_bool(value: str | None, default: bool) -> bool:
+    """Parse optional boolean environment values."""
+    if value is None or value == "":
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
