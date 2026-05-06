@@ -11,3 +11,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Implement PDF-Side-by-Side Note-Taking & Annotation**
 *Link: [./tracks/pdf_notetaking_annotation_20260406/](./tracks/pdf_notetaking_annotation_20260406/)*
+
+---
+
+- [ ] **Track: Durable Embeddings & Qdrant Upserts for the RAG Pipeline**
+*Link: [./tracks/rag_qdrant_embeddings_20260506/](./tracks/rag_qdrant_embeddings_20260506/)*

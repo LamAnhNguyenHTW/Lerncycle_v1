@@ -3,4 +3,5 @@ google-genai
 openai
 pytest
 python-dotenv
+qdrant-client
 supabase

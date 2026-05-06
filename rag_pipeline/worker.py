@@ -10,7 +10,9 @@ from typing import Any
 
 from rag_pipeline.config import WorkerConfig
 from rag_pipeline.docling_ingestion import process_pdf
+from rag_pipeline.embeddings import Embedder
 from rag_pipeline.models import RagChunk, SourceRef
+from rag_pipeline.qdrant_store import QdrantStore
 from rag_pipeline.refinement import SemanticRefiner
 from rag_pipeline.source_ingestion import chunks_from_annotation
 from rag_pipeline.source_ingestion import chunks_from_note
@@ -23,7 +25,12 @@ PDF_BUCKET = "pdfs"
 class RagWorker:
     """Worker that claims RAG jobs and writes final chunks to Supabase."""
 
-    def __init__(self, config: WorkerConfig) -> None:
+    def __init__(
+        self,
+        config: WorkerConfig,
+        embedder: Embedder | None = None,
+        qdrant_store: QdrantStore | None = None,
+    ) -> None:
         """Create a worker.
 
         Args:
@@ -47,6 +54,18 @@ class RagWorker:
             embedding_model=config.embedding_model,
             gemini_api_key=config.gemini_api_key,
             gemini_output_dimensionality=config.gemini_output_dimensionality,
+        )
+        self._embedder = embedder or Embedder(
+            provider=config.embedding_provider,
+            model=config.embedding_model,
+            openai_api_key=config.openai_api_key,
+            gemini_api_key=config.gemini_api_key,
+            batch_size=config.embedding_batch_size,
+        )
+        self._qdrant_store = qdrant_store or QdrantStore(
+            url=config.qdrant_url,
+            api_key=config.qdrant_api_key,
+            collection_name=config.qdrant_collection,
         )
 
     def run_once(self) -> bool:
@@ -95,7 +114,7 @@ class RagWorker:
         )
 
         document_id = self._upsert_document(source, status="processing")
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp_dir:
             pdf_path = Path(tmp_dir) / pdf["name"]
             pdf_path.write_bytes(
                 self._supabase.storage.from_(PDF_BUCKET).download(
@@ -110,7 +129,7 @@ class RagWorker:
                 chunking_version=self._config.chunking_version,
             )
 
-        self._upsert_chunks(document_id, chunks)
+        self._replace_source_chunks(document_id, source, chunks)
         self._upsert_document(
             source,
             status="completed",
@@ -336,8 +355,12 @@ class RagWorker:
 
         rows = []
         now = _utc_now()
-        for chunk in chunks:
+        for index, chunk in enumerate(chunks):
             source = chunk.source
+            client_chunk_key = _client_chunk_key(chunk, index)
+            metadata = dict(chunk.metadata)
+            metadata["client_chunk_key"] = client_chunk_key
+            metadata["chunk_index"] = index
             rows.append(
                 {
                     "user_id": source.user_id,
@@ -351,7 +374,7 @@ class RagWorker:
                     "heading_path": chunk.heading_path,
                     "chunk_kind": chunk.chunk_kind,
                     "content": chunk.content,
-                    "metadata": chunk.metadata,
+                    "metadata": metadata,
                     "content_hash": chunk.content_hash,
                     "chunking_strategy": self._config.chunking_strategy,
                     "chunking_version": self._config.chunking_version,
@@ -364,10 +387,34 @@ class RagWorker:
                 }
             )
 
-        self._supabase.table("rag_chunks").upsert(
+        response = self._supabase.table("rag_chunks").upsert(
             rows,
             on_conflict="user_id,source_type,source_id,content_hash",
+            returning="representation",
         ).execute()
+        returned_rows = response.data or []
+        indexed_rows = _match_chunk_rows(chunks, returned_rows)
+
+        try:
+            embeddings = self._embedder.embed([chunk.content for chunk in chunks])
+            dim = self._embedder.dimension
+            if dim is None and embeddings:
+                dim = len(embeddings[0])
+            if dim is None:
+                return
+            self._qdrant_store.ensure_collection(dim)
+            qdrant_chunks = [
+                _qdrant_chunk_payload(row, chunk, index, embeddings[index])
+                for index, (chunk, row) in enumerate(zip(chunks, indexed_rows))
+            ]
+            self._qdrant_store.upsert_chunks(qdrant_chunks)
+            self._mark_chunks_embedding_completed([row["id"] for row in indexed_rows])
+        except Exception as exc:
+            self._mark_chunks_embedding_failed(
+                [row["id"] for row in indexed_rows],
+                str(exc),
+            )
+            raise
 
     def _replace_source_chunks(
         self,
@@ -375,6 +422,11 @@ class RagWorker:
         source: SourceRef,
         chunks: list[RagChunk],
     ) -> None:
+        self._qdrant_store.delete_points_by_source(
+            source.user_id,
+            source.source_type,
+            source.source_id,
+        )
         self._supabase.table("rag_chunks").delete().eq(
             "user_id",
             source.user_id,
@@ -389,6 +441,11 @@ class RagWorker:
         self._upsert_chunks(rag_document_id, chunks)
 
     def _delete_source_chunks(self, source: SourceRef) -> None:
+        self._qdrant_store.delete_points_by_source(
+            source.user_id,
+            source.source_type,
+            source.source_id,
+        )
         self._supabase.table("rag_chunks").delete().eq(
             "user_id",
             source.user_id,
@@ -399,6 +456,36 @@ class RagWorker:
             "chunking_version",
             self._config.chunking_version,
         ).execute()
+
+    def _mark_chunks_embedding_completed(self, chunk_ids: list[str]) -> None:
+        now = _utc_now()
+        for chunk_id in chunk_ids:
+            self._supabase.table("rag_chunks").update(
+                {
+                    "embedding_status": "completed",
+                    "embedding_model": self._config.embedding_model,
+                    "embedded_at": now,
+                    "qdrant_collection": self._config.qdrant_collection,
+                    "qdrant_point_id": chunk_id,
+                    "embedding_error": None,
+                    "updated_at": now,
+                }
+            ).eq("id", chunk_id).execute()
+
+    def _mark_chunks_embedding_failed(
+        self,
+        chunk_ids: list[str],
+        error_message: str,
+    ) -> None:
+        now = _utc_now()
+        for chunk_id in chunk_ids:
+            self._supabase.table("rag_chunks").update(
+                {
+                    "embedding_status": "failed",
+                    "embedding_error": error_message[:4000],
+                    "updated_at": now,
+                }
+            ).eq("id", chunk_id).execute()
 
 
     def _mark_job_completed(self, job_id: str) -> None:
@@ -426,6 +513,81 @@ class RagWorker:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _match_chunk_rows(
+    chunks: list[RagChunk],
+    rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    by_key = {
+        _row_client_chunk_key(row): row
+        for row in rows
+    }
+    matched = []
+    for index, chunk in enumerate(chunks):
+        key = _client_chunk_key(chunk, index)
+        row = by_key.get(key)
+        if row is None:
+            raise RuntimeError("Could not map Supabase chunk row after upsert.")
+        matched.append(row)
+    return matched
+
+
+def _client_chunk_key(chunk: RagChunk, chunk_index: int) -> str:
+    source = chunk.source
+    return "|".join(
+        [
+            source.source_type,
+            source.source_id,
+            str(chunk_index),
+            chunk.content_hash,
+        ]
+    )
+
+
+def _row_client_chunk_key(row: dict[str, Any]) -> str:
+    metadata = row.get("metadata") or {}
+    if metadata.get("client_chunk_key"):
+        return str(metadata["client_chunk_key"])
+    return "|".join(
+        [
+            str(row.get("source_type")),
+            str(row.get("source_id")),
+            str(metadata.get("chunk_index", "")),
+            str(row.get("content_hash")),
+        ]
+    )
+
+
+def _qdrant_chunk_payload(
+    row: dict[str, Any],
+    chunk: RagChunk,
+    chunk_index: int,
+    embedding: list[float],
+) -> dict[str, Any]:
+    source = chunk.source
+    heading = " > ".join(chunk.heading_path) if chunk.heading_path else None
+    metadata = dict(row.get("metadata") or chunk.metadata)
+    return {
+        "id": str(row["id"]),
+        "embedding": embedding,
+        "chunk_id": str(row["id"]),
+        "user_id": source.user_id,
+        "source_type": source.source_type,
+        "source_id": source.source_id,
+        "pdf_id": source.pdf_id,
+        "note_id": source.note_id,
+        "annotation_id": source.annotation_id,
+        "document_id": row.get("rag_document_id"),
+        "page_index": chunk.page_index,
+        "heading": heading,
+        "text": chunk.content,
+        "metadata": metadata,
+        "content_hash": chunk.content_hash,
+        "chunk_index": chunk_index,
+        "created_at": row.get("created_at"),
+        "updated_at": row.get("updated_at"),
+    }
 
 
 def main() -> None:

@@ -1,0 +1,8 @@
+{
+  "track_id": "rag_qdrant_embeddings_20260506",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-05-06T12:00:00Z",
+  "updated_at": "2026-05-06T12:00:00Z",
+  "description": "Implement durable dense embeddings, Qdrant upserts, and the first non-agentic dense retrieval search for the existing LearnCycle RAG pipeline. After chunks are written to Supabase, the worker generates OpenAI embeddings and upserts one Qdrant point per rag_chunks row under a named vector 'dense' in the collection 'learncycle_chunks'. A new Supabase migration adds embedding metadata columns (embedding_status, embedding_model, embedded_at, qdrant_collection, qdrant_point_id, embedding_error) and supporting indexes. Updates and deletes of notes/annotations/PDFs synchronize cleanly with Qdrant, embedding/Qdrant failures never mark jobs as completed, and a first dense search filters strictly by user_id."
+}

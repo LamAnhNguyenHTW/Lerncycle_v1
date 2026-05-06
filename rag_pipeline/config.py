@@ -20,7 +20,8 @@ class WorkerConfig:
     gemini_output_dimensionality: int | None = None
     qdrant_url: str | None = None
     qdrant_api_key: str | None = None
-    qdrant_collection: str | None = None
+    qdrant_collection: str = "learncycle_chunks"
+    embedding_batch_size: int = 100
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -67,7 +68,14 @@ class WorkerConfig:
             ),
             qdrant_url=os.getenv("QDRANT_URL"),
             qdrant_api_key=os.getenv("QDRANT_API_KEY"),
-            qdrant_collection=os.getenv("QDRANT_COLLECTION"),
+            qdrant_collection=os.getenv(
+                "QDRANT_COLLECTION",
+                "learncycle_chunks",
+            ),
+            embedding_batch_size=_optional_int(
+                os.getenv("EMBEDDING_BATCH_SIZE")
+            )
+            or 100,
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",

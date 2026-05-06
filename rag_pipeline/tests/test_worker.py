@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
 from types import SimpleNamespace
 from typing import Any
 
+from rag_pipeline.models import RagChunk, SourceRef
 from rag_pipeline.refinement import SemanticRefiner
 from rag_pipeline.worker import RagWorker
 
@@ -75,6 +77,158 @@ class RecordingWorker(RagWorker):
         self.completed_jobs.append(job_id)
 
 
+class DeletedSourceWorker(RecordingWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.deleted_sources: list[tuple[str, str, str]] = []
+
+    def _fetch_note_row(self, note_id: str, user_id: str) -> dict[str, Any]:
+        raise RuntimeError("missing note")
+
+    def _fetch_annotation_row(
+        self,
+        annotation_id: str,
+        user_id: str,
+    ) -> dict[str, Any]:
+        raise RuntimeError("missing annotation")
+
+    def _delete_source_chunks(self, source) -> None:
+        self.deleted_sources.append(
+            (source.user_id, source.source_type, source.source_id)
+        )
+
+
+class FakeEmbedder:
+    def __init__(self, fail: bool = False) -> None:
+        self.fail = fail
+        self.dimension = 2
+        self.calls: list[list[str]] = []
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        self.calls.append(texts)
+        if self.fail:
+            raise RuntimeError("embedding failed")
+        return [[float(index), 1.0] for index, _ in enumerate(texts)]
+
+
+class FakeQdrantStore:
+    def __init__(self, fail_upsert: bool = False) -> None:
+        self.fail_upsert = fail_upsert
+        self.ensure_calls: list[int] = []
+        self.upsert_calls: list[list[dict[str, Any]]] = []
+        self.delete_calls: list[tuple[str, str, str]] = []
+
+    def ensure_collection(self, dim: int) -> None:
+        self.ensure_calls.append(dim)
+
+    def upsert_chunks(self, chunks: list[dict[str, Any]]) -> None:
+        if self.fail_upsert:
+            raise RuntimeError("qdrant failed")
+        self.upsert_calls.append(chunks)
+
+    def delete_points_by_source(
+        self,
+        user_id: str,
+        source_type: str,
+        source_id: str,
+    ) -> None:
+        self.delete_calls.append((user_id, source_type, source_id))
+
+
+class FakeResponse:
+    def __init__(self, data: Any = None) -> None:
+        self.data = data
+
+
+class FakeTable:
+    def __init__(self, supabase: "FakeSupabase", name: str) -> None:
+        self.supabase = supabase
+        self.name = name
+        self.pending_update: dict[str, Any] | None = None
+        self.filters: dict[str, Any] = {}
+
+    def upsert(self, rows, **kwargs):
+        self.supabase.operations.append((self.name, "upsert", rows, kwargs))
+        if self.name == "rag_chunks":
+            row_list = rows if isinstance(rows, list) else [rows]
+            self.supabase.chunk_rows = [
+                {
+                    **row,
+                    "id": f"chunk-{index + 1}",
+                    "created_at": "created",
+                    "updated_at": row.get("updated_at", "updated"),
+                }
+                for index, row in enumerate(row_list)
+            ]
+        return self
+
+    def select(self, *_args):
+        return self
+
+    def update(self, values):
+        self.pending_update = values
+        return self
+
+    def delete(self):
+        self.supabase.operations.append((self.name, "delete_start", None, {}))
+        return self
+
+    def eq(self, key, value):
+        self.filters[key] = value
+        if self.pending_update is not None and key == "id":
+            self.supabase.chunk_updates.append((value, self.pending_update))
+        return self
+
+    def execute(self):
+        self.supabase.operations.append(
+            (self.name, "execute", self.pending_update, dict(self.filters))
+        )
+        if self.name == "rag_chunks" and self.pending_update is None:
+            return FakeResponse(self.supabase.chunk_rows)
+        return FakeResponse([])
+
+
+class FakeSupabase:
+    def __init__(self) -> None:
+        self.chunk_rows: list[dict[str, Any]] = []
+        self.chunk_updates: list[tuple[str, dict[str, Any]]] = []
+        self.operations: list[tuple[str, str, Any, dict[str, Any]]] = []
+
+    def table(self, name: str) -> FakeTable:
+        return FakeTable(self, name)
+
+
+class ChunkWorker(RagWorker):
+    def __init__(
+        self,
+        embedder: FakeEmbedder | None = None,
+        qdrant_store: FakeQdrantStore | None = None,
+    ) -> None:
+        self._config = SimpleNamespace(
+            chunking_strategy="test_strategy",
+            chunking_version="v1",
+            qdrant_collection="learncycle_chunks",
+            embedding_model="text-embedding-3-small",
+        )
+        self._supabase = FakeSupabase()
+        self._embedder = embedder or FakeEmbedder()
+        self._qdrant_store = qdrant_store or FakeQdrantStore()
+
+
+def _chunk(content: str = "Note text") -> RagChunk:
+    return RagChunk(
+        source=SourceRef(
+            user_id="user-1",
+            source_type="note",
+            source_id="note-1",
+            note_id="note-1",
+        ),
+        content=content,
+        content_hash=f"hash-{content}",
+        metadata={"kind": "test"},
+    )
+
+
 def test_worker_processes_note_job() -> None:
     worker = RecordingWorker()
 
@@ -137,3 +291,133 @@ def test_note_reindex_replaces_chunks_without_duplication() -> None:
     chunks = worker.replaced_chunks[("user-1", "note", "note-1")]
     assert len(chunks) == 1
     assert worker.completed_jobs == ["job-1", "job-2"]
+
+
+def test_worker_embeds_and_upserts_chunks_to_qdrant() -> None:
+    worker = ChunkWorker()
+
+    worker._upsert_chunks("document-1", [_chunk()])
+
+    assert worker._embedder.calls == [["Note text"]]
+    assert worker._qdrant_store.ensure_calls == [2]
+    upserted = worker._qdrant_store.upsert_calls[0][0]
+    assert upserted["id"] == "chunk-1"
+    assert upserted["chunk_id"] == "chunk-1"
+    assert upserted["text"] == "Note text"
+    assert upserted["source_type"] == "note"
+
+
+def test_note_reindex_deletes_old_qdrant_points_before_upsert() -> None:
+    worker = ChunkWorker()
+    source = _chunk().source
+
+    worker._replace_source_chunks("document-1", source, [_chunk()])
+
+    assert worker._qdrant_store.delete_calls == [("user-1", "note", "note-1")]
+    assert worker._qdrant_store.upsert_calls
+
+
+def test_supabase_chunk_rows_marked_completed_after_qdrant_upsert() -> None:
+    worker = ChunkWorker()
+
+    worker._upsert_chunks("document-1", [_chunk()])
+
+    update = worker._supabase.chunk_updates[-1][1]
+    assert update["embedding_status"] == "completed"
+    assert update["embedding_model"] == "text-embedding-3-small"
+    assert update["qdrant_collection"] == "learncycle_chunks"
+    assert update["qdrant_point_id"] == "chunk-1"
+    assert update["embedding_error"] is None
+
+
+def test_worker_marks_chunks_failed_when_embedding_fails() -> None:
+    worker = ChunkWorker(embedder=FakeEmbedder(fail=True))
+
+    with pytest.raises(RuntimeError, match="embedding failed"):
+        worker._upsert_chunks("document-1", [_chunk()])
+
+    update = worker._supabase.chunk_updates[-1][1]
+    assert update["embedding_status"] == "failed"
+    assert update["embedding_error"] == "embedding failed"
+
+
+def test_worker_marks_chunks_failed_when_qdrant_upsert_fails() -> None:
+    worker = ChunkWorker(qdrant_store=FakeQdrantStore(fail_upsert=True))
+
+    with pytest.raises(RuntimeError, match="qdrant failed"):
+        worker._upsert_chunks("document-1", [_chunk()])
+
+    update = worker._supabase.chunk_updates[-1][1]
+    assert update["embedding_status"] == "failed"
+    assert update["embedding_error"] == "qdrant failed"
+
+
+def test_deleted_note_triggers_qdrant_cleanup() -> None:
+    worker = DeletedSourceWorker()
+
+    worker._process_job(
+        {
+            "id": "job-1",
+            "user_id": "user-1",
+            "source_type": "note",
+            "source_id": "note-1",
+            "note_id": "note-1",
+            "pdf_id": "pdf-1",
+        }
+    )
+
+    assert worker.deleted_sources == [("user-1", "note", "note-1")]
+    assert worker.documents[-1] == (
+        "note",
+        "completed",
+        {"skipped": "source_deleted"},
+    )
+    assert worker.completed_jobs == ["job-1"]
+
+
+def test_deleted_annotation_triggers_qdrant_cleanup() -> None:
+    worker = DeletedSourceWorker()
+
+    worker._process_job(
+        {
+            "id": "job-1",
+            "user_id": "user-1",
+            "source_type": "annotation_comment",
+            "source_id": "annotation-1",
+            "annotation_id": "annotation-1",
+            "pdf_id": "pdf-1",
+        }
+    )
+
+    assert worker.deleted_sources == [
+        ("user-1", "annotation_comment", "annotation-1")
+    ]
+    assert worker.documents[-1] == (
+        "annotation_comment",
+        "completed",
+        {"skipped": "source_deleted"},
+    )
+    assert worker.completed_jobs == ["job-1"]
+
+
+def test_worker_does_not_mark_job_completed_when_embedding_fails() -> None:
+    worker = RecordingWorker()
+
+    def fail_replace(_document_id, _source, _chunks) -> None:
+        raise RuntimeError("embedding failed")
+
+    worker._replace_source_chunks = fail_replace
+
+    with pytest.raises(RuntimeError, match="embedding failed"):
+        worker._process_job(
+            {
+                "id": "job-1",
+                "user_id": "user-1",
+                "source_type": "note",
+                "source_id": "note-1",
+                "note_id": "note-1",
+                "pdf_id": "pdf-1",
+            }
+        )
+
+    assert worker.completed_jobs == []

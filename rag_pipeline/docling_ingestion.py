@@ -342,7 +342,10 @@ def _pdf_page_count(pdf_path: Path) -> int:
         raise RuntimeError("pypdfium2 is required to verify PDF page coverage.") from exc
 
     pdf = pypdfium2.PdfDocument(str(pdf_path))
-    return len(pdf)
+    try:
+        return len(pdf)
+    finally:
+        pdf.close()
 
 
 def _extract_page_text(pdf_path: Path, page_index: int) -> str:
@@ -355,7 +358,12 @@ def _extract_page_text(pdf_path: Path, page_index: int) -> str:
         pdf = pypdfium2.PdfDocument(str(pdf_path))
         page = pdf[page_index]
         text_page = page.get_textpage()
-        return normalize_content(text_page.get_text_range())
+        try:
+            return normalize_content(text_page.get_text_range())
+        finally:
+            text_page.close()
+            page.close()
+            pdf.close()
     except Exception as exc:
         LOGGER.warning(
             "pypdfium text fallback failed for page %s: %s",
