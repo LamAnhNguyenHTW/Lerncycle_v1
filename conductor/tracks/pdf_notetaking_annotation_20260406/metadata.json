@@ -1,8 +1,0 @@
-{
-  "track_id": "pdf_notetaking_annotation_20260406",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-04-06T12:00:00Z",
-  "updated_at": "2026-04-06T12:00:00Z",
-  "description": "now we will implement the next step, allow users to open the pdf that the uploaded, this will be the notetaking function, then the screen will be divided into two sided splitscreen, the users are able to take note on either side, standard pdf on the left side and note taking section on the right side. the size of the section are adjustable through a slider."
-}
