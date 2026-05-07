@@ -1,14 +1,14 @@
 'use client';
 
-import {type Course, type PdfFile, type Folder} from '@/lib/data';
-import {NotionIcon} from '@/components/NotionIcon';
+import { type Course, type PdfFile, type Folder } from '@/lib/data';
+import { NotionIcon } from '@/components/NotionIcon';
 
 interface PdfPickerProps {
   course: Course;
   onSelect: (pdf: PdfFile) => void;
 }
 
-export function PdfPicker({course, onSelect}: PdfPickerProps) {
+export function PdfPicker({ course, onSelect }: PdfPickerProps) {
   const totalPdfs =
     course.loose_pdfs.length +
     course.folders.reduce((acc, f) => acc + f.pdfs.length, 0);

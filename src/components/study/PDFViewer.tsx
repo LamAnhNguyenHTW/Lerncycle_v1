@@ -60,7 +60,7 @@ export function PDFViewer({
   const [expandedCommentDraft, setExpandedCommentDraft] = useState('');
   const [savingAnnotationId, setSavingAnnotationId] = useState<string | null>(null);
   const [deletingAnnotationId, setDeletingAnnotationId] = useState<string | null>(null);
-  const [isHighlightsOpen, setIsHighlightsOpen] = useState(true);
+  const [isHighlightsOpen, setIsHighlightsOpen] = useState(false);
   const [expandedAnnotationId, setExpandedAnnotationId] = useState<string | null>(null);
 
   useEffect(() => {

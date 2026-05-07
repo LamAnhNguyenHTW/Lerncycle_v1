@@ -1,17 +1,19 @@
 'use client';
 
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {CourseSwitcher} from './CourseSwitcher';
 import {Course} from '@/lib/data';
 import {signOut} from '@/actions/auth';
 import {NotionIcon} from '../NotionIcon';
 import {useRouter} from 'next/navigation';
 import {cn} from '@/lib/utils';
+import Link from 'next/link';
 
 interface Props {
   courses: Course[];
   activeCourseId?: string;
   activeTab?: string;
+  activePdfId?: string;
   profile: {
     display_name: string | null;
     avatar_name: string | null;
@@ -19,9 +21,15 @@ interface Props {
   } | null;
 }
 
-export function LeftSidebar({courses, activeCourseId, activeTab = 'home', profile}: Props) {
+export function LeftSidebar({courses, activeCourseId, activeTab = 'home', activePdfId, profile}: Props) {
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(activeTab === 'notetaking' || activeTab === 'learn');
+
+  useEffect(() => {
+    if (activeTab === 'notetaking' || activeTab === 'learn') {
+      setCollapsed(true);
+    }
+  }, [activeTab]);
   const displayName = profile?.display_name || 'User';
   const avatarName = profile?.avatar_name || 'ni-avatar-male-2';
   const avatarUrl = profile?.avatar_url ?? null;
@@ -67,14 +75,14 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', profil
             icon={<NotionIcon name="ni-pen-line" className="w-[24px] h-[24px]" />}
             label="Notetaking"
             active={activeTab === 'notetaking'}
-            href={`/?courseId=${activeCourseId}&tab=notetaking`}
+            href={`/?courseId=${activeCourseId}&tab=notetaking${activePdfId ? `&pdfId=${activePdfId}` : ''}`}
             collapsed={collapsed}
           />
           <NavItem
             icon={<NotionIcon name="ni-award" className="w-[24px] h-[24px]" />}
             label="Learn & Research"
             active={activeTab === 'learn'}
-            href={`/?courseId=${activeCourseId}&tab=learn`}
+            href={`/?courseId=${activeCourseId}&tab=learn${activePdfId ? `&pdfId=${activePdfId}` : ''}`}
             collapsed={collapsed}
           />
           <NavItem
@@ -165,7 +173,7 @@ function NavItem({
   collapsed?: boolean;
 }) {
   return (
-    <a
+    <Link
       href={href}
       title={label}
       className={`flex items-center rounded-xl px-4 py-3 text-base font-medium transition-colors ${
@@ -178,6 +186,6 @@ function NavItem({
     >
       {icon}
       {!collapsed && label}
-    </a>
+    </Link>
   );
 }

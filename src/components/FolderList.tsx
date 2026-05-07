@@ -31,17 +31,17 @@ export function FolderList({ course }: { course: Course }) {
   };
 
   return (
-    <div className="w-full mt-12 mb-20">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
+    <div className="w-full mt-8 mb-16 max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
           <div className="w-1 h-5 bg-primary rounded-full"></div>
-          <h2 className="text-xl font-semibold tracking-tight">Materials & Folders</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Materials & Folders</h2>
         </div>
         <button
           onClick={() => setIsCreating(true)}
-          className="flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-base font-medium text-white hover:bg-black/80"
+          className="flex items-center gap-1.5 rounded-lg bg-black px-3 py-2 text-sm font-medium text-white hover:bg-black/80 transition-colors"
         >
-          <NotionIcon name="ni-plus" className="w-[22px] h-[22px]" />
+          <NotionIcon name="ni-plus" className="w-[18px] h-[18px]" />
           New Folder
         </button>
       </div>
@@ -49,21 +49,20 @@ export function FolderList({ course }: { course: Course }) {
       {/* Direct uploads (no folder) */}
       <LoosePdfsSection courseId={course.id} pdfs={course.loose_pdfs} />
 
-      {/* Folder creation form */}
       {isCreating && (
-        <form onSubmit={handleCreateFolder} className="mb-8 p-5 rounded-xl border border-border bg-white shadow-sm flex items-center gap-4">
+        <form onSubmit={handleCreateFolder} className="mb-6 p-4 rounded-xl border border-border bg-white shadow-sm flex items-center gap-3">
           <input
             autoFocus
             type="text"
             placeholder="Folder name (e.g. Week 1)"
-            className="flex-1 rounded-md border border-border px-4 py-2.5 text-base outline-none focus:border-primary"
+            className="flex-1 rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-primary"
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
           />
-          <button type="submit" className="text-base font-medium bg-black text-white px-5 py-2.5 rounded-md">
+          <button type="submit" className="text-sm font-medium bg-black text-white px-4 py-2 rounded-md">
             Save
           </button>
-          <button type="button" onClick={() => setIsCreating(false)} className="text-base font-medium px-5 py-2.5 hover:bg-black/5 rounded-md">
+          <button type="button" onClick={() => setIsCreating(false)} className="text-sm font-medium px-4 py-2 hover:bg-black/5 rounded-md">
             Cancel
           </button>
         </form>
@@ -93,18 +92,18 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
   const [isUploading, setIsUploading] = useState(false);
 
   return (
-    <div className="mb-8 rounded-xl border border-border bg-white shadow-sm overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-border bg-gray-50/50 px-6 py-4 font-medium text-base">
-        <NotionIcon name="ni-file-text" className="w-[24px] h-[24px] text-muted-foreground" />
+    <div className="mb-6 rounded-xl border border-border bg-white shadow-sm overflow-hidden">
+      <div className="flex items-center gap-2.5 border-b border-border bg-gray-50/50 px-5 py-3 font-medium text-sm">
+        <NotionIcon name="ni-file-text" className="w-[20px] h-[20px] text-muted-foreground" />
         <span>Direct Uploads</span>
-        <span className="ml-auto text-sm text-muted-foreground font-normal">
+        <span className="ml-auto text-xs text-muted-foreground font-normal">
           Unfiled documents
         </span>
       </div>
 
-      <div className="p-5">
+      <div className="p-4">
         {pdfs.length > 0 && (
-          <div className="flex flex-col gap-2 mb-4">
+          <div className="flex flex-col gap-2 mb-3">
             {pdfs.map((pdf) => (
               <PdfRow key={pdf.id} pdf={pdf} courseId={courseId} />
             ))}
@@ -128,7 +127,7 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
         ) : (
           <button
             onClick={() => setIsUploading(true)}
-            className="text-base font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-5 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-4 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
           >
             Upload PDF directly
           </button>
@@ -155,9 +154,9 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
 
   return (
     <div className="rounded-xl border border-border bg-white shadow-sm overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between border-b border-border bg-gray-50/50 px-6 py-4">
-        <div className="flex items-center gap-3 font-medium text-base">
-          <div className="text-foreground"><NotionIcon name="ni-folder" className="w-[24px] h-[24px]" /></div>
+      <div className="flex items-center justify-between border-b border-border bg-gray-50/50 px-5 py-3">
+        <div className="flex items-center gap-2.5 font-medium text-sm">
+          <div className="text-foreground"><NotionIcon name="ni-folder" className="w-[20px] h-[20px]" /></div>
           {folder.name}
         </div>
 
@@ -167,7 +166,7 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
             className="text-muted-foreground hover:text-red-500 transition-colors"
             title="Delete folder"
           >
-            <NotionIcon name="ni-x" className="w-[22px] h-[22px]" />
+            <NotionIcon name="ni-x" className="w-[18px] h-[18px]" />
           </button>
           <AlertDialogContent size="default">
             <AlertDialogHeader>
@@ -201,9 +200,9 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
         </AlertDialog>
       </div>
 
-      <div className="p-5">
+      <div className="p-4">
         {folder.pdfs.length > 0 && (
-          <div className="flex flex-col gap-2 mb-4">
+          <div className="flex flex-col gap-2 mb-3">
             {folder.pdfs.map((pdf) => (
               <PdfRow key={pdf.id} pdf={pdf} courseId={courseId} />
             ))}
@@ -227,7 +226,7 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
         ) : (
           <button
             onClick={() => setIsUploading(true)}
-            className="text-base font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-5 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-4 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
           >
             Upload PDF
           </button>
@@ -244,17 +243,27 @@ function PdfRow({ pdf, courseId }: { pdf: PdfFile; courseId: string }) {
 
   return (
     <div
-      className="flex items-center justify-between rounded-lg border border-border px-5 py-4 text-base hover:border-black/20 transition-colors group cursor-pointer"
+      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border px-4 py-3 text-sm hover:border-black/20 transition-colors group cursor-pointer"
       onClick={() => {
         router.push(`/?courseId=${courseId}&tab=notetaking&pdfId=${pdf.id}`);
       }}
+      title={pdf.name}
     >
-      <div className="flex items-center gap-3">
-        <NotionIcon name="ni-file-text" className="w-[24px] h-[24px] text-muted-foreground" />
-        <span>{pdf.name}</span>
+      <div className="flex min-w-0 items-center gap-2.5">
+        <NotionIcon name="ni-file-text" className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+        <span className="truncate">{pdf.name}</span>
       </div>
-      <div className="flex items-center gap-5 text-muted-foreground">
-        <span className="text-sm">{(pdf.size_bytes / 1024 / 1024).toFixed(2)} MB</span>
+      <div className="flex shrink-0 items-center gap-4 text-muted-foreground">
+        <span className="hidden text-sm sm:inline">{(pdf.size_bytes / 1024 / 1024).toFixed(2)} MB</span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/?courseId=${courseId}&tab=learn&pdfId=${pdf.id}`);
+          }}
+          className="opacity-0 group-hover:opacity-100 hover:text-foreground transition-all text-sm"
+        >
+          Chat
+        </button>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -262,7 +271,7 @@ function PdfRow({ pdf, courseId }: { pdf: PdfFile; courseId: string }) {
           }}
           className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all"
         >
-          <NotionIcon name="ni-x" className="w-[20px] h-[20px]" />
+          <NotionIcon name="ni-x" className="w-[18px] h-[18px]" />
         </button>
       </div>
     </div>

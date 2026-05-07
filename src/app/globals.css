@@ -394,6 +394,10 @@
 
 /* ─── PDF Viewer ───────────────────────────────────────────────────── */
 .pdf-viewer-container {
+  --rpv-core__inner-page-background-color: transparent;
+  --rpv-core__page-layer-box-shadow: 0 1px 2px rgba(15, 15, 15, 0.12), 0 8px 28px rgba(15, 15, 15, 0.14);
+  --rpv-default-layout__body-background-color: #f1f1ef;
+  --rpv-default-layout__container-border-color: var(--border);
   height: 100%;
   overflow: hidden;
   display: flex;
@@ -635,6 +639,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: #f1f1ef;
 }
 
 .pdf-viewer-toolbar {
@@ -676,6 +681,29 @@
 
 .pdf-viewer-container .rpv-core__viewer {
   height: 100% !important;
+}
+
+.pdf-viewer-container .rpv-default-layout__container {
+  border: 0 !important;
+  background: #f1f1ef;
+}
+
+.pdf-viewer-container .rpv-default-layout__body,
+.pdf-viewer-container .rpv-core__inner-pages {
+  background: #f1f1ef !important;
+}
+
+.pdf-viewer-container .rpv-core__inner-pages {
+  padding: 14px 24px 28px;
+}
+
+.pdf-viewer-container .rpv-core__inner-page {
+  background: transparent !important;
+}
+
+.pdf-viewer-container .rpv-core__page-layer {
+  background: #fff;
+  outline: 1px solid rgba(55, 53, 47, 0.18);
 }
 
 .pdf-loading {

@@ -138,7 +138,7 @@ export function StudyInterface({course, initialPdfId}: StudyInterfaceProps) {
       <div className="study-panels-wrap">
         <Group orientation="horizontal" className="study-panel-group">
           {/* Left: PDF Viewer */}
-          <Panel id="pdf-panel" defaultSize="55%" minSize="25%" className="study-panel">
+          <Panel id="pdf-panel" defaultSize="72%" minSize="40%" className="study-panel">
             <PDFViewer
               storagePath={activePdf.storage_path}
               pdfId={activePdf.id}
@@ -154,7 +154,7 @@ export function StudyInterface({course, initialPdfId}: StudyInterfaceProps) {
           <Separator className="study-separator" />
 
           {/* Right: Note Editor */}
-          <Panel id="note-panel" defaultSize="45%" minSize="20%" className="study-panel">
+          <Panel id="note-panel" defaultSize="28%" minSize="20%" className="study-panel">
             {!loading && (
               <NoteEditor pdfId={activePdf.id} initialContent={noteContent} />
             )}
