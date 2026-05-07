@@ -54,3 +54,10 @@ __pycache__/
 
 # local conductor/planning files
 conductor/
+AGENTS.md
+CLAUDE.md
+PROJECT.md
+
+# local chat history draft
+src/actions/chat.ts
+supabase/migrations/20260507000001_chat_history.sql
