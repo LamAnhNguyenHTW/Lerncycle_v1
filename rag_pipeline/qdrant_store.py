@@ -119,8 +119,9 @@ class QdrantStore:
         user_id: str,
         source_types: list[str] | None,
         top_k: int,
+        pdf_ids: list[str] | None = None,
     ) -> list[Any]:
-        query_filter = _filter({"user_id": user_id}, source_types=source_types)
+        query_filter = _filter({"user_id": user_id}, source_types=source_types, pdf_ids=pdf_ids)
         if hasattr(self._client, "query_points"):
             result = self._client.query_points(
                 collection_name=self.collection_name,
@@ -145,9 +146,10 @@ class QdrantStore:
         user_id: str,
         source_types: list[str] | None,
         top_k: int,
+        pdf_ids: list[str] | None = None,
     ) -> list[Any]:
         models = _models()
-        query_filter = _filter({"user_id": user_id}, source_types=source_types)
+        query_filter = _filter({"user_id": user_id}, source_types=source_types, pdf_ids=pdf_ids)
         sparse_query = models.SparseVector(
             indices=list(query_vector.indices),
             values=list(query_vector.values),
@@ -170,9 +172,10 @@ class QdrantStore:
         source_types: list[str] | None,
         top_k: int,
         prefetch_limit: int,
+        pdf_ids: list[str] | None = None,
     ) -> list[Any]:
         models = _models()
-        query_filter = _filter({"user_id": user_id}, source_types=source_types)
+        query_filter = _filter({"user_id": user_id}, source_types=source_types, pdf_ids=pdf_ids)
         sparse_query = models.SparseVector(
             indices=list(sparse_vector.indices),
             values=list(sparse_vector.values),
@@ -230,6 +233,7 @@ def _models() -> Any:
 def _filter(
     matches: dict[str, Any],
     source_types: list[str] | None = None,
+    pdf_ids: list[str] | None = None,
 ) -> Any:
     models = _models()
     must = [
@@ -241,6 +245,13 @@ def _filter(
             models.FieldCondition(
                 key="source_type",
                 match=models.MatchAny(any=source_types),
+            )
+        )
+    if pdf_ids:
+        must.append(
+            models.FieldCondition(
+                key="pdf_id",
+                match=models.MatchAny(any=pdf_ids),
             )
         )
     return models.Filter(must=must)

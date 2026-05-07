@@ -21,8 +21,8 @@ class FakeStore:
     def __init__(self) -> None:
         self.calls = []
 
-    def search_chunks(self, query_vector, user_id, source_types, top_k):
-        self.calls.append((query_vector, user_id, source_types, top_k))
+    def search_chunks(self, query_vector, user_id, source_types, top_k, pdf_ids=None):
+        self.calls.append((query_vector, user_id, source_types, top_k, pdf_ids))
         return [
             SimpleNamespace(
                 score=0.9,
@@ -31,6 +31,7 @@ class FakeStore:
                     "text": "RAG text",
                     "source_type": "note",
                     "source_id": "note-1",
+                    "pdf_id": "pdf-note",
                     "page_index": 1,
                     "heading": "Intro",
                     "metadata": {"a": 1},
@@ -38,8 +39,8 @@ class FakeStore:
             )
         ]
 
-    def search_sparse_chunks(self, query_vector, user_id, source_types, top_k):
-        self.calls.append((query_vector, user_id, source_types, top_k, "sparse"))
+    def search_sparse_chunks(self, query_vector, user_id, source_types, top_k, pdf_ids=None):
+        self.calls.append((query_vector, user_id, source_types, top_k, "sparse", pdf_ids))
         return [
             SimpleNamespace(
                 score=0.8,
@@ -48,6 +49,7 @@ class FakeStore:
                     "text": "Sparse text",
                     "source_type": "pdf",
                     "source_id": "pdf-1",
+                    "pdf_id": "pdf-1",
                     "page_index": 2,
                     "title": "Title",
                     "metadata": {"b": 2},
@@ -63,6 +65,7 @@ class FakeStore:
         source_types,
         top_k,
         prefetch_limit,
+        pdf_ids=None,
     ):
         self.calls.append(
             (
@@ -73,6 +76,7 @@ class FakeStore:
                 top_k,
                 prefetch_limit,
                 "hybrid",
+                pdf_ids,
             )
         )
         return [
@@ -83,6 +87,7 @@ class FakeStore:
                     "text": "Hybrid text",
                     "source_type": "pdf",
                     "source_id": "pdf-1",
+                    "pdf_id": "pdf-1",
                     "page_index": 3,
                     "metadata": {},
                 },
@@ -146,12 +151,28 @@ def test_search_chunks_returns_normalized_results() -> None:
             "score": 0.9,
             "source_type": "note",
             "source_id": "note-1",
+            "pdf_id": "pdf-note",
             "page_index": 1,
             "title": None,
             "heading": "Intro",
             "metadata": {"a": 1},
+            "pdf_id": "pdf-note",
         }
     ]
+
+
+def test_search_chunks_filters_by_pdf_ids() -> None:
+    store = FakeStore()
+
+    search_chunks(
+        "query",
+        "user-1",
+        pdf_ids=["pdf-1"],
+        embedder=FakeEmbedder(),
+        store=store,
+    )
+
+    assert store.calls[0][4] == ["pdf-1"]
 
 
 def test_sparse_search_embeds_query_sparse() -> None:
@@ -227,10 +248,12 @@ def test_sparse_search_returns_normalized_results() -> None:
             "score": 0.8,
             "source_type": "pdf",
             "source_id": "pdf-1",
+            "pdf_id": "pdf-1",
             "page_index": 2,
             "title": "Title",
             "heading": None,
             "metadata": {"b": 2},
+            "pdf_id": "pdf-1",
         }
     ]
 
@@ -329,10 +352,12 @@ def test_hybrid_search_returns_normalized_results() -> None:
             "score": 0.95,
             "source_type": "pdf",
             "source_id": "pdf-1",
+            "pdf_id": "pdf-1",
             "page_index": 3,
             "title": None,
             "heading": None,
             "metadata": {},
+            "pdf_id": "pdf-1",
         }
     ]
 

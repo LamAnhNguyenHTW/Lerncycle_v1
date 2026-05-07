@@ -15,6 +15,7 @@ def search_chunks(
     user_id: str,
     source_types: list[str] | None = None,
     top_k: int = 10,
+    pdf_ids: list[str] | None = None,
     config: WorkerConfig | None = None,
     embedder: Embedder | None = None,
     store: QdrantStore | None = None,
@@ -34,7 +35,7 @@ def search_chunks(
         collection_name=cfg.qdrant_collection,
     )
     vector = active_embedder.embed([query])[0]
-    hits = active_store.search_chunks(vector, user_id, source_types, top_k)
+    hits = active_store.search_chunks(vector, user_id, source_types, top_k, pdf_ids=pdf_ids)
     return [_normalize_hit(hit) for hit in hits]
 
 
@@ -43,6 +44,7 @@ def search_sparse_chunks(
     user_id: str,
     source_types: list[str] | None = None,
     top_k: int = 10,
+    pdf_ids: list[str] | None = None,
     config: WorkerConfig | None = None,
     sparse_embedder: SparseEmbedder | None = None,
     store: QdrantStore | None = None,
@@ -59,7 +61,7 @@ def search_sparse_chunks(
         collection_name=cfg.qdrant_collection,
     )
     vector = active_sparse_embedder.embed([query])[0]
-    hits = active_store.search_sparse_chunks(vector, user_id, source_types, top_k)
+    hits = active_store.search_sparse_chunks(vector, user_id, source_types, top_k, pdf_ids=pdf_ids)
     return [_normalize_hit(hit) for hit in hits]
 
 
@@ -69,6 +71,7 @@ def search_hybrid_chunks(
     source_types: list[str] | None = None,
     top_k: int = 10,
     prefetch_limit: int = 30,
+    pdf_ids: list[str] | None = None,
     config: WorkerConfig | None = None,
     embedder: Embedder | None = None,
     sparse_embedder: SparseEmbedder | None = None,
@@ -102,6 +105,7 @@ def search_hybrid_chunks(
             source_types,
             top_k,
             prefetch_limit,
+            pdf_ids=pdf_ids,
         )
     except NotImplementedError:
         dense_hits = active_store.search_chunks(
@@ -109,12 +113,14 @@ def search_hybrid_chunks(
             user_id,
             source_types,
             prefetch_limit,
+            pdf_ids=pdf_ids,
         )
         sparse_hits = active_store.search_sparse_chunks(
             sparse_vector,
             user_id,
             source_types,
             prefetch_limit,
+            pdf_ids=pdf_ids,
         )
         hits = _local_rrf(dense_hits, sparse_hits, top_k)
     return [_normalize_hit(hit) for hit in hits]
@@ -161,4 +167,5 @@ def _normalize_hit(hit: Any) -> dict[str, Any]:
         "title": payload.get("title"),
         "heading": payload.get("heading"),
         "metadata": payload.get("metadata") or {},
+        "pdf_id": payload.get("pdf_id"),
     }

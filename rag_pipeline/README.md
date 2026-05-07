@@ -3,6 +3,23 @@
 Python worker for PDF, note, and annotation chunk generation with durable
 dense and sparse embeddings, plus Qdrant hybrid indexing.
 
+## RAG Chat Service
+
+The deployable chat path is non-agentic single-turn RAG:
+
+```text
+Browser -> Next.js /api/chat -> FastAPI /rag/answer -> Qdrant hybrid retrieval -> OpenAI
+```
+
+Next.js handles Supabase auth and extracts `user_id` from the server-side
+session. The browser never calls the RAG service directly. FastAPI handles
+hybrid retrieval, context building, and answer generation. Requests from Next.js
+to FastAPI must include `Authorization: Bearer RAG_INTERNAL_API_KEY`; keep the
+RAG service internal/private where possible.
+
+Page numbers returned to the UI and included in LLM context are user-facing:
+`page = page_index + 1`.
+
 Required server-side environment variables:
 
 - `SUPABASE_URL`
@@ -26,6 +43,12 @@ Embedding and retrieval configuration:
 - `HYBRID_FUSION` (default: `rrf`)
 - `HYBRID_PREFETCH_LIMIT` (default: `30`)
 - `HYBRID_TOP_K` (default: `10`)
+- `RAG_INTERNAL_API_KEY`
+
+Next.js server-only chat variables:
+
+- `RAG_API_URL` (local default: `http://localhost:8001`)
+- `RAG_INTERNAL_API_KEY`
 
 Durable indexing currently supports OpenAI embeddings. If the durable embedding
 provider has no API key, the job fails and retries instead of storing fake
@@ -52,6 +75,19 @@ Run one job locally:
 
 ```bash
 python -m rag_pipeline.worker
+```
+
+Run the RAG API locally:
+
+```bash
+uvicorn rag_pipeline.api:app --host 0.0.0.0 --port 8001
+npm run dev
+```
+
+Docker service:
+
+```bash
+docker compose up rag-api
 ```
 
 The worker uses Docling Hybrid Chunking first and then semantic refinement.
@@ -97,5 +133,5 @@ Evaluation helper:
 python -m rag_pipeline.evaluate_retrieval eval_queries.json --user-id <user-id>
 ```
 
-Reranking, Pydantic AI, agentic retrieval, knowledge graph retrieval, web
-search, and LLM answer generation remain future phases.
+Future steps: reranking, Pydantic AI, agentic retrieval, knowledge graph
+retrieval, and web search.
