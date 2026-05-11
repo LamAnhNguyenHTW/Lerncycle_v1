@@ -1,4 +1,10 @@
 export type ChatSourceType = 'pdf' | 'note' | 'annotation_comment';
+export type ChatRole = 'user' | 'assistant';
+
+export interface RecentChatMessage {
+  role: ChatRole;
+  content: string;
+}
 
 export interface ChatRequest {
   message: string;
@@ -8,6 +14,7 @@ export interface ChatRequest {
   course_id?: string;
   session_id?: string;
   pdf_ids?: string[];
+  recent_messages?: RecentChatMessage[];
 }
 
 export interface ChatSource {

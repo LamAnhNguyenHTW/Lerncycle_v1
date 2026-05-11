@@ -1,6 +1,8 @@
 'use client';
 
 import {useEffect, useState, useRef} from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {ChevronDown, FileText, Send, Sparkles, Plus, User, MessageSquare, Trash2, Edit2} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {SourceCard} from '@/components/learn/SourceCard';
@@ -360,9 +362,17 @@ export function ChatInterface({
                       <div className="font-semibold text-sm">
                         {chatMessage.role === 'user' ? displayName : 'Learncycle'}
                       </div>
-                      <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none break-words text-foreground leading-relaxed whitespace-pre-wrap">
-                        {chatMessage.content}
-                      </div>
+                      {chatMessage.role === 'assistant' ? (
+                        <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none break-words text-foreground leading-relaxed">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {chatMessage.content}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                        <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none break-words text-foreground leading-relaxed whitespace-pre-wrap">
+                          {chatMessage.content}
+                        </div>
+                      )}
                       {chatMessage.sources && chatMessage.sources.length > 0 && (
                         <SourceReferences sources={chatMessage.sources} />
                       )}
@@ -432,18 +442,36 @@ export function ChatInterface({
 
 function SourceReferences({sources}: {sources: ChatSource[]}) {
   const [open, setOpen] = useState(false);
+  const visibleSources = sources.slice(0, 3);
+  const hiddenCount = Math.max(0, sources.length - visibleSources.length);
 
   return (
     <div className="mt-4 pt-2">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors bg-muted/40 hover:bg-muted/80 px-2.5 py-1.5 rounded-md"
-      >
-        <FileText className="h-3 w-3" />
-        {sources.length} source{sources.length === 1 ? '' : 's'}
-        <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {visibleSources.map((source) => (
+          <SourceChip key={source.chunk_id} source={source} />
+        ))}
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            className="flex h-7 items-center gap-1 rounded-md bg-muted/40 px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
+          >
+            {open ? 'Show less' : `+${hiddenCount} more`}
+            <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        )}
+        {hiddenCount === 0 && (
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            className="flex h-7 items-center gap-1 rounded-md bg-muted/40 px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
+          >
+            {open ? 'Hide details' : 'Source details'}
+            <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        )}
+      </div>
       {open && (
         <div className="mt-3 grid gap-2">
           {sources.map((source) => (
@@ -452,5 +480,30 @@ function SourceReferences({sources}: {sources: ChatSource[]}) {
         </div>
       )}
     </div>
+  );
+}
+
+function SourceChip({source}: {source: ChatSource}) {
+  const title = source.title
+    ?? source.metadata.filename
+    ?? (source.source_type === 'pdf'
+      ? 'PDF'
+      : source.source_type === 'annotation_comment'
+        ? 'Annotation'
+        : source.source_type === 'note'
+          ? 'Note'
+          : 'Source');
+  const page = source.page !== null ? `p. ${source.page}` : null;
+  const sourceType = source.source_type.replace('_', ' ');
+
+  return (
+    <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-white px-2 text-xs text-muted-foreground shadow-sm">
+      <FileText className="h-3 w-3 shrink-0" />
+      <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-semibold uppercase leading-none text-foreground">
+        {sourceType}
+      </span>
+      <span className="min-w-0 max-w-[180px] truncate text-foreground">{title}</span>
+      {page && <span className="shrink-0 text-muted-foreground">{page}</span>}
+    </span>
   );
 }

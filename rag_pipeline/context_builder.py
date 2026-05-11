@@ -23,12 +23,16 @@ def normalize_source(result: dict[str, Any]) -> dict[str, Any]:
     title = result.get("title")
     safe_metadata: dict[str, Any] = {}
     if source_type == "pdf":
-        filename = metadata.get("filename") or title
-        if filename is not None:
-            safe_metadata["filename"] = filename
-        title = title or filename
+        filename = _first_text(title, metadata.get("filename"), _origin_filename(metadata), "PDF")
+        safe_metadata["filename"] = filename
+        title = filename
     elif source_type == "annotation_comment":
         title = "Annotation"
+        filename = _first_text(metadata.get("filename"), _origin_filename(metadata))
+        if filename is not None:
+            safe_metadata["filename"] = filename
+    elif source_type == "note":
+        title = _first_text(title, metadata.get("title"), "Note")
 
     return {
         "chunk_id": result.get("chunk_id"),
@@ -41,6 +45,20 @@ def normalize_source(result: dict[str, Any]) -> dict[str, Any]:
         "snippet": _snippet(text),
         "metadata": safe_metadata,
     }
+
+
+def _origin_filename(metadata: dict[str, Any]) -> Any:
+    origin = metadata.get("origin")
+    if not isinstance(origin, dict):
+        return None
+    return origin.get("filename")
+
+
+def _first_text(*values: Any) -> str | None:
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            return value
+    return None
 
 
 def build_rag_context(

@@ -29,6 +29,11 @@ class WorkerConfig:
     hybrid_fusion: str = "rrf"
     hybrid_prefetch_limit: int = 30
     hybrid_top_k: int = 10
+    reranking_enabled: bool = False
+    reranking_provider: str = "fastembed"
+    reranking_model: str = "jinaai/jina-reranker-v2-base-multilingual"
+    reranking_candidate_k: int = 30
+    reranking_top_k: int = 8
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -57,6 +62,16 @@ class WorkerConfig:
                 "Missing required environment variables: "
                 + ", ".join(missing)
             )
+
+        reranking_provider = os.getenv("RERANKING_PROVIDER", "fastembed")
+        if reranking_provider not in {"fastembed", "noop"}:
+            raise ValueError("RERANKING_PROVIDER must be one of: fastembed, noop")
+        reranking_candidate_k = _optional_int(os.getenv("RERANKING_CANDIDATE_K")) or 30
+        reranking_top_k = _optional_int(os.getenv("RERANKING_TOP_K")) or 8
+        if not 1 <= reranking_candidate_k <= 50:
+            raise ValueError("RERANKING_CANDIDATE_K must be between 1 and 50")
+        if not 1 <= reranking_top_k <= 20:
+            raise ValueError("RERANKING_TOP_K must be between 1 and 20")
 
         return cls(
             supabase_url=required["SUPABASE_URL"] or "",
@@ -93,6 +108,14 @@ class WorkerConfig:
             )
             or 30,
             hybrid_top_k=_optional_int(os.getenv("HYBRID_TOP_K")) or 10,
+            reranking_enabled=_optional_bool(os.getenv("RERANKING_ENABLED"), False),
+            reranking_provider=reranking_provider,
+            reranking_model=os.getenv(
+                "RERANKING_MODEL",
+                "jinaai/jina-reranker-v2-base-multilingual",
+            ),
+            reranking_candidate_k=reranking_candidate_k,
+            reranking_top_k=reranking_top_k,
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",

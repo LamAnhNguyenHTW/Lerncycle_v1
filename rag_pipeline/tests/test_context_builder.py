@@ -110,7 +110,7 @@ def test_context_builder_omits_large_docling_metadata() -> None:
     assert "charspan" not in text
     assert "highlight_areas" not in text
     assert "doc_items" not in text
-    assert context["sources"][0]["metadata"] == {"filename": "file.pdf"}
+    assert context["sources"][0]["metadata"] == {"filename": "GPAA_SoSe2026_2.pdf"}
 
 
 def test_normalize_source_pdf() -> None:
@@ -129,6 +129,64 @@ def test_normalize_source_pdf() -> None:
     }
 
 
+def test_normalize_source_pdf_uses_origin_filename() -> None:
+    source = normalize_source(_result(title=None, metadata={"origin": {"filename": "GPAA.pdf"}}))
+
+    assert source["title"] == "GPAA.pdf"
+    assert source["metadata"] == {"filename": "GPAA.pdf"}
+
+
+def test_normalize_source_pdf_uses_direct_metadata_filename() -> None:
+    source = normalize_source(_result(title=None, metadata={"filename": "direct.pdf"}))
+
+    assert source["title"] == "direct.pdf"
+    assert source["metadata"] == {"filename": "direct.pdf"}
+
+
+def test_normalize_source_pdf_falls_back_to_pdf_title_when_no_filename() -> None:
+    source = normalize_source(_result(title=None, metadata={}))
+
+    assert source["title"] == "PDF"
+    assert source["metadata"] == {"filename": "PDF"}
+
+
+def test_normalize_source_pdf_does_not_return_untitled_when_filename_exists() -> None:
+    source = normalize_source(_result(title=None, metadata={"origin": {"filename": "GPAA.pdf"}}))
+
+    assert source["title"] is not None
+    assert source["title"] != "Untitled source"
+
+
+def test_normalize_source_annotation_keeps_annotation_title_and_filename_metadata() -> None:
+    source = normalize_source(
+        _result(source_type="annotation_comment", metadata={"origin": {"filename": "GPAA.pdf"}})
+    )
+
+    assert source["title"] == "Annotation"
+    assert source["metadata"] == {"filename": "GPAA.pdf"}
+
+
+def test_normalize_source_annotation_no_filename_has_empty_metadata() -> None:
+    source = normalize_source(_result(source_type="annotation_comment", metadata={}))
+
+    assert source["title"] == "Annotation"
+    assert source["metadata"] == {}
+
+
+def test_normalize_source_note_uses_note_title_fallback() -> None:
+    source = normalize_source(_result(source_type="note", title=None, metadata={"title": "My notes"}))
+
+    assert source["title"] == "My notes"
+    assert source["metadata"] == {}
+
+
+def test_normalize_source_note_falls_back_to_note_label() -> None:
+    source = normalize_source(_result(source_type="note", title=None, metadata={}))
+
+    assert source["title"] == "Note"
+    assert source["metadata"] == {}
+
+
 def test_normalize_source_note() -> None:
     source = normalize_source(
         _result(source_type="note", title="Note", page_index=None, metadata={"filename": "x"})
@@ -142,7 +200,7 @@ def test_normalize_source_annotation_comment() -> None:
     source = normalize_source(_result(source_type="annotation_comment", title="Ignored"))
 
     assert source["title"] == "Annotation"
-    assert source["metadata"] == {}
+    assert source["metadata"] == {"filename": "GPAA_SoSe2026_2.pdf"}
 
 
 def test_source_shape_does_not_include_large_metadata() -> None:
@@ -169,5 +227,5 @@ def test_source_shape_keeps_chunk_id_and_source_id() -> None:
 
     assert source["chunk_id"] == "chunk-1"
     assert source["source_id"] == "source-1"
-    assert source["title"] is None
+    assert source["title"] == "PDF"
     assert source["heading"] is None

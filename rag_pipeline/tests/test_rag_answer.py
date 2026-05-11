@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from rag_pipeline.rag_answer import answer_with_rag
+from rag_pipeline.rag_answer import (
+    CONVERSATION_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+    answer_with_rag,
+    rewrite_query_for_retrieval,
+)
 
 
 class FakeLlmClient:
@@ -11,6 +16,28 @@ class FakeLlmClient:
     def complete(self, *, system_prompt: str, user_prompt: str) -> str:
         self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt})
         return self.answer
+
+
+class RaisingLlmClient:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def complete(self, *, system_prompt: str, user_prompt: str) -> str:
+        self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt})
+        raise RuntimeError("rewrite failed")
+
+
+class SpyReranker:
+    def __init__(self, output: list[dict] | None = None, raises: bool = False) -> None:
+        self.output = output
+        self.raises = raises
+        self.calls = []
+
+    def rerank(self, query: str, results: list[dict], top_k: int) -> list[dict]:
+        self.calls.append({"query": query, "results": results, "top_k": top_k})
+        if self.raises:
+            raise RuntimeError("rerank failed")
+        return self.output if self.output is not None else results[:top_k]
 
 
 def _result() -> dict:
@@ -25,6 +52,58 @@ def _result() -> dict:
         "heading": "Definition",
         "metadata": {"filename": "GPAA.pdf"},
     }
+
+
+def test_rewrite_query_returns_original_without_recent_messages() -> None:
+    llm = FakeLlmClient("Process Mining Definition")
+
+    rewritten = rewrite_query_for_retrieval("Was ist Process Mining?", None, llm)
+
+    assert rewritten == "Was ist Process Mining?"
+    assert llm.calls == []
+
+
+def test_rewrite_query_uses_recent_messages_for_vague_followup() -> None:
+    llm = FakeLlmClient("Process Mining einfach erklärt Definition Event Logs")
+
+    rewritten = rewrite_query_for_retrieval(
+        "Kannst du mir das einfacher erklären?",
+        [
+            {"role": "user", "content": "Was ist Process Mining?"},
+            {"role": "assistant", "content": "Process Mining analysiert Event Logs."},
+        ],
+        llm,
+    )
+
+    assert rewritten == "Process Mining einfach erklärt Definition Event Logs"
+    assert "Was ist Process Mining?" in llm.calls[0]["user_prompt"]
+    assert "Kannst du mir das einfacher erklären?" in llm.calls[0]["user_prompt"]
+
+
+def test_rewrite_query_keeps_standalone_query_mostly_unchanged() -> None:
+    llm = FakeLlmClient("Andere Antwort")
+
+    rewritten = rewrite_query_for_retrieval(
+        "Was ist Process Mining?",
+        [{"role": "assistant", "content": "Vorherige Antwort"}],
+        llm,
+    )
+
+    assert rewritten == "Was ist Process Mining?"
+    assert llm.calls == []
+
+
+def test_rewrite_query_falls_back_to_original_on_error() -> None:
+    llm = RaisingLlmClient()
+
+    rewritten = rewrite_query_for_retrieval(
+        "Erklär das einfacher.",
+        [{"role": "assistant", "content": "Process Mining analysiert Event Logs."}],
+        llm,
+    )
+
+    assert rewritten == "Erklär das einfacher."
+    assert len(llm.calls) == 1
 
 
 def test_answer_with_rag_calls_hybrid_retrieval_with_user_id() -> None:
@@ -104,3 +183,302 @@ def test_answer_with_rag_uses_injected_llm_client() -> None:
 
     assert response["answer"] == "Custom"
     assert len(llm.calls) == 1
+
+
+def test_answer_with_rag_accepts_recent_messages() -> None:
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "Erklär das einfacher.",
+        "user-1",
+        recent_messages=[{"role": "user", "content": "Was ist Process Mining?"}],
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    assert "Was ist Process Mining?" in llm.calls[0]["user_prompt"]
+
+
+def test_answer_with_rag_includes_recent_messages_in_prompt() -> None:
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "Erklär das einfacher.",
+        "user-1",
+        recent_messages=[
+            {"role": "user", "content": "Was ist Process Mining?"},
+            {"role": "assistant", "content": "Process Mining analysiert Prozessdaten."},
+        ],
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    prompt = llm.calls[-1]["user_prompt"]
+    assert "Recent conversation:" in prompt
+    assert "User: Was ist Process Mining?" in prompt
+    assert "Assistant: Process Mining analysiert Prozessdaten." in prompt
+    assert "Retrieved context:" in prompt
+
+
+def test_answer_with_rag_preserves_current_query_as_final_question() -> None:
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "Erklär das einfacher.",
+        "user-1",
+        recent_messages=[{"role": "user", "content": "Was ist Process Mining?"}],
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    assert llm.calls[-1]["user_prompt"].rstrip().endswith("Current question:\nErklär das einfacher.")
+
+
+def test_answer_with_rag_does_not_call_llm_when_no_retrieval_context_even_with_recent_messages() -> None:
+    llm = FakeLlmClient()
+
+    response = answer_with_rag(
+        "Erklär das einfacher.",
+        "user-1",
+        recent_messages=[{"role": "user", "content": "Was ist Process Mining?"}],
+        llm_client=llm,
+        retrieval_fn=lambda **_: [],
+    )
+
+    assert response["sources"] == []
+    assert len(llm.calls) == 1
+    assert llm.calls[0]["system_prompt"].startswith("Rewrite the current user question")
+
+
+def test_answer_with_rag_does_not_return_recent_messages_as_sources() -> None:
+    response = answer_with_rag(
+        "Erklär das einfacher.",
+        "user-1",
+        recent_messages=[{"role": "user", "content": "Chat-only detail"}],
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    assert all(source.get("source_type") != "chat_message" for source in response["sources"])
+    assert "Chat-only detail" not in str(response["sources"])
+
+
+def test_answer_with_rag_uses_rewritten_query_for_retrieval() -> None:
+    llm = FakeLlmClient("Process Mining einfach erklärt Definition Event Logs")
+    calls = []
+
+    def retrieval_fn(**kwargs):
+        calls.append(kwargs)
+        return [_result()]
+
+    answer_with_rag(
+        "Kannst du mir das einfacher erklären?",
+        "user-1",
+        recent_messages=[{"role": "assistant", "content": "Process Mining analysiert Event Logs."}],
+        llm_client=llm,
+        retrieval_fn=retrieval_fn,
+    )
+
+    assert calls[0]["query"] == "Process Mining einfach erklärt Definition Event Logs"
+
+
+def test_answer_with_rag_preserves_original_query_for_final_answer() -> None:
+    llm = FakeLlmClient("Process Mining einfach erklärt Definition Event Logs")
+
+    answer_with_rag(
+        "Kannst du mir das einfacher erklären?",
+        "user-1",
+        recent_messages=[{"role": "assistant", "content": "Process Mining analysiert Event Logs."}],
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    assert "Current question:\nKannst du mir das einfacher erklären?" in llm.calls[-1]["user_prompt"]
+
+
+def test_answer_with_rag_does_not_expose_rewritten_query() -> None:
+    llm = FakeLlmClient("Process Mining einfach erklärt Definition Event Logs")
+
+    response = answer_with_rag(
+        "Kannst du mir das einfacher erklären?",
+        "user-1",
+        recent_messages=[{"role": "assistant", "content": "Process Mining analysiert Event Logs."}],
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    assert "retrieval_query" not in response
+
+
+def test_prompt_states_recent_conversation_is_for_continuity_only() -> None:
+    prompt = CONVERSATION_SYSTEM_PROMPT.lower()
+
+    assert "recent conversation" in prompt
+    assert "continuity" in prompt
+    assert "only" in prompt
+
+
+def test_prompt_states_retrieved_context_is_source_of_truth() -> None:
+    prompt = CONVERSATION_SYSTEM_PROMPT.lower()
+
+    assert "retrieved context" in prompt
+    assert "source of truth" in prompt
+
+
+def test_prompt_instructs_simpler_shorter_answer_for_simplification_requests() -> None:
+    prompt = CONVERSATION_SYSTEM_PROMPT.lower()
+
+    assert "einfacher" in prompt
+    assert "short sentences" in prompt
+    assert "main idea" in prompt
+
+
+def test_prompt_discourages_im_bereitgestellten_kontext_opener() -> None:
+    assert 'do not begin your answer with "im bereitgestellten kontext"' in SYSTEM_PROMPT.lower()
+    assert 'do not begin your answer with "im bereitgestellten kontext"' in CONVERSATION_SYSTEM_PROMPT.lower()
+
+
+def test_answer_with_rag_skips_reranker_when_disabled() -> None:
+    reranker = SpyReranker()
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        reranker=reranker,
+        reranking_enabled=False,
+    )
+
+    assert reranker.calls == []
+
+
+def test_answer_with_rag_uses_candidate_k_for_retrieval_when_reranking_enabled() -> None:
+    calls = []
+
+    def retrieval_fn(**kwargs):
+        calls.append(kwargs)
+        return [_result()]
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=retrieval_fn,
+        reranker=SpyReranker(),
+        reranking_enabled=True,
+        reranking_candidate_k=22,
+        reranking_top_k=5,
+    )
+
+    assert calls[0]["top_k"] == 22
+
+
+def test_answer_with_rag_passes_results_to_reranker() -> None:
+    results = [_result()]
+    reranker = SpyReranker()
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: results,
+        reranker=reranker,
+        reranking_enabled=True,
+    )
+
+    assert reranker.calls[0]["results"] == results
+
+
+def test_answer_with_rag_builds_context_from_reranked_results() -> None:
+    llm = FakeLlmClient()
+    reranked = [_result() | {"text": "Reranked chunk text"}]
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result() | {"text": "Original chunk text"}],
+        reranker=SpyReranker(output=reranked),
+        reranking_enabled=True,
+    )
+
+    assert "Reranked chunk text" in llm.calls[-1]["user_prompt"]
+    assert "Original chunk text" not in llm.calls[-1]["user_prompt"]
+
+
+def test_answer_with_rag_falls_back_when_reranker_fails() -> None:
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result() | {"text": "Original chunk text"}],
+        reranker=SpyReranker(raises=True),
+        reranking_enabled=True,
+    )
+
+    assert "Original chunk text" in llm.calls[-1]["user_prompt"]
+
+
+def test_answer_with_rag_preserves_scope_filters_with_reranking() -> None:
+    calls = []
+
+    def retrieval_fn(**kwargs):
+        calls.append(kwargs)
+        return [_result()]
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        source_types=["pdf"],
+        pdf_ids=["pdf-1"],
+        llm_client=FakeLlmClient(),
+        retrieval_fn=retrieval_fn,
+        reranker=SpyReranker(),
+        reranking_enabled=True,
+    )
+
+    assert calls[0]["user_id"] == "user-1"
+    assert calls[0]["source_types"] == ["pdf"]
+    assert calls[0]["pdf_ids"] == ["pdf-1"]
+
+
+def test_answer_with_rag_still_uses_original_query_for_final_answer() -> None:
+    llm = FakeLlmClient("Process Mining einfach erklärt")
+
+    answer_with_rag(
+        "Kannst du mir das einfacher erklären?",
+        "user-1",
+        recent_messages=[{"role": "assistant", "content": "Process Mining"}],
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+        reranker=SpyReranker(),
+        reranking_enabled=True,
+    )
+
+    assert "Current question:\nKannst du mir das einfacher erklären?" in llm.calls[-1]["user_prompt"]
+
+
+def test_answer_with_rag_uses_rewritten_query_for_retrieval_before_reranking() -> None:
+    llm = FakeLlmClient("Process Mining einfach erklärt")
+    retrieval_calls = []
+    reranker = SpyReranker()
+
+    def retrieval_fn(**kwargs):
+        retrieval_calls.append(kwargs)
+        return [_result()]
+
+    answer_with_rag(
+        "Kannst du mir das einfacher erklären?",
+        "user-1",
+        recent_messages=[{"role": "assistant", "content": "Process Mining"}],
+        llm_client=llm,
+        retrieval_fn=retrieval_fn,
+        reranker=reranker,
+        reranking_enabled=True,
+    )
+
+    assert retrieval_calls[0]["query"] == "Process Mining einfach erklärt"
+    assert reranker.calls[0]["query"] == "Process Mining einfach erklärt"

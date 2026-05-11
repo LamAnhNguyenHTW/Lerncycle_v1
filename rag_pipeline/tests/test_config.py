@@ -70,3 +70,55 @@ def test_sparse_enabled_false_values(monkeypatch) -> None:
     for value in ["false", "False", "0", "no", "off"]:
         monkeypatch.setenv("SPARSE_ENABLED", value)
         assert WorkerConfig.from_env().sparse_enabled is False
+
+
+def test_reranking_config_defaults(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.delenv("RERANKING_ENABLED", raising=False)
+    monkeypatch.delenv("RERANKING_PROVIDER", raising=False)
+    monkeypatch.delenv("RERANKING_MODEL", raising=False)
+    monkeypatch.delenv("RERANKING_CANDIDATE_K", raising=False)
+    monkeypatch.delenv("RERANKING_TOP_K", raising=False)
+
+    config = WorkerConfig.from_env()
+
+    assert config.reranking_enabled is False
+    assert config.reranking_provider == "fastembed"
+    assert config.reranking_model == "jinaai/jina-reranker-v2-base-multilingual"
+    assert config.reranking_candidate_k == 30
+    assert config.reranking_top_k == 8
+
+
+def test_reranking_config_env_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("RERANKING_ENABLED", "true")
+    monkeypatch.setenv("RERANKING_PROVIDER", "noop")
+    monkeypatch.setenv("RERANKING_MODEL", "custom-reranker")
+    monkeypatch.setenv("RERANKING_CANDIDATE_K", "40")
+    monkeypatch.setenv("RERANKING_TOP_K", "12")
+
+    config = WorkerConfig.from_env()
+
+    assert config.reranking_enabled is True
+    assert config.reranking_provider == "noop"
+    assert config.reranking_model == "custom-reranker"
+    assert config.reranking_candidate_k == 40
+    assert config.reranking_top_k == 12
+
+
+def test_reranking_config_parses_enabled_false(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("RERANKING_ENABLED", "false")
+
+    assert WorkerConfig.from_env().reranking_enabled is False
+
+
+def test_reranking_config_parses_enabled_true(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("RERANKING_ENABLED", "true")
+
+    assert WorkerConfig.from_env().reranking_enabled is True

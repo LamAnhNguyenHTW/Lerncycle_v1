@@ -6,6 +6,18 @@ const SOURCE_LABELS = {
   annotation_comment: 'Annotation',
 };
 
+function getSourceTitle(source: ChatSource) {
+  return source.title
+    ?? source.metadata.filename
+    ?? (source.source_type === 'pdf'
+      ? 'PDF'
+      : source.source_type === 'annotation_comment'
+        ? 'Annotation'
+        : source.source_type === 'note'
+          ? 'Note'
+          : 'Source');
+}
+
 export function SourceCard({source}: {source: ChatSource}) {
   return (
     <article className="rounded-lg border border-border bg-white p-3 shadow-sm">
@@ -18,7 +30,7 @@ export function SourceCard({source}: {source: ChatSource}) {
         )}
       </div>
       <h3 className="text-sm font-medium text-foreground">
-        {source.title ?? source.metadata.filename ?? 'Untitled source'}
+        {getSourceTitle(source)}
       </h3>
       {source.heading && <p className="mt-1 text-xs text-muted-foreground">{source.heading}</p>}
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{source.snippet}</p>

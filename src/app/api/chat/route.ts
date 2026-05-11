@@ -1,8 +1,13 @@
 import {NextResponse} from 'next/server';
 import {createClient} from '@/lib/supabase/server';
-import type {ChatRequest, ChatResponse, ChatSourceType} from '@/types/chat';
+import type {SupabaseClient} from '@supabase/supabase-js';
+import type {ChatRequest, ChatResponse, ChatRole, ChatSourceType, RecentChatMessage} from '@/types/chat';
 
 const SOURCE_TYPES: ChatSourceType[] = ['pdf', 'note', 'annotation_comment'];
+const RECENT_MESSAGE_LIMIT = 10;
+const RECENT_MESSAGE_CONTENT_LIMIT = 2000;
+
+class SessionNotFoundError extends Error {}
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({error: message}, {status});
@@ -45,6 +50,7 @@ async function getOrCreateSession(
     if (data?.id) {
       return data.id as string;
     }
+    throw new SessionNotFoundError('Session not found.');
   }
 
   const {data, error} = await supabase
@@ -60,6 +66,35 @@ async function getOrCreateSession(
     throw new Error('Failed to create chat session.');
   }
   return data.id as string;
+}
+
+async function loadRecentMessages(
+  supabase: SupabaseClient,
+  sessionId: string,
+  userId: string,
+  limit: number = RECENT_MESSAGE_LIMIT,
+): Promise<RecentChatMessage[]> {
+  const {data, error} = await supabase
+    .from('chat_messages')
+    .select('role, content')
+    .eq('session_id', sessionId)
+    .eq('user_id', userId)
+    .order('created_at', {ascending: false})
+    .limit(limit);
+  if (error) {
+    console.error('Failed to load recent chat messages', error);
+    return [];
+  }
+
+  return (data ?? [])
+    .reverse()
+    .filter((message): message is {role: ChatRole; content: string} =>
+      (message.role === 'user' || message.role === 'assistant') && typeof message.content === 'string',
+    )
+    .map((message) => ({
+      role: message.role,
+      content: message.content.slice(0, RECENT_MESSAGE_CONTENT_LIMIT),
+    }));
 }
 
 export async function POST(request: Request) {
@@ -99,6 +134,7 @@ export async function POST(request: Request) {
 
   try {
     const sessionId = await getOrCreateSession(supabase, user.id, body);
+    const recentMessages = await loadRecentMessages(supabase, sessionId, user.id);
     await supabase.from('chat_messages').insert({
       session_id: sessionId,
       user_id: user.id,
@@ -119,6 +155,7 @@ export async function POST(request: Request) {
         source_types: sourceTypes,
         top_k: topK,
         pdf_ids: pdfIds.length > 0 ? pdfIds : undefined,
+        recent_messages: recentMessages,
       }),
       signal: controller.signal,
     });
@@ -151,6 +188,9 @@ export async function POST(request: Request) {
     };
     return NextResponse.json(chatResponse);
   } catch (error) {
+    if (error instanceof SessionNotFoundError) {
+      return errorResponse('Session not found.', 404);
+    }
     console.error('RAG service request failed', error);
     return errorResponse('RAG service failed to answer.', 500);
   } finally {
