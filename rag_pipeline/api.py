@@ -101,6 +101,15 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
                 status_code=422,
                 detail="reranking_candidate_k must be >= reranking_top_k",
             )
+        if (
+            reranking_enabled
+            and config.reranking_provider == "llm"
+            and reranking_candidate_k > 30
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="reranking_candidate_k must be <= 30 for llm reranking",
+            )
         reranker = create_reranker(
             provider=config.reranking_provider,
             model=config.reranking_model,

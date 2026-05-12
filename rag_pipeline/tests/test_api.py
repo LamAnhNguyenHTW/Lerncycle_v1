@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def client(monkeypatch):
     monkeypatch.setenv("RAG_INTERNAL_API_KEY", "test-secret")
+    monkeypatch.setenv("RERANKING_ENABLED", "false")
+    monkeypatch.setenv("RERANKING_PROVIDER", "fastembed")
     import rag_pipeline.api as api
 
     importlib.reload(api)
@@ -325,3 +327,54 @@ def test_rag_answer_passes_reranking_options_to_answer_with_rag(client, monkeypa
     assert calls[0]["reranking_enabled"] is True
     assert calls[0]["reranking_candidate_k"] == 12
     assert calls[0]["reranking_top_k"] == 4
+
+
+def test_api_accepts_llm_reranking_provider_if_configured(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+
+    monkeypatch.setenv("RERANKING_PROVIDER", "llm")
+    monkeypatch.setenv("RERANKING_CANDIDATE_K", "20")
+    monkeypatch.setattr(api, "create_reranker", lambda **kwargs: calls.append(kwargs) or object())
+    monkeypatch.setattr(api, "answer_with_rag", lambda **_: {"answer": "ok", "sources": []})
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(reranking_enabled=True),
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["provider"] == "llm"
+
+
+def test_api_llm_reranking_missing_openai_key_fails_safely(client, monkeypatch) -> None:
+    test_client, _ = client
+    monkeypatch.setenv("RERANKING_PROVIDER", "llm")
+    monkeypatch.setenv("RERANKING_CANDIDATE_K", "20")
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(reranking_enabled=True),
+    )
+
+    assert response.status_code == 500
+    assert "OPENAI_API_KEY" not in response.text
+    assert "Traceback" not in response.text
+
+
+def test_api_rejects_llm_candidate_k_above_30(client, monkeypatch) -> None:
+    test_client, _ = client
+    monkeypatch.setenv("RERANKING_PROVIDER", "llm")
+    monkeypatch.setenv("RERANKING_CANDIDATE_K", "20")
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(reranking_enabled=True, reranking_candidate_k=31),
+    )
+
+    assert response.status_code == 422
+    assert "30" in response.text

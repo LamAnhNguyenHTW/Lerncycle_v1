@@ -6,6 +6,7 @@ from rag_pipeline.rag_answer import (
     answer_with_rag,
     rewrite_query_for_retrieval,
 )
+from rag_pipeline.reranker import LlmReranker
 
 
 class FakeLlmClient:
@@ -52,6 +53,14 @@ def _result() -> dict:
         "heading": "Definition",
         "metadata": {"filename": "GPAA.pdf"},
     }
+
+
+def _result_with(index: int, text: str) -> dict:
+    result = _result()
+    result["chunk_id"] = f"chunk-{index}"
+    result["text"] = text
+    result["score"] = 1.0 / index
+    return result
 
 
 def test_rewrite_query_returns_original_without_recent_messages() -> None:
@@ -482,3 +491,62 @@ def test_answer_with_rag_uses_rewritten_query_for_retrieval_before_reranking() -
 
     assert retrieval_calls[0]["query"] == "Process Mining einfach erklärt"
     assert reranker.calls[0]["query"] == "Process Mining einfach erklärt"
+def test_answer_with_rag_accepts_llm_reranker() -> None:
+    reranker = LlmReranker(
+        llm_client=FakeLlmClient('[{"chunk_id":"chunk-1","score":0.9}]')
+    )
+
+    response = answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient("Antwort"),
+        retrieval_fn=lambda **_: [_result()],
+        reranker=reranker,
+        reranking_enabled=True,
+    )
+
+    assert response["answer"] == "Antwort"
+
+
+def test_answer_with_rag_builds_context_from_llm_reranked_results() -> None:
+    answer_llm = FakeLlmClient("Antwort")
+    reranker = LlmReranker(
+        llm_client=FakeLlmClient('[{"chunk_id":"chunk-2","score":0.9}]')
+    )
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=answer_llm,
+        retrieval_fn=lambda **_: [
+            _result_with(1, "Original first chunk"),
+            _result_with(2, "LLM preferred chunk"),
+        ],
+        reranker=reranker,
+        reranking_enabled=True,
+        reranking_top_k=2,
+    )
+
+    prompt = answer_llm.calls[-1]["user_prompt"]
+    assert prompt.index("LLM preferred chunk") < prompt.index("Original first chunk")
+
+
+def test_answer_with_rag_falls_back_when_llm_reranker_fails() -> None:
+    answer_llm = FakeLlmClient("Antwort")
+    reranker = LlmReranker(llm_client=FakeLlmClient("invalid json"))
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=answer_llm,
+        retrieval_fn=lambda **_: [
+            _result_with(1, "Original first chunk"),
+            _result_with(2, "Original second chunk"),
+        ],
+        reranker=reranker,
+        reranking_enabled=True,
+        reranking_top_k=2,
+    )
+
+    prompt = answer_llm.calls[-1]["user_prompt"]
+    assert prompt.index("Original first chunk") < prompt.index("Original second chunk")

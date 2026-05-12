@@ -43,6 +43,11 @@ Embedding and retrieval configuration:
 - `HYBRID_FUSION` (default: `rrf`)
 - `HYBRID_PREFETCH_LIMIT` (default: `30`)
 - `HYBRID_TOP_K` (default: `10`)
+- `RERANKING_ENABLED` (default: `false`)
+- `RERANKING_PROVIDER` (`noop`, `fastembed`, or `llm`; default: `fastembed`)
+- `RERANKING_MODEL`
+- `RERANKING_CANDIDATE_K`
+- `RERANKING_TOP_K`
 - `RAG_INTERNAL_API_KEY`
 
 Next.js server-only chat variables:
@@ -115,6 +120,38 @@ Hybrid search uses Qdrant server-side Query API with dense and sparse
 `Prefetch` plus RRF fusion when available. The code keeps a local RRF fallback
 that runs dense and sparse searches separately and fuses the ranked lists.
 
+Optional reranking runs only after user-scoped retrieval. The available
+providers are `noop`, `fastembed`, and `llm`. FastEmbed reranking uses a local
+cross-encoder. LLM reranking sends compact candidate descriptions to the
+configured OpenAI model, costs tokens, and falls back to the original hybrid
+ranking on malformed output or errors. Reranking prompts, rewritten queries,
+scores, and reasons are internal and are not returned to the browser.
+
+FastEmbed reranking example:
+
+```env
+RERANKING_ENABLED=true
+RERANKING_PROVIDER=fastembed
+RERANKING_MODEL=jinaai/jina-reranker-v2-base-multilingual
+RERANKING_CANDIDATE_K=30
+RERANKING_TOP_K=8
+```
+
+LLM reranking example:
+
+```env
+RERANKING_ENABLED=true
+RERANKING_PROVIDER=llm
+RERANKING_MODEL=gpt-4o-mini
+RERANKING_CANDIDATE_K=20
+RERANKING_TOP_K=8
+```
+
+For LLM reranking, `RERANKING_CANDIDATE_K <= 20` is recommended for token cost;
+the hard maximum is `30`. Check the FastEmbed/Jina model license before
+commercial or beta use, and monitor LLM model cost before enabling LLM reranking
+for beta users.
+
 Existing dense-only collections are not recreated automatically during normal
 worker execution. Recreate/rebuild hybrid points only via the explicit
 maintenance command:
@@ -133,5 +170,5 @@ Evaluation helper:
 python -m rag_pipeline.evaluate_retrieval eval_queries.json --user-id <user-id>
 ```
 
-Future steps: reranking, Pydantic AI, agentic retrieval, knowledge graph
-retrieval, and web search.
+Out of scope for the current RAG path remains GraphRAG, web search, agentic
+RAG, and chat memory embeddings.

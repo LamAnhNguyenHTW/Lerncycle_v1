@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from rag_pipeline.config import WorkerConfig
 
 
@@ -76,6 +78,7 @@ def test_reranking_config_defaults(monkeypatch) -> None:
     monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
     monkeypatch.delenv("RERANKING_ENABLED", raising=False)
+    monkeypatch.setenv("RERANKING_ENABLED", "false")
     monkeypatch.delenv("RERANKING_PROVIDER", raising=False)
     monkeypatch.delenv("RERANKING_MODEL", raising=False)
     monkeypatch.delenv("RERANKING_CANDIDATE_K", raising=False)
@@ -106,6 +109,27 @@ def test_reranking_config_env_overrides(monkeypatch) -> None:
     assert config.reranking_model == "custom-reranker"
     assert config.reranking_candidate_k == 40
     assert config.reranking_top_k == 12
+
+
+def test_reranking_config_allows_llm_provider(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("RERANKING_PROVIDER", "llm")
+    monkeypatch.setenv("RERANKING_CANDIDATE_K", "20")
+
+    config = WorkerConfig.from_env()
+
+    assert config.reranking_provider == "llm"
+
+
+def test_llm_reranking_candidate_k_above_30_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("RERANKING_PROVIDER", "llm")
+    monkeypatch.setenv("RERANKING_CANDIDATE_K", "31")
+
+    with pytest.raises(ValueError, match="RERANKING_CANDIDATE_K.*30"):
+        WorkerConfig.from_env()
 
 
 def test_reranking_config_parses_enabled_false(monkeypatch) -> None:

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import os
 import logging
 from typing import Any, Callable
 
 from rag_pipeline.context_builder import build_rag_context
+from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.retrieval import search_hybrid_chunks
 
 
@@ -41,29 +41,6 @@ FALLBACK_ANSWER = (
     "Ich habe in deinen Materialien keine passenden Quellen gefunden. "
     "Bitte formuliere die Frage etwas konkreter oder lade passende Unterlagen hoch."
 )
-
-
-class OpenAILlmClient:
-    """Minimal non-streaming OpenAI chat client."""
-
-    def __init__(self, api_key: str | None = None, model: str = "gpt-4o-mini") -> None:
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.model = model
-        if not self.api_key:
-            raise ValueError("OPENAI_API_KEY is required for RAG answer generation.")
-
-    def complete(self, *, system_prompt: str, user_prompt: str) -> str:
-        from openai import OpenAI
-
-        client = OpenAI(api_key=self.api_key)
-        response = client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        return response.choices[0].message.content or ""
 
 
 def _format_conversation_block(messages: list[dict]) -> str:

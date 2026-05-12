@@ -4,7 +4,12 @@ import copy
 
 import pytest
 
-from rag_pipeline.reranker import FastEmbedReranker, NoopReranker, create_reranker
+from rag_pipeline.reranker import (
+    FastEmbedReranker,
+    LlmReranker,
+    NoopReranker,
+    create_reranker,
+)
 
 
 class FakeCrossEncoder:
@@ -19,6 +24,19 @@ class FakeCrossEncoder:
         if self.raises:
             raise RuntimeError("model failed")
         return self.scores
+
+
+class FakeLlmClient:
+    def __init__(self, response: str = "[]", raises: bool = False) -> None:
+        self.response = response
+        self.raises = raises
+        self.calls = []
+
+    def complete(self, *, system_prompt: str, user_prompt: str) -> str:
+        self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt})
+        if self.raises:
+            raise RuntimeError("llm failed")
+        return self.response
 
 
 def _result(index: int, **overrides):
@@ -141,6 +159,165 @@ def test_fastembed_reranker_does_not_mutate_input_results() -> None:
     assert results == original
 
 
+def test_llm_reranker_reorders_by_scores() -> None:
+    results = [_result(1), _result(2), _result(3)]
+    client = FakeLlmClient(
+        '[{"chunk_id":"chunk-1","score":0.2},{"chunk_id":"chunk-3","score":0.9}]'
+    )
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=3)
+
+    assert [item["chunk_id"] for item in reranked] == ["chunk-3", "chunk-1", "chunk-2"]
+
+
+def test_llm_reranker_preserves_original_score_and_rank() -> None:
+    results = [_result(1, score=0.7), _result(2, score=0.2)]
+    client = FakeLlmClient('[{"chunk_id":"chunk-2","score":0.9,"reason":"best"}]')
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=2)
+
+    assert reranked[0]["chunk_id"] == "chunk-2"
+    assert reranked[0]["rerank_score"] == 0.9
+    assert reranked[0]["original_score"] == 0.2
+    assert reranked[0]["original_rank"] == 2
+    assert reranked[0]["rerank_reason"] == "best"
+
+
+def test_llm_reranker_respects_top_k() -> None:
+    results = [_result(1), _result(2), _result(3)]
+    client = FakeLlmClient(
+        '[{"chunk_id":"chunk-1","score":0.8},{"chunk_id":"chunk-2","score":0.7},{"chunk_id":"chunk-3","score":0.6}]'
+    )
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=2)
+
+    assert len(reranked) == 2
+
+
+def test_llm_reranker_ignores_unknown_chunk_ids() -> None:
+    results = [_result(1), _result(2)]
+    client = FakeLlmClient(
+        '[{"chunk_id":"unknown","score":1.0},{"chunk_id":"chunk-2","score":0.9}]'
+    )
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=2)
+
+    assert [item["chunk_id"] for item in reranked] == ["chunk-2", "chunk-1"]
+
+
+def test_llm_reranker_appends_unscored_candidates_after_scored_ones() -> None:
+    results = [_result(1), _result(2), _result(3)]
+    client = FakeLlmClient('[{"chunk_id":"chunk-3","score":0.9}]')
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=3)
+
+    assert [item["chunk_id"] for item in reranked] == ["chunk-3", "chunk-1", "chunk-2"]
+
+
+def test_llm_reranker_falls_back_on_malformed_json() -> None:
+    results = [_result(1), _result(2)]
+    client = FakeLlmClient("not json")
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=1)
+
+    assert reranked == results[:1]
+
+
+def test_llm_reranker_falls_back_on_exception() -> None:
+    results = [_result(1), _result(2)]
+    client = FakeLlmClient(raises=True)
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=1)
+
+    assert reranked == results[:1]
+
+
+def test_llm_reranker_truncates_candidate_text() -> None:
+    results = [_result(1, text="x" * 100)]
+    client = FakeLlmClient('[{"chunk_id":"chunk-1","score":0.5}]')
+
+    LlmReranker(llm_client=client, max_candidate_chars=12).rerank("query", results, top_k=1)
+
+    assert "x" * 12 in client.calls[0]["user_prompt"]
+    assert "x" * 13 not in client.calls[0]["user_prompt"]
+
+
+def test_llm_reranker_handles_empty_results() -> None:
+    client = FakeLlmClient('[{"chunk_id":"chunk-1","score":0.5}]')
+
+    reranked = LlmReranker(llm_client=client).rerank("query", [], top_k=3)
+
+    assert reranked == []
+    assert client.calls == []
+
+
+def test_llm_reranker_does_not_mutate_input_results() -> None:
+    results = [_result(1), _result(2)]
+    original = copy.deepcopy(results)
+    client = FakeLlmClient('[{"chunk_id":"chunk-2","score":0.9}]')
+
+    LlmReranker(llm_client=client).rerank("query", results, top_k=2)
+
+    assert results == original
+
+
+def test_llm_reranker_parses_json_code_fence() -> None:
+    results = [_result(1), _result(2)]
+    client = FakeLlmClient('```json\n[{"chunk_id":"chunk-2","score":0.9}]\n```')
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=2)
+
+    assert reranked[0]["chunk_id"] == "chunk-2"
+
+
+def test_llm_reranker_handles_duplicate_chunk_ids_deterministically() -> None:
+    results = [_result(1), _result(2)]
+    client = FakeLlmClient(
+        '[{"chunk_id":"chunk-2","score":0.7},{"chunk_id":"chunk-2","score":1.0}]'
+    )
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=2)
+
+    assert reranked[0]["chunk_id"] == "chunk-2"
+    assert reranked[0]["rerank_score"] == 0.7
+
+
+def test_llm_reranker_falls_back_on_non_numeric_score() -> None:
+    results = [_result(1), _result(2)]
+    client = FakeLlmClient('[{"chunk_id":"chunk-2","score":"0.9"}]')
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=2)
+
+    assert reranked == results[:2]
+
+
+def test_llm_reranker_falls_back_on_score_outside_0_1() -> None:
+    results = [_result(1), _result(2)]
+    client = FakeLlmClient('[{"chunk_id":"chunk-2","score":1.1}]')
+
+    reranked = LlmReranker(llm_client=client).rerank("query", results, top_k=2)
+
+    assert reranked == results[:2]
+
+
+def test_llm_reranker_prompt_excludes_raw_metadata() -> None:
+    results = [
+        _result(
+            1,
+            metadata={"doc_items": [{"bbox": [1]}], "highlight_areas": [{"x": 1}]},
+        )
+    ]
+    client = FakeLlmClient('[{"chunk_id":"chunk-1","score":0.5}]')
+
+    LlmReranker(llm_client=client).rerank("query", results, top_k=1)
+
+    prompt = client.calls[0]["user_prompt"]
+    assert "metadata" not in prompt
+    assert "doc_items" not in prompt
+    assert "bbox" not in prompt
+    assert "highlight_areas" not in prompt
+
+
 def test_create_reranker_disabled_returns_noop() -> None:
     reranker = create_reranker(
         provider="fastembed",
@@ -169,6 +346,29 @@ def test_create_reranker_fastembed_returns_fastembed_instance() -> None:
     assert isinstance(reranker, FastEmbedReranker)
 
 
+def test_create_reranker_llm_returns_llm_reranker() -> None:
+    reranker = create_reranker(
+        provider="llm",
+        model="gpt-4o-mini",
+        enabled=True,
+        injected_client=FakeLlmClient(),
+    )
+
+    assert isinstance(reranker, LlmReranker)
+
+
+def test_create_reranker_llm_uses_model_from_config() -> None:
+    reranker = create_reranker(
+        provider="llm",
+        model="custom-model",
+        enabled=True,
+        injected_client=FakeLlmClient(),
+    )
+
+    assert isinstance(reranker, LlmReranker)
+    assert reranker.model == "custom-model"
+
+
 def test_create_reranker_unknown_provider_raises_value_error() -> None:
-    with pytest.raises(ValueError, match="fastembed"):
+    with pytest.raises(ValueError, match="fastembed.*llm.*noop"):
         create_reranker(provider="unknown", model="model", enabled=True)

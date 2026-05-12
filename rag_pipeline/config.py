@@ -63,13 +63,20 @@ class WorkerConfig:
                 + ", ".join(missing)
             )
 
+        valid_reranking_providers = {"fastembed", "llm", "noop"}
         reranking_provider = os.getenv("RERANKING_PROVIDER", "fastembed")
-        if reranking_provider not in {"fastembed", "noop"}:
-            raise ValueError("RERANKING_PROVIDER must be one of: fastembed, noop")
+        if reranking_provider not in valid_reranking_providers:
+            raise ValueError(
+                "RERANKING_PROVIDER must be one of: fastembed, llm, noop"
+            )
         reranking_candidate_k = _optional_int(os.getenv("RERANKING_CANDIDATE_K")) or 30
         reranking_top_k = _optional_int(os.getenv("RERANKING_TOP_K")) or 8
         if not 1 <= reranking_candidate_k <= 50:
             raise ValueError("RERANKING_CANDIDATE_K must be between 1 and 50")
+        if reranking_provider == "llm" and reranking_candidate_k > 30:
+            raise ValueError(
+                "RERANKING_CANDIDATE_K must be <= 30 when RERANKING_PROVIDER=llm"
+            )
         if not 1 <= reranking_top_k <= 20:
             raise ValueError("RERANKING_TOP_K must be between 1 and 20")
 
