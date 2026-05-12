@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from rag_pipeline.source_types import contains_chat_memory
+
 
 VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
@@ -120,8 +122,16 @@ class QdrantStore:
         source_types: list[str] | None,
         top_k: int,
         pdf_ids: list[str] | None = None,
+        source_ids: list[str] | None = None,
     ) -> list[Any]:
-        query_filter = _filter({"user_id": user_id}, source_types=source_types, pdf_ids=pdf_ids)
+        if contains_chat_memory(source_types) and not source_ids:
+            return []
+        query_filter = _filter(
+            {"user_id": user_id},
+            source_types=source_types,
+            pdf_ids=pdf_ids,
+            source_ids=source_ids,
+        )
         if hasattr(self._client, "query_points"):
             result = self._client.query_points(
                 collection_name=self.collection_name,
@@ -147,9 +157,17 @@ class QdrantStore:
         source_types: list[str] | None,
         top_k: int,
         pdf_ids: list[str] | None = None,
+        source_ids: list[str] | None = None,
     ) -> list[Any]:
         models = _models()
-        query_filter = _filter({"user_id": user_id}, source_types=source_types, pdf_ids=pdf_ids)
+        if contains_chat_memory(source_types) and not source_ids:
+            return []
+        query_filter = _filter(
+            {"user_id": user_id},
+            source_types=source_types,
+            pdf_ids=pdf_ids,
+            source_ids=source_ids,
+        )
         sparse_query = models.SparseVector(
             indices=list(query_vector.indices),
             values=list(query_vector.values),
@@ -173,9 +191,17 @@ class QdrantStore:
         top_k: int,
         prefetch_limit: int,
         pdf_ids: list[str] | None = None,
+        source_ids: list[str] | None = None,
     ) -> list[Any]:
         models = _models()
-        query_filter = _filter({"user_id": user_id}, source_types=source_types, pdf_ids=pdf_ids)
+        if contains_chat_memory(source_types) and not source_ids:
+            return []
+        query_filter = _filter(
+            {"user_id": user_id},
+            source_types=source_types,
+            pdf_ids=pdf_ids,
+            source_ids=source_ids,
+        )
         sparse_query = models.SparseVector(
             indices=list(sparse_vector.indices),
             values=list(sparse_vector.values),
@@ -234,6 +260,7 @@ def _filter(
     matches: dict[str, Any],
     source_types: list[str] | None = None,
     pdf_ids: list[str] | None = None,
+    source_ids: list[str] | None = None,
 ) -> Any:
     models = _models()
     must = [
@@ -252,6 +279,13 @@ def _filter(
             models.FieldCondition(
                 key="pdf_id",
                 match=models.MatchAny(any=pdf_ids),
+            )
+        )
+    if source_ids:
+        must.append(
+            models.FieldCondition(
+                key="source_id",
+                match=models.MatchAny(any=source_ids),
             )
         )
     return models.Filter(must=must)

@@ -48,12 +48,26 @@ Embedding and retrieval configuration:
 - `RERANKING_MODEL`
 - `RERANKING_CANDIDATE_K`
 - `RERANKING_TOP_K`
+- `CHAT_MEMORY_ENABLED` (default: `false`)
+- `CHAT_MEMORY_SUMMARY_THRESHOLD` (default: `8`)
+- `CHAT_MEMORY_SUMMARY_INTERVAL` (default: `4`)
+- `CHAT_MEMORY_KEEP_RECENT` (default: `4`)
+- `CHAT_MEMORY_MAX_SUMMARY_CHARS` (default: `2500`)
+- `CHAT_MEMORY_RETRIEVAL_ENABLED` (default: `false`)
+- `CHAT_MEMORY_DEFAULT_INCLUDED` (default: `false`)
+- `CHAT_MEMORY_TOP_K` (default: `2`)
+- `CHAT_MEMORY_SOURCE_TYPE` (must be `chat_memory`)
 - `RAG_INTERNAL_API_KEY`
 
 Next.js server-only chat variables:
 
 - `RAG_API_URL` (local default: `http://localhost:8001`)
 - `RAG_INTERNAL_API_KEY`
+- `CHAT_MEMORY_ENABLED`
+- `CHAT_MEMORY_SUMMARY_THRESHOLD`
+- `CHAT_MEMORY_SUMMARY_INTERVAL`
+- `CHAT_MEMORY_KEEP_RECENT`
+- `CHAT_MEMORY_MAX_SUMMARY_CHARS`
 
 Durable indexing currently supports OpenAI embeddings. If the durable embedding
 provider has no API key, the job fails and retries instead of storing fake
@@ -152,6 +166,21 @@ the hard maximum is `30`. Check the FastEmbed/Jina model license before
 commercial or beta use, and monitor LLM model cost before enabling LLM reranking
 for beta users.
 
+Chat memory is optional and disabled by default. Next.js verifies the chat
+session server-side, stores normal chat messages, then best-effort calls
+`/rag/compress` after an assistant answer once threshold and interval guards are
+met. The compressed rolling summary is stored in `chat_memory_summaries`, and a
+normal `rag_index_jobs` row with `source_type=chat_memory` lets the Python
+worker embed one summary chunk into the existing Qdrant collection. Normal
+factual questions keep using PDF/note/annotation sources only. Memory-intent
+questions such as "Was hatten wir besprochen?" can retrieve the current
+session's `chat_memory` chunk when `CHAT_MEMORY_RETRIEVAL_ENABLED=true`.
+
+Raw chat messages are never embedded. Browser requests cannot directly request
+`chat_memory` as a source type; Next.js strips it before forwarding and FastAPI
+rejects it on `/rag/answer`. Memory source cards expose only a short snippet, not
+the full summary.
+
 Existing dense-only collections are not recreated automatically during normal
 worker execution. Recreate/rebuild hybrid points only via the explicit
 maintenance command:
@@ -171,4 +200,5 @@ python -m rag_pipeline.evaluate_retrieval eval_queries.json --user-id <user-id>
 ```
 
 Out of scope for the current RAG path remains GraphRAG, web search, agentic
-RAG, and chat memory embeddings.
+RAG, raw chat message embeddings, cross-session global memory, and a UI memory
+management page.

@@ -17,6 +17,7 @@ from rag_pipeline.refinement import SemanticRefiner
 from rag_pipeline.sparse_embeddings import SparseEmbedder
 from rag_pipeline.sparse_embeddings import SparseVectorData
 from rag_pipeline.source_ingestion import chunks_from_annotation
+from rag_pipeline.source_ingestion import chunk_from_chat_memory
 from rag_pipeline.source_ingestion import chunks_from_note
 
 
@@ -107,6 +108,9 @@ class RagWorker:
             return
         if source_type == "annotation_comment":
             self._process_annotation_job(job)
+            return
+        if source_type == "chat_memory":
+            self._process_chat_memory_job(job)
             return
         raise RuntimeError(f"Unsupported RAG job source_type: {source_type}")
 
@@ -251,6 +255,82 @@ class RagWorker:
         )
         self._mark_job_completed(str(job["id"]))
 
+    def _process_chat_memory_job(self, job: dict[str, Any]) -> None:
+        user_id = str(job["user_id"])
+        session_id = str(job["source_id"])
+        source = SourceRef(
+            user_id=user_id,
+            source_type="chat_memory",
+            source_id=session_id,
+        )
+        summary = self._load_chat_memory_summary(user_id, session_id)
+        if not summary or not str(summary.get("summary") or "").strip():
+            self._delete_source_chunks(source)
+            self._update_chat_memory_summary(
+                user_id,
+                session_id,
+                {
+                    "rag_chunk_id": None,
+                    "qdrant_point_id": None,
+                    "embedding_status": "skipped",
+                    "embedded_at": None,
+                    "indexing_error": None,
+                    "updated_at": _utc_now(),
+                },
+            )
+            self._upsert_document(
+                source,
+                status="completed",
+                metadata={"skipped": "summary_missing"},
+            )
+            self._mark_job_completed(str(job["id"]))
+            return
+
+        document_id = self._upsert_document(source, status="processing")
+        chunk = chunk_from_chat_memory(
+            user_id=user_id,
+            session_id=session_id,
+            summary_id=str(summary["id"]),
+            summary=str(summary["summary"]),
+            represented_message_count=int(summary.get("represented_message_count") or 0),
+            updated_at=summary.get("updated_at"),
+            chunking_strategy=self._config.chunking_strategy,
+            chunking_version=self._config.chunking_version,
+        )
+        try:
+            self._replace_source_chunks(document_id, source, [chunk])
+            row = self._fetch_latest_chunk_row(user_id, "chat_memory", session_id)
+            self._update_chat_memory_summary(
+                user_id,
+                session_id,
+                {
+                    "rag_job_id": str(job["id"]),
+                    "rag_chunk_id": row.get("id"),
+                    "qdrant_point_id": row.get("qdrant_point_id") or row.get("id"),
+                    "embedding_status": "completed",
+                    "embedded_at": _utc_now(),
+                    "indexing_error": None,
+                    "updated_at": _utc_now(),
+                },
+            )
+            self._upsert_document(
+                source,
+                status="completed",
+                metadata={"chunk_count": 1},
+            )
+            self._mark_job_completed(str(job["id"]))
+        except Exception as exc:
+            self._update_chat_memory_summary(
+                user_id,
+                session_id,
+                {
+                    "embedding_status": "failed",
+                    "indexing_error": str(exc)[:4000],
+                    "updated_at": _utc_now(),
+                },
+            )
+            raise
+
     def _fetch_pdf_row(self, pdf_id: str) -> dict[str, Any]:
         response = (
             self._supabase.table("pdfs")
@@ -295,6 +375,55 @@ class RagWorker:
         if not response.data:
             raise RuntimeError(f"Annotation not found: {annotation_id}")
         return response.data
+
+    def _load_chat_memory_summary(
+        self,
+        user_id: str,
+        session_id: str,
+    ) -> dict[str, Any] | None:
+        response = (
+            self._supabase.table("chat_memory_summaries")
+            .select(
+                "id, user_id, session_id, summary, represented_message_count, updated_at"
+            )
+            .eq("user_id", user_id)
+            .eq("session_id", session_id)
+            .maybe_single()
+            .execute()
+        )
+        return response.data
+
+    def _fetch_latest_chunk_row(
+        self,
+        user_id: str,
+        source_type: str,
+        source_id: str,
+    ) -> dict[str, Any]:
+        response = (
+            self._supabase.table("rag_chunks")
+            .select("id, qdrant_point_id")
+            .eq("user_id", user_id)
+            .eq("source_type", source_type)
+            .eq("source_id", source_id)
+            .order("updated_at", desc=True)
+            .limit(1)
+            .single()
+            .execute()
+        )
+        if not response.data:
+            raise RuntimeError("Chat memory chunk row not found after indexing.")
+        return response.data
+
+    def _update_chat_memory_summary(
+        self,
+        user_id: str,
+        session_id: str,
+        values: dict[str, Any],
+    ) -> None:
+        self._supabase.table("chat_memory_summaries").update(values).eq(
+            "user_id",
+            user_id,
+        ).eq("session_id", session_id).execute()
 
     def _upsert_document(
         self,

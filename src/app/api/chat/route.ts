@@ -3,9 +3,14 @@ import {createClient} from '@/lib/supabase/server';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import type {ChatRequest, ChatResponse, ChatRole, ChatSourceType, RecentChatMessage} from '@/types/chat';
 
-const SOURCE_TYPES: ChatSourceType[] = ['pdf', 'note', 'annotation_comment'];
+const MATERIAL_SOURCE_TYPES: ChatSourceType[] = ['pdf', 'note', 'annotation_comment'];
+const SOURCE_TYPES: ChatSourceType[] = [...MATERIAL_SOURCE_TYPES, 'chat_memory'];
 const RECENT_MESSAGE_LIMIT = 10;
 const RECENT_MESSAGE_CONTENT_LIMIT = 2000;
+const CHAT_MEMORY_DEFAULT_THRESHOLD = 8;
+const CHAT_MEMORY_DEFAULT_INTERVAL = 4;
+const CHAT_MEMORY_DEFAULT_KEEP_RECENT = 4;
+const CHAT_MEMORY_DEFAULT_MAX_CHARS = 2500;
 
 class SessionNotFoundError extends Error {}
 
@@ -68,6 +73,20 @@ async function getOrCreateSession(
   return data.id as string;
 }
 
+async function loadSessionCourseId(
+  supabase: SupabaseClient,
+  sessionId: string,
+  userId: string,
+) {
+  const {data} = await supabase
+    .from('chat_sessions')
+    .select('course_id')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  return typeof data?.course_id === 'string' ? data.course_id : null;
+}
+
 async function loadRecentMessages(
   supabase: SupabaseClient,
   sessionId: string,
@@ -95,6 +114,213 @@ async function loadRecentMessages(
       role: message.role,
       content: message.content.slice(0, RECENT_MESSAGE_CONTENT_LIMIT),
     }));
+}
+
+function chatMemoryConfig() {
+  return {
+    enabled: parseBool(process.env.CHAT_MEMORY_ENABLED, false),
+    threshold: parseIntEnv(process.env.CHAT_MEMORY_SUMMARY_THRESHOLD, CHAT_MEMORY_DEFAULT_THRESHOLD),
+    interval: parseIntEnv(process.env.CHAT_MEMORY_SUMMARY_INTERVAL, CHAT_MEMORY_DEFAULT_INTERVAL),
+    keepRecent: parseIntEnv(process.env.CHAT_MEMORY_KEEP_RECENT, CHAT_MEMORY_DEFAULT_KEEP_RECENT),
+    maxSummaryChars: parseIntEnv(process.env.CHAT_MEMORY_MAX_SUMMARY_CHARS, CHAT_MEMORY_DEFAULT_MAX_CHARS),
+  };
+}
+
+function parseBool(value: string | undefined, fallback: boolean) {
+  if (value === undefined || value === '') {
+    return fallback;
+  }
+  return !['0', 'false', 'no', 'off'].includes(value.toLowerCase());
+}
+
+function parseIntEnv(value: string | undefined, fallback: number) {
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function stripChatMemorySourceTypes(sourceTypes: ChatSourceType[] | undefined) {
+  const stripped = (sourceTypes ?? MATERIAL_SOURCE_TYPES).filter((sourceType) => sourceType !== 'chat_memory');
+  return stripped.length > 0 ? stripped : MATERIAL_SOURCE_TYPES;
+}
+
+async function triggerChatMemorySummary({
+  supabase,
+  sessionId,
+  userId,
+  courseId,
+  pdfIds,
+  ragApiUrl,
+  internalApiKey,
+}: {
+  supabase: SupabaseClient;
+  sessionId: string;
+  userId: string;
+  courseId: string | null;
+  pdfIds: string[];
+  ragApiUrl: string;
+  internalApiKey: string;
+}): Promise<void> {
+  try {
+    const config = chatMemoryConfig();
+    if (!config.enabled) {
+      return;
+    }
+
+    const {data: existingSummary} = await supabase
+      .from('chat_memory_summaries')
+      .select('summary, represented_message_count')
+      .eq('user_id', userId)
+      .eq('session_id', sessionId)
+      .maybeSingle();
+    const representedMessageCount = Number(existingSummary?.represented_message_count ?? 0);
+
+    const {count, error: countError} = await supabase
+      .from('chat_messages')
+      .select('id', {count: 'exact', head: true})
+      .eq('user_id', userId)
+      .eq('session_id', sessionId);
+    if (countError || count === null || count < config.threshold) {
+      return;
+    }
+    if (count - representedMessageCount < config.interval) {
+      return;
+    }
+
+    const compressLimit = Math.max(0, count - representedMessageCount - config.keepRecent);
+    if (compressLimit <= 0) {
+      return;
+    }
+    const {data: messages, error: messagesError} = await supabase
+      .from('chat_messages')
+      .select('role, content, created_at')
+      .eq('user_id', userId)
+      .eq('session_id', sessionId)
+      .order('created_at', {ascending: true})
+      .range(representedMessageCount, representedMessageCount + compressLimit - 1);
+    if (messagesError || !messages || messages.length === 0) {
+      return;
+    }
+
+    const response = await fetch(`${ragApiUrl.replace(/\/$/, '')}/rag/compress`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${internalApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: messages
+          .filter((message) => message.role === 'user' || message.role === 'assistant')
+          .map((message) => ({
+            role: message.role,
+            content: String(message.content ?? '').slice(0, RECENT_MESSAGE_CONTENT_LIMIT),
+          })),
+        existing_summary: existingSummary?.summary ?? null,
+        max_chars: config.maxSummaryChars,
+      }),
+    });
+    if (!response.ok) {
+      console.error('RAG compression failed', {status: response.status});
+      return;
+    }
+    const {summary} = await response.json();
+    if (typeof summary !== 'string' || summary.trim().length === 0) {
+      return;
+    }
+
+    const lastCompressed = messages[messages.length - 1];
+    const newRepresentedCount = representedMessageCount + messages.length;
+    const {data: pendingJob} = await supabase
+      .from('rag_index_jobs')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('source_type', 'chat_memory')
+      .eq('source_id', sessionId)
+      .in('status', ['pending', 'processing'])
+      .maybeSingle();
+
+    const {error: upsertError} = await supabase.from('chat_memory_summaries').upsert({
+      user_id: userId,
+      session_id: sessionId,
+      summary: summary.trim(),
+      represented_message_count: newRepresentedCount,
+      message_range_start: messages[0]?.created_at ?? null,
+      message_range_end: lastCompressed?.created_at ?? null,
+      source_type: 'chat_memory',
+      course_id: courseId,
+      pdf_id: pdfIds[0] ?? null,
+      embedding_status: 'pending',
+      updated_at: new Date().toISOString(),
+    }, {onConflict: 'user_id,session_id'});
+    if (upsertError || pendingJob?.id) {
+      return;
+    }
+
+    const {data: job} = await supabase
+      .from('rag_index_jobs')
+      .insert({
+        user_id: userId,
+        source_type: 'chat_memory',
+        source_id: sessionId,
+        status: 'pending',
+      })
+      .select('id')
+      .single();
+    if (job?.id) {
+      await supabase
+        .from('chat_memory_summaries')
+        .update({rag_job_id: job.id, updated_at: new Date().toISOString()})
+        .eq('user_id', userId)
+        .eq('session_id', sessionId);
+    }
+  } catch (error) {
+    console.error('Chat memory summary trigger failed', error);
+  }
+}
+
+async function loadRelatedMemorySourceIds(
+  supabase: SupabaseClient,
+  userId: string,
+  sessionId: string,
+  courseId: string | null,
+  pdfIds: string[],
+) {
+  const ids = new Set<string>([sessionId]);
+  try {
+    if (courseId) {
+      const {data} = await supabase
+        .from('chat_memory_summaries')
+        .select('session_id')
+        .eq('user_id', userId)
+        .eq('course_id', courseId)
+        .eq('embedding_status', 'completed')
+        .limit(10);
+      for (const row of data ?? []) {
+        if (typeof row.session_id === 'string') {
+          ids.add(row.session_id);
+        }
+      }
+    }
+    if (pdfIds.length > 0) {
+      const {data} = await supabase
+        .from('chat_memory_summaries')
+        .select('session_id')
+        .eq('user_id', userId)
+        .in('pdf_id', pdfIds)
+        .eq('embedding_status', 'completed')
+        .limit(10);
+      for (const row of data ?? []) {
+        if (typeof row.session_id === 'string') {
+          ids.add(row.session_id);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load related chat memory ids', error);
+  }
+  return Array.from(ids);
 }
 
 export async function POST(request: Request) {
@@ -127,14 +353,22 @@ export async function POST(request: Request) {
   }
 
   const topK = body.top_k ?? 8;
-  const sourceTypes = body.source_types ?? SOURCE_TYPES;
+  const sourceTypes = stripChatMemorySourceTypes(body.source_types);
   const pdfIds = body.pdf_ids?.filter(Boolean) ?? [];
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
 
   try {
     const sessionId = await getOrCreateSession(supabase, user.id, body);
+    const courseId = body.course_id ?? await loadSessionCourseId(supabase, sessionId, user.id);
     const recentMessages = await loadRecentMessages(supabase, sessionId, user.id);
+    const memorySourceIds = await loadRelatedMemorySourceIds(
+      supabase,
+      user.id,
+      sessionId,
+      courseId,
+      pdfIds,
+    );
     await supabase.from('chat_messages').insert({
       session_id: sessionId,
       user_id: user.id,
@@ -156,6 +390,9 @@ export async function POST(request: Request) {
         top_k: topK,
         pdf_ids: pdfIds.length > 0 ? pdfIds : undefined,
         recent_messages: recentMessages,
+        session_id: sessionId,
+        memory_source_ids: memorySourceIds,
+        memory_mode: 'auto',
       }),
       signal: controller.signal,
     });
@@ -179,6 +416,15 @@ export async function POST(request: Request) {
       .update({updated_at: new Date().toISOString()})
       .eq('id', sessionId)
       .eq('user_id', user.id);
+    void triggerChatMemorySummary({
+      supabase,
+      sessionId,
+      userId: user.id,
+      courseId,
+      pdfIds,
+      ragApiUrl,
+      internalApiKey,
+    });
 
     const chatResponse: ChatResponse = {
       session_id: sessionId,

@@ -7,7 +7,9 @@ from typing import Any, Callable
 
 from rag_pipeline.context_builder import build_rag_context
 from rag_pipeline.llm_client import OpenAILlmClient
+from rag_pipeline.memory_intent import detect_memory_intent
 from rag_pipeline.retrieval import search_hybrid_chunks
+from rag_pipeline.source_types import MATERIAL_SOURCE_TYPES
 
 
 logger = logging.getLogger(__name__)
@@ -113,18 +115,46 @@ def answer_with_rag(
     reranking_enabled: bool = False,
     reranking_candidate_k: int = 30,
     reranking_top_k: int = 8,
+    session_id: str | None = None,
+    memory_mode: str = "auto",
+    chat_memory_retrieval_enabled: bool | None = None,
+    chat_memory_top_k: int | None = None,
+    memory_source_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
     active_retrieval = retrieval_fn or search_hybrid_chunks
     retrieval_query = rewrite_query_for_retrieval(query, recent_messages, llm_client)
     retrieval_top_k = reranking_candidate_k if reranking_enabled and reranker is not None else top_k
+    material_source_types = source_types or list(MATERIAL_SOURCE_TYPES)
     results = active_retrieval(
         query=retrieval_query,
         user_id=user_id,
-        source_types=source_types,
+        source_types=material_source_types,
         top_k=retrieval_top_k,
         pdf_ids=pdf_ids,
     )
+    memory_results: list[dict[str, Any]] = []
+    if _should_retrieve_memory(
+        query,
+        recent_messages,
+        session_id,
+        memory_mode,
+        chat_memory_retrieval_enabled,
+    ):
+        try:
+            memory_ids = _memory_source_ids(session_id, memory_source_ids)
+            memory_results = active_retrieval(
+                query=retrieval_query,
+                user_id=user_id,
+                source_types=["chat_memory"],
+                source_ids=memory_ids,
+                top_k=chat_memory_top_k or 2,
+                pdf_ids=None,
+            )
+        except Exception:
+            logger.warning("Chat memory retrieval failed; continuing without memory.", exc_info=True)
+            memory_results = []
+    results = results + memory_results
     if not results:
         return {"answer": FALLBACK_ANSWER, "sources": []}
 
@@ -163,3 +193,30 @@ def answer_with_rag(
         system_prompt = SYSTEM_PROMPT
     answer = active_llm.complete(system_prompt=system_prompt, user_prompt=user_prompt)
     return {"answer": answer, "sources": context["sources"]}
+
+
+def _should_retrieve_memory(
+    query: str,
+    recent_messages: list[dict] | None,
+    session_id: str | None,
+    memory_mode: str,
+    enabled: bool | None,
+) -> bool:
+    if enabled is not True or not session_id:
+        return False
+    if memory_mode == "off":
+        return False
+    if memory_mode == "on":
+        return True
+    return detect_memory_intent(query, recent_messages)
+
+
+def _memory_source_ids(
+    session_id: str | None,
+    related_source_ids: list[str] | None,
+) -> list[str]:
+    ordered = []
+    for value in [session_id, *(related_source_ids or [])]:
+        if value and value not in ordered:
+            ordered.append(value)
+    return ordered

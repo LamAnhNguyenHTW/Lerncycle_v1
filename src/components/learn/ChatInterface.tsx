@@ -488,13 +488,15 @@ function SourceChip({source}: {source: ChatSource}) {
     ?? source.metadata.filename
     ?? (source.source_type === 'pdf'
       ? 'PDF'
+      : source.source_type === 'chat_memory'
+        ? 'Chat Memory'
       : source.source_type === 'annotation_comment'
         ? 'Annotation'
         : source.source_type === 'note'
           ? 'Note'
           : 'Source');
   const page = source.page !== null ? `p. ${source.page}` : null;
-  const sourceType = source.source_type.replace('_', ' ');
+  const sourceType = source.source_type === 'chat_memory' ? 'memory' : source.source_type.replace('_', ' ');
 
   return (
     <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-white px-2 text-xs text-muted-foreground shadow-sm">

@@ -71,6 +71,45 @@ def chunks_from_annotation(
     )
 
 
+def chunk_from_chat_memory(
+    user_id: str,
+    session_id: str,
+    summary_id: str,
+    summary: str,
+    represented_message_count: int,
+    updated_at: str | None,
+    chunking_strategy: str,
+    chunking_version: str,
+) -> RagChunk:
+    """Build one chunk from a rolling chat memory summary."""
+    source = SourceRef(
+        user_id=user_id,
+        source_type="chat_memory",
+        source_id=session_id,
+    )
+    metadata = {
+        "origin": "chat_memory",
+        "session_id": session_id,
+        "summary_id": summary_id,
+        "memory_kind": "rolling_summary",
+        "represented_message_count": represented_message_count,
+        "history_summary_updated_at": updated_at,
+    }
+    return RagChunk(
+        source=source,
+        content=summary.strip(),
+        content_hash=build_content_hash(
+            summary.strip(),
+            source,
+            chunking_strategy,
+            chunking_version,
+        ),
+        heading_path=["Learning history"],
+        chunk_kind="chat_memory_summary",
+        metadata={key: value for key, value in metadata.items() if value is not None},
+    )
+
+
 def _chunks_from_text(
     source: SourceRef,
     text: str,
@@ -97,4 +136,3 @@ def _chunks_from_text(
             )
         )
     return chunks
-

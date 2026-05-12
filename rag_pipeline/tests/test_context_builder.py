@@ -203,6 +203,38 @@ def test_normalize_source_annotation_comment() -> None:
     assert source["metadata"] == {"filename": "GPAA_SoSe2026_2.pdf"}
 
 
+def test_normalize_source_chat_memory() -> None:
+    source = normalize_source(
+        _result(
+            source_type="chat_memory",
+            source_id="session-1",
+            title="Ignored",
+            heading="Learning history",
+            text="We discussed Process Mining.",
+            metadata={
+                "session_id": "session-1",
+                "memory_kind": "rolling_summary",
+                "raw_messages": ["secret"],
+            },
+        )
+    )
+
+    assert source["title"] == "Chat Memory"
+    assert source["page"] is None
+    assert source["heading"] == "Learning history"
+    assert source["metadata"] == {
+        "session_id": "session-1",
+        "memory_kind": "rolling_summary",
+    }
+
+
+def test_chat_memory_snippet_is_truncated_to_200_chars() -> None:
+    source = normalize_source(_result(source_type="chat_memory", text="x" * 250))
+
+    assert len(source["snippet"]) <= 200
+    assert source["snippet"].endswith("...")
+
+
 def test_source_shape_does_not_include_large_metadata() -> None:
     source = normalize_source(_result(metadata={"filename": "file.pdf", "bbox": [1]}))
 

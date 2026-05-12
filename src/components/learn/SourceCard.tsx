@@ -4,6 +4,7 @@ const SOURCE_LABELS = {
   pdf: 'PDF',
   note: 'Note',
   annotation_comment: 'Annotation',
+  chat_memory: 'Memory',
 };
 
 function getSourceTitle(source: ChatSource) {
@@ -11,6 +12,8 @@ function getSourceTitle(source: ChatSource) {
     ?? source.metadata.filename
     ?? (source.source_type === 'pdf'
       ? 'PDF'
+      : source.source_type === 'chat_memory'
+        ? 'Chat Memory'
       : source.source_type === 'annotation_comment'
         ? 'Annotation'
         : source.source_type === 'note'

@@ -7,6 +7,7 @@ from typing import Any
 from rag_pipeline.config import WorkerConfig
 from rag_pipeline.embeddings import Embedder
 from rag_pipeline.qdrant_store import QdrantStore
+from rag_pipeline.source_types import contains_chat_memory
 from rag_pipeline.sparse_embeddings import SparseEmbedder
 
 
@@ -16,11 +17,14 @@ def search_chunks(
     source_types: list[str] | None = None,
     top_k: int = 10,
     pdf_ids: list[str] | None = None,
+    source_ids: list[str] | None = None,
     config: WorkerConfig | None = None,
     embedder: Embedder | None = None,
     store: QdrantStore | None = None,
 ) -> list[dict[str, Any]]:
     """Embed a query and return normalized chunk search results."""
+    if contains_chat_memory(source_types) and not source_ids:
+        return []
     cfg = config or WorkerConfig.from_env()
     active_embedder = embedder or Embedder(
         provider=cfg.embedding_provider,
@@ -35,7 +39,10 @@ def search_chunks(
         collection_name=cfg.qdrant_collection,
     )
     vector = active_embedder.embed([query])[0]
-    hits = active_store.search_chunks(vector, user_id, source_types, top_k, pdf_ids=pdf_ids)
+    kwargs = {"pdf_ids": pdf_ids}
+    if source_ids is not None:
+        kwargs["source_ids"] = source_ids
+    hits = active_store.search_chunks(vector, user_id, source_types, top_k, **kwargs)
     return [_normalize_hit(hit) for hit in hits]
 
 
@@ -45,11 +52,14 @@ def search_sparse_chunks(
     source_types: list[str] | None = None,
     top_k: int = 10,
     pdf_ids: list[str] | None = None,
+    source_ids: list[str] | None = None,
     config: WorkerConfig | None = None,
     sparse_embedder: SparseEmbedder | None = None,
     store: QdrantStore | None = None,
 ) -> list[dict[str, Any]]:
     """Embed a query sparsely and return normalized chunk search results."""
+    if contains_chat_memory(source_types) and not source_ids:
+        return []
     cfg = config or WorkerConfig.from_env()
     active_sparse_embedder = sparse_embedder or SparseEmbedder(
         provider=cfg.sparse_provider,
@@ -61,7 +71,10 @@ def search_sparse_chunks(
         collection_name=cfg.qdrant_collection,
     )
     vector = active_sparse_embedder.embed([query])[0]
-    hits = active_store.search_sparse_chunks(vector, user_id, source_types, top_k, pdf_ids=pdf_ids)
+    kwargs = {"pdf_ids": pdf_ids}
+    if source_ids is not None:
+        kwargs["source_ids"] = source_ids
+    hits = active_store.search_sparse_chunks(vector, user_id, source_types, top_k, **kwargs)
     return [_normalize_hit(hit) for hit in hits]
 
 
@@ -72,12 +85,15 @@ def search_hybrid_chunks(
     top_k: int = 10,
     prefetch_limit: int = 30,
     pdf_ids: list[str] | None = None,
+    source_ids: list[str] | None = None,
     config: WorkerConfig | None = None,
     embedder: Embedder | None = None,
     sparse_embedder: SparseEmbedder | None = None,
     store: QdrantStore | None = None,
 ) -> list[dict[str, Any]]:
     """Run hybrid dense+sparse retrieval with RRF fusion."""
+    if contains_chat_memory(source_types) and not source_ids:
+        return []
     cfg = config or WorkerConfig.from_env()
     active_embedder = embedder or Embedder(
         provider=cfg.embedding_provider,
@@ -98,6 +114,9 @@ def search_hybrid_chunks(
     dense_vector = active_embedder.embed([query])[0]
     sparse_vector = active_sparse_embedder.embed([query])[0]
     try:
+        kwargs = {"pdf_ids": pdf_ids}
+        if source_ids is not None:
+            kwargs["source_ids"] = source_ids
         hits = active_store.search_hybrid_chunks(
             dense_vector,
             sparse_vector,
@@ -105,22 +124,25 @@ def search_hybrid_chunks(
             source_types,
             top_k,
             prefetch_limit,
-            pdf_ids=pdf_ids,
+            **kwargs,
         )
     except NotImplementedError:
+        kwargs = {"pdf_ids": pdf_ids}
+        if source_ids is not None:
+            kwargs["source_ids"] = source_ids
         dense_hits = active_store.search_chunks(
             dense_vector,
             user_id,
             source_types,
             prefetch_limit,
-            pdf_ids=pdf_ids,
+            **kwargs,
         )
         sparse_hits = active_store.search_sparse_chunks(
             sparse_vector,
             user_id,
             source_types,
             prefetch_limit,
-            pdf_ids=pdf_ids,
+            **kwargs,
         )
         hits = _local_rrf(dense_hits, sparse_hits, top_k)
     return [_normalize_hit(hit) for hit in hits]

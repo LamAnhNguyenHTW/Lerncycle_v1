@@ -9,6 +9,7 @@ SOURCE_LABELS = {
     "pdf": "PDF",
     "note": "Note",
     "annotation_comment": "Annotation",
+    "chat_memory": "Chat Memory",
 }
 
 
@@ -33,6 +34,12 @@ def normalize_source(result: dict[str, Any]) -> dict[str, Any]:
             safe_metadata["filename"] = filename
     elif source_type == "note":
         title = _first_text(title, metadata.get("title"), "Note")
+    elif source_type == "chat_memory":
+        title = "Chat Memory"
+        safe_metadata["session_id"] = metadata.get("session_id")
+        safe_metadata["memory_kind"] = metadata.get("memory_kind")
+        safe_metadata = {key: value for key, value in safe_metadata.items() if value}
+        page = None
 
     return {
         "chunk_id": result.get("chunk_id"),
@@ -42,7 +49,7 @@ def normalize_source(result: dict[str, Any]) -> dict[str, Any]:
         "heading": result.get("heading"),
         "page": page,
         "score": result.get("score"),
-        "snippet": _snippet(text),
+        "snippet": _snippet(text, 200 if source_type == "chat_memory" else 200),
         "metadata": safe_metadata,
     }
 
@@ -111,6 +118,8 @@ def _format_context_block(index: int, result: dict[str, Any], source: dict[str, 
         lines.append(f"File: {filename}")
     elif source_type == "note":
         lines.append(f"Title: {source.get('title')}")
+    elif source_type == "chat_memory":
+        lines.append("Role: Session-scoped learning history summary")
 
     if source.get("page") is not None:
         lines.append(f"Page: {source.get('page')}")
@@ -125,4 +134,4 @@ def _snippet(text: str, max_length: int = 200) -> str:
     collapsed = " ".join(text.split())
     if len(collapsed) <= max_length:
         return collapsed
-    return collapsed[: max_length - 1].rstrip() + "..."
+    return collapsed[: max_length - 3].rstrip() + "..."

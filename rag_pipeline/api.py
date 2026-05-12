@@ -5,12 +5,15 @@ from __future__ import annotations
 import logging
 import os
 from typing import Any, Literal
+from uuid import UUID
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from rag_pipeline.config import WorkerConfig
+from rag_pipeline.conversation_compressor import compress_conversation
+from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.rag_answer import answer_with_rag
 from rag_pipeline.reranker import create_reranker
 
@@ -21,6 +24,7 @@ if not INTERNAL_API_KEY:
     raise RuntimeError("RAG_INTERNAL_API_KEY is required to start the RAG API service.")
 
 SourceType = Literal["pdf", "note", "annotation_comment"]
+MemoryMode = Literal["off", "auto", "on"]
 
 
 class RecentMessage(BaseModel):
@@ -38,6 +42,10 @@ class RagAnswerRequest(BaseModel):
     reranking_enabled: bool | None = None
     reranking_candidate_k: int | None = Field(default=None, ge=1, le=50)
     reranking_top_k: int | None = Field(default=None, ge=1, le=20)
+    session_id: str | None = None
+    memory_source_ids: list[str] | None = None
+    memory_mode: MemoryMode = "auto"
+    include_memory: bool | None = None
 
     @model_validator(mode="after")
     def validate_reranking_bounds(self) -> "RagAnswerRequest":
@@ -48,10 +56,34 @@ class RagAnswerRequest(BaseModel):
                 raise ValueError("reranking_candidate_k must be >= reranking_top_k")
         return self
 
+    @model_validator(mode="after")
+    def validate_memory_inputs(self) -> "RagAnswerRequest":
+        if self.session_id:
+            try:
+                UUID(self.session_id)
+            except ValueError as exc:
+                raise ValueError("session_id must be a valid UUID") from exc
+        for source_id in self.memory_source_ids or []:
+            try:
+                UUID(source_id)
+            except ValueError as exc:
+                raise ValueError("memory_source_ids must be valid UUIDs") from exc
+        return self
+
 
 class RagAnswerResponse(BaseModel):
     answer: str
     sources: list[dict[str, Any]]
+
+
+class CompressConversationRequest(BaseModel):
+    messages: list[RecentMessage] = Field(default_factory=list, max_length=100)
+    existing_summary: str | None = Field(default=None, max_length=10000)
+    max_chars: int = Field(default=2500, ge=500, le=10000)
+
+
+class CompressConversationResponse(BaseModel):
+    summary: str
 
 
 app = FastAPI(title="LearnCycle RAG API")
@@ -126,6 +158,11 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             reranking_enabled=reranking_enabled,
             reranking_candidate_k=reranking_candidate_k,
             reranking_top_k=reranking_top_k,
+            session_id=request.session_id,
+            memory_source_ids=request.memory_source_ids,
+            memory_mode=request.memory_mode,
+            chat_memory_retrieval_enabled=config.chat_memory_retrieval_enabled,
+            chat_memory_top_k=config.chat_memory_top_k,
         )
     except HTTPException:
         raise
@@ -134,4 +171,30 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
         raise HTTPException(
             status_code=500,
             detail="RAG answer generation failed.",
+        ) from None
+
+
+@app.post(
+    "/rag/compress",
+    response_model=CompressConversationResponse,
+    dependencies=[Depends(require_internal_auth)],
+)
+def rag_compress(request: CompressConversationRequest) -> dict[str, str]:
+    try:
+        config = WorkerConfig.from_env()
+        summary = compress_conversation(
+            [message.model_dump() for message in request.messages],
+            llm_client=OpenAILlmClient(
+                api_key=config.openai_api_key,
+                model="gpt-4o-mini",
+            ),
+            max_chars=request.max_chars,
+            existing_summary=request.existing_summary,
+        )
+        return {"summary": summary}
+    except Exception:
+        logger.exception("RAG conversation compression failed")
+        raise HTTPException(
+            status_code=500,
+            detail="RAG conversation compression failed.",
         ) from None

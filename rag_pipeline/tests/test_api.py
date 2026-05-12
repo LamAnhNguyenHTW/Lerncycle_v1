@@ -329,6 +329,32 @@ def test_rag_answer_passes_reranking_options_to_answer_with_rag(client, monkeypa
     assert calls[0]["reranking_top_k"] == 4
 
 
+def test_rag_answer_passes_memory_source_ids_to_answer_with_rag(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setenv("CHAT_MEMORY_RETRIEVAL_ENABLED", "true")
+    monkeypatch.setattr(api, "create_reranker", lambda **_: object())
+
+    def fake_answer_with_rag(**kwargs):
+        calls.append(kwargs)
+        return {"answer": "ok", "sources": []}
+
+    monkeypatch.setattr(api, "answer_with_rag", fake_answer_with_rag)
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(
+            session_id="11111111-1111-1111-1111-111111111111",
+            memory_source_ids=["22222222-2222-2222-2222-222222222222"],
+        ),
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["session_id"] == "11111111-1111-1111-1111-111111111111"
+    assert calls[0]["memory_source_ids"] == ["22222222-2222-2222-2222-222222222222"]
+
+
 def test_api_accepts_llm_reranking_provider_if_configured(client, monkeypatch) -> None:
     test_client, api = client
     calls = []
@@ -378,3 +404,60 @@ def test_api_rejects_llm_candidate_k_above_30(client, monkeypatch) -> None:
 
     assert response.status_code == 422
     assert "30" in response.text
+
+
+def test_rag_compress_requires_auth(client) -> None:
+    test_client, _ = client
+
+    response = test_client.post(
+        "/rag/compress",
+        json={"messages": [{"role": "user", "content": "Hallo"}]},
+    )
+
+    assert response.status_code == 401
+
+
+def test_rag_compress_valid_body_returns_summary(client, monkeypatch) -> None:
+    test_client, api = client
+    monkeypatch.setattr(api, "OpenAILlmClient", lambda **_: object())
+    monkeypatch.setattr(api, "compress_conversation", lambda *_, **__: "summary")
+
+    response = test_client.post(
+        "/rag/compress",
+        headers=_headers(),
+        json={"messages": [{"role": "user", "content": "Hallo"}]},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"summary": "summary"}
+
+
+def test_rag_compress_rejects_invalid_messages(client) -> None:
+    test_client, _ = client
+
+    response = test_client.post(
+        "/rag/compress",
+        headers=_headers(),
+        json={"messages": [{"role": "system", "content": "no"}]},
+    )
+
+    assert response.status_code == 422
+
+
+def test_rag_compress_handles_llm_error_safely(client, monkeypatch) -> None:
+    test_client, api = client
+    monkeypatch.setattr(api, "OpenAILlmClient", lambda **_: object())
+
+    def boom(*_, **__):
+        raise RuntimeError("secret stack detail")
+
+    monkeypatch.setattr(api, "compress_conversation", boom)
+
+    response = test_client.post(
+        "/rag/compress",
+        headers=_headers(),
+        json={"messages": [{"role": "user", "content": "Hallo"}]},
+    )
+
+    assert response.status_code == 500
+    assert "secret stack detail" not in response.text

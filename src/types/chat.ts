@@ -1,4 +1,4 @@
-export type ChatSourceType = 'pdf' | 'note' | 'annotation_comment';
+export type ChatSourceType = 'pdf' | 'note' | 'annotation_comment' | 'chat_memory';
 export type ChatRole = 'user' | 'assistant';
 
 export interface RecentChatMessage {
@@ -28,6 +28,8 @@ export interface ChatSource {
   snippet: string;
   metadata: {
     filename?: string;
+    session_id?: string;
+    memory_kind?: string;
   };
 }
 

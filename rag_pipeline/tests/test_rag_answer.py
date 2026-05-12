@@ -41,6 +41,23 @@ class SpyReranker:
         return self.output if self.output is not None else results[:top_k]
 
 
+class MemoryAwareRetrieval:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def __call__(self, **kwargs):
+        self.calls.append(kwargs)
+        if kwargs.get("source_types") == ["chat_memory"]:
+            return [_result_with(9, "Earlier we discussed Process Mining basics.") | {
+                "source_type": "chat_memory",
+                "source_id": kwargs["source_ids"][0],
+                "title": "Chat Memory",
+                "heading": "Learning history",
+                "metadata": {"session_id": kwargs["source_ids"][0], "memory_kind": "rolling_summary"},
+            }]
+        return [_result_with(1, "Material chunk")]
+
+
 def _result() -> dict:
     return {
         "chunk_id": "chunk-1",
@@ -550,3 +567,81 @@ def test_answer_with_rag_falls_back_when_llm_reranker_fails() -> None:
 
     prompt = answer_llm.calls[-1]["user_prompt"]
     assert prompt.index("Original first chunk") < prompt.index("Original second chunk")
+
+
+def test_chat_memory_not_included_by_default() -> None:
+    retrieval = MemoryAwareRetrieval()
+
+    answer_with_rag(
+        "Was hatten wir besprochen?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=retrieval,
+        session_id="session-1",
+    )
+
+    assert len(retrieval.calls) == 1
+
+
+def test_chat_memory_included_for_memory_intent_when_enabled() -> None:
+    retrieval = MemoryAwareRetrieval()
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "Was hatten wir besprochen?",
+        "user-1",
+        llm_client=llm,
+        retrieval_fn=retrieval,
+        session_id="session-1",
+        chat_memory_retrieval_enabled=True,
+    )
+
+    assert retrieval.calls[1]["source_types"] == ["chat_memory"]
+    assert retrieval.calls[1]["source_ids"] == ["session-1"]
+    assert "Earlier we discussed" in llm.calls[-1]["user_prompt"]
+
+
+def test_chat_memory_requires_session_id() -> None:
+    retrieval = MemoryAwareRetrieval()
+
+    answer_with_rag(
+        "Was hatten wir besprochen?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=retrieval,
+        chat_memory_retrieval_enabled=True,
+    )
+
+    assert len(retrieval.calls) == 1
+
+
+def test_memory_retrieval_filters_by_current_session_id() -> None:
+    retrieval = MemoryAwareRetrieval()
+
+    answer_with_rag(
+        "Was hatten wir besprochen?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=retrieval,
+        session_id="session-current",
+        chat_memory_retrieval_enabled=True,
+    )
+
+    assert retrieval.calls[1]["user_id"] == "user-1"
+    assert retrieval.calls[1]["source_ids"] == ["session-current"]
+
+
+def test_memory_retrieval_includes_related_memory_source_ids() -> None:
+    retrieval = MemoryAwareRetrieval()
+
+    answer_with_rag(
+        "Was hatten wir besprochen?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=retrieval,
+        session_id="session-current",
+        memory_source_ids=["session-old"],
+        chat_memory_retrieval_enabled=True,
+    )
+
+    assert retrieval.calls[1]["source_ids"] == ["session-current", "session-old"]

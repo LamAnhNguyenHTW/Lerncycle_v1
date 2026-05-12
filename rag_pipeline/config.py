@@ -34,6 +34,15 @@ class WorkerConfig:
     reranking_model: str = "jinaai/jina-reranker-v2-base-multilingual"
     reranking_candidate_k: int = 30
     reranking_top_k: int = 8
+    chat_memory_enabled: bool = False
+    chat_memory_summary_threshold: int = 8
+    chat_memory_summary_interval: int = 4
+    chat_memory_keep_recent: int = 4
+    chat_memory_max_summary_chars: int = 2500
+    chat_memory_retrieval_enabled: bool = False
+    chat_memory_default_included: bool = False
+    chat_memory_top_k: int = 2
+    chat_memory_source_type: str = "chat_memory"
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -79,6 +88,41 @@ class WorkerConfig:
             )
         if not 1 <= reranking_top_k <= 20:
             raise ValueError("RERANKING_TOP_K must be between 1 and 20")
+        chat_memory_summary_threshold = (
+            _optional_int(os.getenv("CHAT_MEMORY_SUMMARY_THRESHOLD")) or 8
+        )
+        chat_memory_summary_interval = (
+            _optional_int(os.getenv("CHAT_MEMORY_SUMMARY_INTERVAL")) or 4
+        )
+        chat_memory_keep_recent = (
+            _optional_int(os.getenv("CHAT_MEMORY_KEEP_RECENT")) or 4
+        )
+        chat_memory_max_summary_chars = (
+            _optional_int(os.getenv("CHAT_MEMORY_MAX_SUMMARY_CHARS")) or 2500
+        )
+        chat_memory_top_k = _optional_int(os.getenv("CHAT_MEMORY_TOP_K")) or 2
+        chat_memory_source_type = os.getenv(
+            "CHAT_MEMORY_SOURCE_TYPE",
+            "chat_memory",
+        )
+        if chat_memory_summary_threshold < 2:
+            raise ValueError("CHAT_MEMORY_SUMMARY_THRESHOLD must be >= 2")
+        if chat_memory_summary_interval < 1:
+            raise ValueError("CHAT_MEMORY_SUMMARY_INTERVAL must be >= 1")
+        if chat_memory_keep_recent < 1:
+            raise ValueError("CHAT_MEMORY_KEEP_RECENT must be >= 1")
+        if chat_memory_keep_recent >= chat_memory_summary_threshold:
+            raise ValueError(
+                "CHAT_MEMORY_KEEP_RECENT must be less than CHAT_MEMORY_SUMMARY_THRESHOLD"
+            )
+        if not 500 <= chat_memory_max_summary_chars <= 10000:
+            raise ValueError(
+                "CHAT_MEMORY_MAX_SUMMARY_CHARS must be between 500 and 10000"
+            )
+        if not 1 <= chat_memory_top_k <= 10:
+            raise ValueError("CHAT_MEMORY_TOP_K must be between 1 and 10")
+        if chat_memory_source_type != "chat_memory":
+            raise ValueError("CHAT_MEMORY_SOURCE_TYPE must be chat_memory")
 
         return cls(
             supabase_url=required["SUPABASE_URL"] or "",
@@ -123,6 +167,24 @@ class WorkerConfig:
             ),
             reranking_candidate_k=reranking_candidate_k,
             reranking_top_k=reranking_top_k,
+            chat_memory_enabled=_optional_bool(
+                os.getenv("CHAT_MEMORY_ENABLED"),
+                False,
+            ),
+            chat_memory_summary_threshold=chat_memory_summary_threshold,
+            chat_memory_summary_interval=chat_memory_summary_interval,
+            chat_memory_keep_recent=chat_memory_keep_recent,
+            chat_memory_max_summary_chars=chat_memory_max_summary_chars,
+            chat_memory_retrieval_enabled=_optional_bool(
+                os.getenv("CHAT_MEMORY_RETRIEVAL_ENABLED"),
+                False,
+            ),
+            chat_memory_default_included=_optional_bool(
+                os.getenv("CHAT_MEMORY_DEFAULT_INCLUDED"),
+                False,
+            ),
+            chat_memory_top_k=chat_memory_top_k,
+            chat_memory_source_type=chat_memory_source_type,
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",
