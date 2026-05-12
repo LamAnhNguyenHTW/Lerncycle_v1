@@ -10,6 +10,7 @@ SOURCE_LABELS = {
     "note": "Note",
     "annotation_comment": "Annotation",
     "chat_memory": "Chat Memory",
+    "knowledge_graph": "Knowledge Graph",
 }
 
 
@@ -40,6 +41,12 @@ def normalize_source(result: dict[str, Any]) -> dict[str, Any]:
         safe_metadata["memory_kind"] = metadata.get("memory_kind")
         safe_metadata = {key: value for key, value in safe_metadata.items() if value}
         page = None
+    elif source_type == "knowledge_graph":
+        title = "Knowledge Graph"
+        safe_metadata["backing_chunk_ids"] = metadata.get("backing_chunk_ids")
+        safe_metadata["node_names"] = metadata.get("node_names")
+        safe_metadata["relationship_count"] = metadata.get("relationship_count")
+        safe_metadata = {key: value for key, value in safe_metadata.items() if value}
 
     return {
         "chunk_id": result.get("chunk_id"),
@@ -120,6 +127,8 @@ def _format_context_block(index: int, result: dict[str, Any], source: dict[str, 
         lines.append(f"Title: {source.get('title')}")
     elif source_type == "chat_memory":
         lines.append("Role: Session-scoped learning history summary")
+    elif source_type == "knowledge_graph":
+        lines.append("Role: Concept relationship context backed by chunks")
 
     if source.get("page") is not None:
         lines.append(f"Page: {source.get('page')}")

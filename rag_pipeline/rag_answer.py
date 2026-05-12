@@ -6,6 +6,8 @@ import logging
 from typing import Any, Callable
 
 from rag_pipeline.context_builder import build_rag_context
+from rag_pipeline.graph_retrieval import detect_graph_intent
+from rag_pipeline.graph_retrieval import retrieve_graph_context
 from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.memory_intent import detect_memory_intent
 from rag_pipeline.retrieval import search_hybrid_chunks
@@ -37,6 +39,12 @@ CONVERSATION_SYSTEM_PROMPT = (
     "use short sentences, explain only the main idea first, add one concrete example "
     "if helpful, and do not enumerate unrelated topics from the context. Prefer German "
     "when the user asks in German. Give a helpful learning-oriented explanation."
+)
+GRAPH_SYSTEM_PROMPT_ADDITION = (
+    " Text chunks are the primary factual grounding. Knowledge graph context may "
+    "explain relationships and structure backed by source chunks. If graph context "
+    "conflicts with text chunks, prefer the text chunks. Do not treat graph edges as "
+    "facts unless they are backed by cited chunks."
 )
 
 FALLBACK_ANSWER = (
@@ -120,6 +128,10 @@ def answer_with_rag(
     chat_memory_retrieval_enabled: bool | None = None,
     chat_memory_top_k: int | None = None,
     memory_source_ids: list[str] | None = None,
+    graph_retrieval_enabled: bool | None = None,
+    graph_mode: str = "auto",
+    graph_top_k: int | None = None,
+    graph_store: Any = None,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
     active_retrieval = retrieval_fn or search_hybrid_chunks
@@ -133,6 +145,20 @@ def answer_with_rag(
         top_k=retrieval_top_k,
         pdf_ids=pdf_ids,
     )
+    graph_context = {"context_text": "", "sources": []}
+    if _should_retrieve_graph(query, graph_mode, graph_retrieval_enabled, graph_store):
+        try:
+            graph_context = retrieve_graph_context(
+                query=query,
+                user_id=user_id,
+                source_types=material_source_types,
+                source_ids=pdf_ids,
+                top_k=graph_top_k or 8,
+                graph_store=graph_store,
+            )
+        except Exception:
+            logger.warning("Graph retrieval failed; continuing without graph context.", exc_info=True)
+            graph_context = {"context_text": "", "sources": []}
     memory_results: list[dict[str, Any]] = []
     if _should_retrieve_memory(
         query,
@@ -155,7 +181,7 @@ def answer_with_rag(
             logger.warning("Chat memory retrieval failed; continuing without memory.", exc_info=True)
             memory_results = []
     results = results + memory_results
-    if not results:
+    if not results and not graph_context.get("context_text"):
         return {"answer": FALLBACK_ANSWER, "sources": []}
 
     context_results = results
@@ -173,26 +199,29 @@ def answer_with_rag(
             context_results = results[:reranking_top_k]
 
     context = build_rag_context(context_results, max_chunks=context_top_k)
-    if not context["context_text"]:
+    text_context = context["context_text"]
+    graph_text = str(graph_context.get("context_text") or "").strip()
+    combined_context = _combine_context(text_context, graph_text)
+    if not combined_context:
         return {"answer": FALLBACK_ANSWER, "sources": []}
 
     active_llm = llm_client or OpenAILlmClient()
     if recent_messages:
         user_prompt = (
             f"Recent conversation:\n{_format_conversation_block(recent_messages)}\n\n"
-            f"Retrieved context:\n{context['context_text']}\n\n"
+            f"Retrieved context:\n{combined_context}\n\n"
             f"Current question:\n{query}"
         )
-        system_prompt = CONVERSATION_SYSTEM_PROMPT
+        system_prompt = CONVERSATION_SYSTEM_PROMPT + (GRAPH_SYSTEM_PROMPT_ADDITION if graph_text else "")
     else:
         user_prompt = (
             "Answer the user's question using only this context.\n\n"
-            f"Context:\n{context['context_text']}\n\n"
+            f"Context:\n{combined_context}\n\n"
             f"Question:\n{query}"
         )
-        system_prompt = SYSTEM_PROMPT
+        system_prompt = SYSTEM_PROMPT + (GRAPH_SYSTEM_PROMPT_ADDITION if graph_text else "")
     answer = active_llm.complete(system_prompt=system_prompt, user_prompt=user_prompt)
-    return {"answer": answer, "sources": context["sources"]}
+    return {"answer": answer, "sources": context["sources"] + list(graph_context.get("sources") or [])}
 
 
 def _should_retrieve_memory(
@@ -220,3 +249,27 @@ def _memory_source_ids(
         if value and value not in ordered:
             ordered.append(value)
     return ordered
+
+
+def _should_retrieve_graph(
+    query: str,
+    graph_mode: str,
+    enabled: bool | None,
+    graph_store: Any,
+) -> bool:
+    if enabled is not True or graph_store is None:
+        return False
+    if graph_mode == "off":
+        return False
+    if graph_mode == "on":
+        return True
+    return detect_graph_intent(query)
+
+
+def _combine_context(text_context: str, graph_context: str) -> str:
+    parts = []
+    if text_context:
+        parts.append("Text Chunk Context:\n" + text_context)
+    if graph_context:
+        parts.append("Knowledge Graph Context:\n" + graph_context)
+    return "\n\n".join(parts)

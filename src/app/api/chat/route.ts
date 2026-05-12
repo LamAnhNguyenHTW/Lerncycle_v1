@@ -393,6 +393,7 @@ export async function POST(request: Request) {
         session_id: sessionId,
         memory_source_ids: memorySourceIds,
         memory_mode: 'auto',
+        graph_mode: parseBool(process.env.GRAPH_RETRIEVAL_ENABLED, false) ? 'auto' : 'off',
       }),
       signal: controller.signal,
     });

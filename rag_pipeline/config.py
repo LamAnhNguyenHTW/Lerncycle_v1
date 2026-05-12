@@ -43,6 +43,20 @@ class WorkerConfig:
     chat_memory_default_included: bool = False
     chat_memory_top_k: int = 2
     chat_memory_source_type: str = "chat_memory"
+    graph_enabled: bool = False
+    graph_extraction_enabled: bool = False
+    graph_retrieval_enabled: bool = False
+    graph_store_provider: str = "neo4j"
+    neo4j_uri: str | None = None
+    neo4j_user: str | None = None
+    neo4j_password: str | None = None
+    neo4j_database: str = "neo4j"
+    graph_max_nodes_per_chunk: int = 12
+    graph_max_edges_per_chunk: int = 20
+    graph_extraction_concurrency: int = 8
+    graph_retrieval_top_k: int = 8
+    graph_context_max_chars: int = 6000
+    graph_source_type: str = "knowledge_graph"
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -123,6 +137,62 @@ class WorkerConfig:
             raise ValueError("CHAT_MEMORY_TOP_K must be between 1 and 10")
         if chat_memory_source_type != "chat_memory":
             raise ValueError("CHAT_MEMORY_SOURCE_TYPE must be chat_memory")
+        graph_enabled = _optional_bool(os.getenv("GRAPH_ENABLED"), False)
+        graph_extraction_enabled = _optional_bool(
+            os.getenv("GRAPH_EXTRACTION_ENABLED"),
+            False,
+        )
+        graph_retrieval_enabled = _optional_bool(
+            os.getenv("GRAPH_RETRIEVAL_ENABLED"),
+            False,
+        )
+        graph_store_provider = os.getenv("GRAPH_STORE_PROVIDER", "neo4j")
+        neo4j_uri = os.getenv("NEO4J_URI")
+        neo4j_user = os.getenv("NEO4J_USER")
+        neo4j_password = os.getenv("NEO4J_PASSWORD")
+        graph_max_nodes_per_chunk = (
+            _optional_int(os.getenv("GRAPH_MAX_NODES_PER_CHUNK")) or 12
+        )
+        graph_max_edges_per_chunk = (
+            _optional_int(os.getenv("GRAPH_MAX_EDGES_PER_CHUNK")) or 20
+        )
+        graph_retrieval_top_k = (
+            _optional_int(os.getenv("GRAPH_RETRIEVAL_TOP_K")) or 8
+        )
+        graph_context_max_chars = (
+            _optional_int(os.getenv("GRAPH_CONTEXT_MAX_CHARS")) or 6000
+        )
+        graph_source_type = os.getenv("GRAPH_SOURCE_TYPE", "knowledge_graph")
+        graph_extraction_concurrency = (
+            _optional_int(os.getenv("GRAPH_EXTRACTION_CONCURRENCY")) or 8
+        )
+        if graph_store_provider != "neo4j":
+            raise ValueError("GRAPH_STORE_PROVIDER must be neo4j")
+        if not 1 <= graph_max_nodes_per_chunk <= 50:
+            raise ValueError("GRAPH_MAX_NODES_PER_CHUNK must be between 1 and 50")
+        if not 1 <= graph_max_edges_per_chunk <= 100:
+            raise ValueError("GRAPH_MAX_EDGES_PER_CHUNK must be between 1 and 100")
+        if not 1 <= graph_retrieval_top_k <= 30:
+            raise ValueError("GRAPH_RETRIEVAL_TOP_K must be between 1 and 30")
+        if not 1000 <= graph_context_max_chars <= 20000:
+            raise ValueError("GRAPH_CONTEXT_MAX_CHARS must be between 1000 and 20000")
+        if graph_source_type != "knowledge_graph":
+            raise ValueError("GRAPH_SOURCE_TYPE must be knowledge_graph")
+        if graph_enabled or graph_extraction_enabled or graph_retrieval_enabled:
+            missing_graph = [
+                name
+                for name, value in {
+                    "NEO4J_URI": neo4j_uri,
+                    "NEO4J_USER": neo4j_user,
+                    "NEO4J_PASSWORD": neo4j_password,
+                }.items()
+                if not value
+            ]
+            if missing_graph:
+                raise RuntimeError(
+                    "Missing Neo4j environment variables: "
+                    + ", ".join(missing_graph)
+                )
 
         return cls(
             supabase_url=required["SUPABASE_URL"] or "",
@@ -185,6 +255,20 @@ class WorkerConfig:
             ),
             chat_memory_top_k=chat_memory_top_k,
             chat_memory_source_type=chat_memory_source_type,
+            graph_enabled=graph_enabled,
+            graph_extraction_enabled=graph_extraction_enabled,
+            graph_retrieval_enabled=graph_retrieval_enabled,
+            graph_store_provider=graph_store_provider,
+            neo4j_uri=neo4j_uri,
+            neo4j_user=neo4j_user,
+            neo4j_password=neo4j_password,
+            neo4j_database=os.getenv("NEO4J_DATABASE", "neo4j"),
+            graph_max_nodes_per_chunk=graph_max_nodes_per_chunk,
+            graph_max_edges_per_chunk=graph_max_edges_per_chunk,
+            graph_extraction_concurrency=graph_extraction_concurrency,
+            graph_retrieval_top_k=graph_retrieval_top_k,
+            graph_context_max_chars=graph_context_max_chars,
+            graph_source_type=graph_source_type,
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",

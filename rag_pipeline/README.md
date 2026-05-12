@@ -57,6 +57,19 @@ Embedding and retrieval configuration:
 - `CHAT_MEMORY_DEFAULT_INCLUDED` (default: `false`)
 - `CHAT_MEMORY_TOP_K` (default: `2`)
 - `CHAT_MEMORY_SOURCE_TYPE` (must be `chat_memory`)
+- `GRAPH_ENABLED` (default: `false`)
+- `GRAPH_EXTRACTION_ENABLED` (default: `false`)
+- `GRAPH_RETRIEVAL_ENABLED` (default: `false`)
+- `GRAPH_STORE_PROVIDER` (must be `neo4j`)
+- `NEO4J_URI`
+- `NEO4J_USER`
+- `NEO4J_PASSWORD`
+- `NEO4J_DATABASE` (default: `neo4j`)
+- `GRAPH_MAX_NODES_PER_CHUNK` (default: `12`)
+- `GRAPH_MAX_EDGES_PER_CHUNK` (default: `20`)
+- `GRAPH_RETRIEVAL_TOP_K` (default: `8`)
+- `GRAPH_CONTEXT_MAX_CHARS` (default: `6000`)
+- `GRAPH_SOURCE_TYPE` (must be `knowledge_graph`)
 - `RAG_INTERNAL_API_KEY`
 
 Next.js server-only chat variables:
@@ -68,6 +81,7 @@ Next.js server-only chat variables:
 - `CHAT_MEMORY_SUMMARY_INTERVAL`
 - `CHAT_MEMORY_KEEP_RECENT`
 - `CHAT_MEMORY_MAX_SUMMARY_CHARS`
+- `GRAPH_RETRIEVAL_ENABLED`
 
 Durable indexing currently supports OpenAI embeddings. If the durable embedding
 provider has no API key, the job fails and retries instead of storing fake
@@ -181,6 +195,22 @@ Raw chat messages are never embedded. Browser requests cannot directly request
 rejects it on `/rag/answer`. Memory source cards expose only a short snippet, not
 the full summary.
 
+Neo4j GraphRAG is optional and disabled by default. When
+`GRAPH_EXTRACTION_ENABLED=true`, successful source indexing can enqueue a
+`knowledge_graph` job that reads existing `rag_chunks`, extracts compact nodes
+and relationships with an injected or OpenAI LLM client, validates strict JSON,
+and writes user-scoped `Concept` and `Chunk` nodes to Neo4j. Neo4j is only a
+rebuildable graph retrieval index; Supabase remains canonical and Qdrant remains
+the vector index.
+
+When `GRAPH_RETRIEVAL_ENABLED=true`, relationship and concept-map questions such
+as "Wie hängt Process Mining mit Event Logs zusammen?" add a separate
+Knowledge Graph Context section to the normal text-chunk prompt. Text chunks
+remain the primary factual grounding, and graph retrieval failures fall back to
+normal RAG. Browser requests cannot directly force graph retrieval; Next.js sets
+`graph_mode` server-side from environment config. Graph source cards expose only
+short snippets and backing chunk ids, never raw Cypher or full graph dumps.
+
 Existing dense-only collections are not recreated automatically during normal
 worker execution. Recreate/rebuild hybrid points only via the explicit
 maintenance command:
@@ -199,6 +229,6 @@ Evaluation helper:
 python -m rag_pipeline.evaluate_retrieval eval_queries.json --user-id <user-id>
 ```
 
-Out of scope for the current RAG path remains GraphRAG, web search, agentic
-RAG, raw chat message embeddings, cross-session global memory, and a UI memory
-management page.
+Out of scope for the current RAG path remains web search, agentic RAG, graph
+embeddings, Neo4j GDS algorithms, visual mindmap rendering, raw chat message
+embeddings, cross-session global memory, and a UI memory management page.

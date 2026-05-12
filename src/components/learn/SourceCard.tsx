@@ -5,6 +5,7 @@ const SOURCE_LABELS = {
   note: 'Note',
   annotation_comment: 'Annotation',
   chat_memory: 'Memory',
+  knowledge_graph: 'Graph',
 };
 
 function getSourceTitle(source: ChatSource) {
@@ -14,6 +15,8 @@ function getSourceTitle(source: ChatSource) {
       ? 'PDF'
       : source.source_type === 'chat_memory'
         ? 'Chat Memory'
+      : source.source_type === 'knowledge_graph'
+        ? 'Knowledge Graph'
       : source.source_type === 'annotation_comment'
         ? 'Annotation'
         : source.source_type === 'note'

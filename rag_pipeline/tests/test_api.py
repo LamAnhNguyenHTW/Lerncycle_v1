@@ -461,3 +461,69 @@ def test_rag_compress_handles_llm_error_safely(client, monkeypatch) -> None:
 
     assert response.status_code == 500
     assert "secret stack detail" not in response.text
+
+
+def test_rag_answer_accepts_graph_mode(client, monkeypatch) -> None:
+    test_client, api = client
+    monkeypatch.setattr(api, "answer_with_rag", lambda **_: {"answer": "ok", "sources": []})
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(graph_mode="auto"),
+    )
+
+    assert response.status_code == 200
+
+
+def test_rag_answer_rejects_invalid_graph_mode(client) -> None:
+    test_client, _ = client
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(graph_mode="force"),
+    )
+
+    assert response.status_code == 422
+
+
+def test_rag_answer_passes_graph_options_to_answer_with_rag(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    graph_store = object()
+    monkeypatch.setenv("GRAPH_RETRIEVAL_ENABLED", "true")
+    monkeypatch.setenv("NEO4J_URI", "bolt://localhost:7687")
+    monkeypatch.setenv("NEO4J_USER", "neo4j")
+    monkeypatch.setenv("NEO4J_PASSWORD", "password")
+    monkeypatch.setattr(api, "create_graph_store", lambda _config: graph_store)
+    monkeypatch.setattr(api, "answer_with_rag", lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []})
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(graph_mode="auto"),
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["graph_retrieval_enabled"] is True
+    assert calls[0]["graph_mode"] == "auto"
+    assert calls[0]["graph_top_k"] == 8
+    assert calls[0]["graph_store"] is graph_store
+
+
+def test_rag_answer_graph_disabled_by_config(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setenv("GRAPH_RETRIEVAL_ENABLED", "false")
+    monkeypatch.setattr(api, "answer_with_rag", lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []})
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(graph_mode="on"),
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["graph_retrieval_enabled"] is False
+    assert calls[0]["graph_mode"] == "off"

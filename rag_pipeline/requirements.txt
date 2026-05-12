@@ -2,6 +2,7 @@ docling
 fastapi
 google-genai
 openai
+neo4j
 pytest
 python-dotenv
 qdrant-client[fastembed]

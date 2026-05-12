@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from rag_pipeline.config import WorkerConfig
 from rag_pipeline.conversation_compressor import compress_conversation
+from rag_pipeline.graph_store_factory import create_graph_store
 from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.rag_answer import answer_with_rag
 from rag_pipeline.reranker import create_reranker
@@ -25,6 +26,7 @@ if not INTERNAL_API_KEY:
 
 SourceType = Literal["pdf", "note", "annotation_comment"]
 MemoryMode = Literal["off", "auto", "on"]
+GraphMode = Literal["off", "auto", "on"]
 
 
 class RecentMessage(BaseModel):
@@ -46,6 +48,7 @@ class RagAnswerRequest(BaseModel):
     memory_source_ids: list[str] | None = None
     memory_mode: MemoryMode = "auto"
     include_memory: bool | None = None
+    graph_mode: GraphMode = "auto"
 
     @model_validator(mode="after")
     def validate_reranking_bounds(self) -> "RagAnswerRequest":
@@ -147,6 +150,8 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             model=config.reranking_model,
             enabled=reranking_enabled,
         )
+        graph_store = create_graph_store(config)
+        graph_mode = request.graph_mode if config.graph_retrieval_enabled else "off"
         return answer_with_rag(
             query=request.query.strip(),
             user_id=request.user_id,
@@ -163,6 +168,10 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             memory_mode=request.memory_mode,
             chat_memory_retrieval_enabled=config.chat_memory_retrieval_enabled,
             chat_memory_top_k=config.chat_memory_top_k,
+            graph_retrieval_enabled=config.graph_retrieval_enabled,
+            graph_mode=graph_mode,
+            graph_top_k=config.graph_retrieval_top_k,
+            graph_store=graph_store,
         )
     except HTTPException:
         raise

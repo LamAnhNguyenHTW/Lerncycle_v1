@@ -58,6 +58,34 @@ class MemoryAwareRetrieval:
         return [_result_with(1, "Material chunk")]
 
 
+class FakeGraphStore:
+    def __init__(self, raises: bool = False) -> None:
+        self.raises = raises
+        self.calls = []
+
+    def search_concepts(self, **kwargs):
+        self.calls.append(("search", kwargs))
+        if self.raises:
+            raise RuntimeError("graph failed")
+        return [{"name": "Process Mining", "normalized_name": "process mining"}]
+
+    def get_neighborhood(self, **kwargs):
+        self.calls.append(("neighborhood", kwargs))
+        return {
+            "relationships": [
+                {
+                    "source": "Process Mining",
+                    "target": "Event Logs",
+                    "relation_type": "uses",
+                    "description": "uses event logs as input",
+                    "chunk_id": "chunk-graph-1",
+                    "source_type": "pdf",
+                    "source_id": "pdf-1",
+                }
+            ]
+        }
+
+
 def _result() -> dict:
     return {
         "chunk_id": "chunk-1",
@@ -645,3 +673,116 @@ def test_memory_retrieval_includes_related_memory_source_ids() -> None:
     )
 
     assert retrieval.calls[1]["source_ids"] == ["session-current", "session-old"]
+
+
+def test_answer_with_rag_skips_graph_when_disabled() -> None:
+    graph_store = FakeGraphStore()
+
+    answer_with_rag(
+        "Wie hängt Process Mining mit Event Logs zusammen?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        graph_store=graph_store,
+        graph_retrieval_enabled=False,
+    )
+
+    assert graph_store.calls == []
+
+
+def test_answer_with_rag_uses_graph_for_graph_intent() -> None:
+    graph_store = FakeGraphStore()
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "Wie hängt Process Mining mit Event Logs zusammen?",
+        "user-1",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+        graph_store=graph_store,
+        graph_retrieval_enabled=True,
+    )
+
+    assert graph_store.calls
+    assert "Knowledge Graph Context:" in llm.calls[-1]["user_prompt"]
+    assert "Process Mining --uses--> Event Logs" in llm.calls[-1]["user_prompt"]
+
+
+def test_answer_with_rag_does_not_use_graph_for_normal_question_by_default() -> None:
+    graph_store = FakeGraphStore()
+
+    answer_with_rag(
+        "Was ist Process Mining?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        graph_store=graph_store,
+        graph_retrieval_enabled=True,
+    )
+
+    assert graph_store.calls == []
+
+
+def test_answer_with_rag_combines_graph_and_text_context() -> None:
+    graph_store = FakeGraphStore()
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "Wie hängt Process Mining mit Event Logs zusammen?",
+        "user-1",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+        graph_store=graph_store,
+        graph_retrieval_enabled=True,
+    )
+
+    prompt = llm.calls[-1]["user_prompt"]
+    assert "Text Chunk Context:" in prompt
+    assert "Knowledge Graph Context:" in prompt
+
+
+def test_answer_with_rag_falls_back_when_graph_retrieval_fails() -> None:
+    llm = FakeLlmClient()
+
+    response = answer_with_rag(
+        "Wie hängt Process Mining mit Event Logs zusammen?",
+        "user-1",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+        graph_store=FakeGraphStore(raises=True),
+        graph_retrieval_enabled=True,
+    )
+
+    assert response["sources"][0]["source_type"] == "pdf"
+    assert "Knowledge Graph Context" not in llm.calls[-1]["user_prompt"]
+
+
+def test_answer_with_rag_preserves_source_scope_for_graph() -> None:
+    graph_store = FakeGraphStore()
+
+    answer_with_rag(
+        "Wie hängt Process Mining mit Event Logs zusammen?",
+        "user-1",
+        source_types=["pdf"],
+        pdf_ids=["pdf-1"],
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        graph_store=graph_store,
+        graph_retrieval_enabled=True,
+    )
+
+    assert graph_store.calls[0][1]["source_types"] == ["pdf"]
+    assert graph_store.calls[0][1]["source_ids"] == ["pdf-1"]
+
+
+def test_answer_with_rag_returns_knowledge_graph_source_when_used() -> None:
+    response = answer_with_rag(
+        "Wie hängt Process Mining mit Event Logs zusammen?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        graph_store=FakeGraphStore(),
+        graph_retrieval_enabled=True,
+    )
+
+    assert any(source["source_type"] == "knowledge_graph" for source in response["sources"])

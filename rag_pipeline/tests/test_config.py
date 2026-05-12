@@ -167,6 +167,9 @@ def test_chat_memory_config_defaults(monkeypatch) -> None:
         "CHAT_MEMORY_SOURCE_TYPE",
     ]:
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("GRAPH_ENABLED", "false")
+    monkeypatch.setenv("GRAPH_EXTRACTION_ENABLED", "false")
+    monkeypatch.setenv("GRAPH_RETRIEVAL_ENABLED", "false")
     monkeypatch.setenv("CHAT_MEMORY_ENABLED", "false")
     monkeypatch.setenv("CHAT_MEMORY_RETRIEVAL_ENABLED", "false")
     monkeypatch.setenv("CHAT_MEMORY_DEFAULT_INCLUDED", "false")
@@ -234,4 +237,121 @@ def test_chat_memory_invalid_top_k_rejected(monkeypatch) -> None:
     monkeypatch.setenv("CHAT_MEMORY_TOP_K", "11")
 
     with pytest.raises(ValueError, match="CHAT_MEMORY_TOP_K"):
+        WorkerConfig.from_env()
+
+
+def test_graph_config_defaults(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    for name in [
+        "GRAPH_ENABLED",
+        "GRAPH_EXTRACTION_ENABLED",
+        "GRAPH_RETRIEVAL_ENABLED",
+        "GRAPH_STORE_PROVIDER",
+        "NEO4J_URI",
+        "NEO4J_USER",
+        "NEO4J_PASSWORD",
+        "NEO4J_DATABASE",
+        "GRAPH_MAX_NODES_PER_CHUNK",
+        "GRAPH_MAX_EDGES_PER_CHUNK",
+        "GRAPH_RETRIEVAL_TOP_K",
+        "GRAPH_CONTEXT_MAX_CHARS",
+        "GRAPH_SOURCE_TYPE",
+    ]:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("GRAPH_ENABLED", "false")
+    monkeypatch.setenv("GRAPH_EXTRACTION_ENABLED", "false")
+    monkeypatch.setenv("GRAPH_RETRIEVAL_ENABLED", "false")
+
+    config = WorkerConfig.from_env()
+
+    assert config.graph_enabled is False
+    assert config.graph_extraction_enabled is False
+    assert config.graph_retrieval_enabled is False
+    assert config.graph_store_provider == "neo4j"
+    assert config.neo4j_database == "neo4j"
+    assert config.graph_max_nodes_per_chunk == 12
+    assert config.graph_max_edges_per_chunk == 20
+    assert config.graph_retrieval_top_k == 8
+    assert config.graph_context_max_chars == 6000
+    assert config.graph_source_type == "knowledge_graph"
+
+
+def test_graph_config_env_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("GRAPH_ENABLED", "true")
+    monkeypatch.setenv("GRAPH_EXTRACTION_ENABLED", "true")
+    monkeypatch.setenv("GRAPH_RETRIEVAL_ENABLED", "true")
+    monkeypatch.setenv("NEO4J_URI", "bolt://localhost:7687")
+    monkeypatch.setenv("NEO4J_USER", "neo4j")
+    monkeypatch.setenv("NEO4J_PASSWORD", "password")
+    monkeypatch.setenv("NEO4J_DATABASE", "graph")
+    monkeypatch.setenv("GRAPH_MAX_NODES_PER_CHUNK", "10")
+    monkeypatch.setenv("GRAPH_MAX_EDGES_PER_CHUNK", "15")
+    monkeypatch.setenv("GRAPH_RETRIEVAL_TOP_K", "6")
+    monkeypatch.setenv("GRAPH_CONTEXT_MAX_CHARS", "3000")
+
+    config = WorkerConfig.from_env()
+
+    assert config.graph_enabled is True
+    assert config.graph_extraction_enabled is True
+    assert config.graph_retrieval_enabled is True
+    assert config.neo4j_uri == "bolt://localhost:7687"
+    assert config.neo4j_user == "neo4j"
+    assert config.neo4j_password == "password"
+    assert config.neo4j_database == "graph"
+    assert config.graph_max_nodes_per_chunk == 10
+    assert config.graph_max_edges_per_chunk == 15
+    assert config.graph_retrieval_top_k == 6
+    assert config.graph_context_max_chars == 3000
+
+
+def test_graph_enabled_true_parses_true(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("GRAPH_ENABLED", "true")
+    monkeypatch.setenv("NEO4J_URI", "bolt://localhost:7687")
+    monkeypatch.setenv("NEO4J_USER", "neo4j")
+    monkeypatch.setenv("NEO4J_PASSWORD", "password")
+
+    assert WorkerConfig.from_env().graph_enabled is True
+
+
+def test_graph_requires_neo4j_credentials_when_enabled(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("GRAPH_RETRIEVAL_ENABLED", "true")
+    monkeypatch.setenv("NEO4J_URI", "")
+    monkeypatch.setenv("NEO4J_USER", "")
+    monkeypatch.setenv("NEO4J_PASSWORD", "")
+
+    with pytest.raises(RuntimeError, match="NEO4J_URI"):
+        WorkerConfig.from_env()
+
+
+def test_graph_provider_rejects_non_neo4j(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("GRAPH_STORE_PROVIDER", "other")
+
+    with pytest.raises(ValueError, match="GRAPH_STORE_PROVIDER"):
+        WorkerConfig.from_env()
+
+
+def test_graph_invalid_top_k_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("GRAPH_RETRIEVAL_TOP_K", "31")
+
+    with pytest.raises(ValueError, match="GRAPH_RETRIEVAL_TOP_K"):
+        WorkerConfig.from_env()
+
+
+def test_graph_invalid_context_max_chars_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("GRAPH_CONTEXT_MAX_CHARS", "999")
+
+    with pytest.raises(ValueError, match="GRAPH_CONTEXT_MAX_CHARS"):
         WorkerConfig.from_env()

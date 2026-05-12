@@ -25,6 +25,7 @@ class RecordingWorker(RagWorker):
         self.completed_jobs: list[str] = []
         self.documents: list[tuple[str, str, dict[str, Any] | None]] = []
         self.replaced_chunks: dict[tuple[str, str, str], list[Any]] = {}
+        self.failed_jobs: list[tuple[str, str]] = []
 
     def _fetch_note_row(self, note_id: str, user_id: str) -> dict[str, Any]:
         return {
@@ -76,6 +77,59 @@ class RecordingWorker(RagWorker):
 
     def _mark_job_completed(self, job_id: str) -> None:
         self.completed_jobs.append(job_id)
+
+    def _mark_job_failed(self, job_id: str, error_message: str) -> None:
+        self.failed_jobs.append((job_id, error_message))
+
+
+class FakeGraphExtractor:
+    def __init__(self, fail_all: bool = False, fail_first: bool = False) -> None:
+        self.fail_all = fail_all
+        self.fail_first = fail_first
+        self.calls = []
+
+    def extract_from_chunk(self, chunk):
+        self.calls.append(chunk)
+        if self.fail_all or (self.fail_first and len(self.calls) == 1):
+            raise RuntimeError("extract failed")
+        return SimpleNamespace(nodes=[object()], edges=[object()])
+
+
+class FakeGraphStore:
+    def __init__(self) -> None:
+        self.deleted = []
+        self.upserts = []
+
+    def delete_by_source(self, user_id, source_type, source_id):
+        self.deleted.append((user_id, source_type, source_id))
+
+    def upsert_extraction(self, user_id, chunk, extraction):
+        self.upserts.append((user_id, chunk, extraction))
+        return {"nodes_upserted": len(extraction.nodes), "relationships_upserted": len(extraction.edges)}
+
+
+class GraphWorker(RecordingWorker):
+    def __init__(self, enabled: bool = True, extractor=None, store=None) -> None:
+        super().__init__()
+        self._config.graph_extraction_enabled = enabled
+        self._graph_extractor = extractor or FakeGraphExtractor()
+        self._graph_store = store or FakeGraphStore()
+        self.graph_completed: list[tuple[str, dict[str, Any] | None]] = []
+        self.graph_failed: list[tuple[str, str]] = []
+        self.chunks = [
+            {"id": "chunk-1", "chunk_id": "chunk-1", "source_type": "pdf", "source_id": "pdf-1", "text": "A"},
+            {"id": "chunk-2", "chunk_id": "chunk-2", "source_type": "pdf", "source_id": "pdf-1", "text": "B"},
+        ]
+
+    def _load_chunks_for_graph(self, user_id: str, source_type: str, source_id: str):
+        self.loaded = (user_id, source_type, source_id)
+        return self.chunks
+
+    def _mark_job_completed(self, job_id: str, metadata: dict[str, Any] | None = None) -> None:
+        self.graph_completed.append((job_id, metadata))
+
+    def _mark_job_failed(self, job_id: str, error_message: str) -> None:
+        self.graph_failed.append((job_id, error_message))
 
 
 class DeletedSourceWorker(RecordingWorker):
@@ -518,3 +572,97 @@ def test_worker_does_not_mark_job_completed_when_sparse_fails() -> None:
         )
 
     assert worker.completed_jobs == []
+
+
+def test_worker_dispatches_knowledge_graph_job() -> None:
+    worker = GraphWorker()
+
+    worker._process_job(
+        {
+            "id": "job-1",
+            "user_id": "user-1",
+            "source_type": "knowledge_graph",
+            "source_id": "pdf-1",
+            "metadata": {"original_source_type": "pdf", "original_source_id": "pdf-1"},
+        }
+    )
+
+    assert worker.loaded == ("user-1", "pdf", "pdf-1")
+    assert worker._graph_store.upserts
+    assert worker.graph_completed[0][0] == "job-1"
+
+
+def test_worker_deletes_old_graph_by_source_before_reextract() -> None:
+    store = FakeGraphStore()
+    worker = GraphWorker(store=store)
+
+    worker._process_knowledge_graph_job(
+        {
+            "id": "job-1",
+            "user_id": "user-1",
+            "source_id": "pdf-1",
+            "metadata": {"original_source_type": "pdf", "original_source_id": "pdf-1"},
+        }
+    )
+
+    assert store.deleted[0] == ("user-1", "pdf", "pdf-1")
+
+
+def test_worker_continues_on_single_chunk_extraction_failure() -> None:
+    extractor = FakeGraphExtractor(fail_first=True)
+    store = FakeGraphStore()
+    worker = GraphWorker(extractor=extractor, store=store)
+
+    worker._process_knowledge_graph_job(
+        {
+            "id": "job-1",
+            "user_id": "user-1",
+            "source_id": "pdf-1",
+            "metadata": {"original_source_type": "pdf", "original_source_id": "pdf-1"},
+        }
+    )
+
+    assert len(store.upserts) == 1
+    assert worker.graph_completed[0][1]["chunks_failed"] == 1
+
+
+def test_worker_marks_graph_job_failed_when_all_chunks_fail() -> None:
+    worker = GraphWorker(extractor=FakeGraphExtractor(fail_all=True))
+
+    worker._process_knowledge_graph_job(
+        {
+            "id": "job-1",
+            "user_id": "user-1",
+            "source_id": "pdf-1",
+            "metadata": {"original_source_type": "pdf", "original_source_id": "pdf-1"},
+        }
+    )
+
+    assert worker.graph_failed
+    assert worker.graph_completed == []
+
+
+def test_worker_skips_graph_job_when_extraction_disabled() -> None:
+    worker = GraphWorker(enabled=False)
+
+    worker._process_knowledge_graph_job({"id": "job-1", "user_id": "user-1", "source_id": "pdf-1"})
+
+    assert worker.graph_completed[0][1] == {"skipped": "graph_extraction_disabled"}
+
+
+def test_worker_marks_graph_job_completed_when_no_chunks() -> None:
+    store = FakeGraphStore()
+    worker = GraphWorker(store=store)
+    worker.chunks = []
+
+    worker._process_knowledge_graph_job(
+        {
+            "id": "job-1",
+            "user_id": "user-1",
+            "source_id": "pdf-1",
+            "metadata": {"original_source_type": "pdf", "original_source_id": "pdf-1"},
+        }
+    )
+
+    assert store.deleted == [("user-1", "pdf", "pdf-1")]
+    assert worker.graph_completed[0][1]["skipped"] == "no_chunks"

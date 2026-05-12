@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 import logging
 from pathlib import Path
@@ -11,6 +12,9 @@ from typing import Any
 from rag_pipeline.config import WorkerConfig
 from rag_pipeline.docling_ingestion import process_pdf
 from rag_pipeline.embeddings import Embedder
+from rag_pipeline.graph_extractor import GraphExtractionError
+from rag_pipeline.graph_extractor import GraphExtractor
+from rag_pipeline.graph_store_factory import create_graph_store
 from rag_pipeline.models import RagChunk, SourceRef
 from rag_pipeline.qdrant_store import QdrantStore
 from rag_pipeline.refinement import SemanticRefiner
@@ -34,6 +38,8 @@ class RagWorker:
         embedder: Embedder | None = None,
         qdrant_store: QdrantStore | None = None,
         sparse_embedder: SparseEmbedder | None = None,
+        graph_extractor: GraphExtractor | None = None,
+        graph_store: Any = None,
     ) -> None:
         """Create a worker.
 
@@ -59,22 +65,45 @@ class RagWorker:
             gemini_api_key=config.gemini_api_key,
             gemini_output_dimensionality=config.gemini_output_dimensionality,
         )
-        self._embedder = embedder or Embedder(
-            provider=config.embedding_provider,
-            model=config.embedding_model,
-            openai_api_key=config.openai_api_key,
-            gemini_api_key=config.gemini_api_key,
-            batch_size=config.embedding_batch_size,
-        )
-        self._qdrant_store = qdrant_store or QdrantStore(
-            url=config.qdrant_url,
-            api_key=config.qdrant_api_key,
-            collection_name=config.qdrant_collection,
-        )
-        self._sparse_embedder = sparse_embedder or SparseEmbedder(
-            provider=config.sparse_provider,
-            model=config.sparse_model,
-        )
+        self._embedder = embedder
+        self._qdrant_store = qdrant_store
+        self._sparse_embedder = sparse_embedder
+        self._graph_extractor = graph_extractor
+        self._graph_store = graph_store
+        if config.graph_extraction_enabled:
+            self._graph_extractor = self._graph_extractor or GraphExtractor(
+                max_nodes=config.graph_max_nodes_per_chunk,
+                max_edges=config.graph_max_edges_per_chunk,
+            )
+            self._graph_store = self._graph_store or create_graph_store(config)
+
+    def _get_embedder(self) -> Embedder:
+        if self._embedder is None:
+            self._embedder = Embedder(
+                provider=self._config.embedding_provider,
+                model=self._config.embedding_model,
+                openai_api_key=self._config.openai_api_key,
+                gemini_api_key=self._config.gemini_api_key,
+                batch_size=self._config.embedding_batch_size,
+            )
+        return self._embedder
+
+    def _get_qdrant_store(self) -> QdrantStore:
+        if self._qdrant_store is None:
+            self._qdrant_store = QdrantStore(
+                url=self._config.qdrant_url,
+                api_key=self._config.qdrant_api_key,
+                collection_name=self._config.qdrant_collection,
+            )
+        return self._qdrant_store
+
+    def _get_sparse_embedder(self) -> SparseEmbedder:
+        if self._sparse_embedder is None:
+            self._sparse_embedder = SparseEmbedder(
+                provider=self._config.sparse_provider,
+                model=self._config.sparse_model,
+            )
+        return self._sparse_embedder
 
     def run_once(self) -> bool:
         """Claim and process at most one job.
@@ -111,6 +140,9 @@ class RagWorker:
             return
         if source_type == "chat_memory":
             self._process_chat_memory_job(job)
+            return
+        if source_type == "knowledge_graph":
+            self._process_knowledge_graph_job(job)
             return
         raise RuntimeError(f"Unsupported RAG job source_type: {source_type}")
 
@@ -151,6 +183,7 @@ class RagWorker:
             },
         )
         self._mark_job_completed(str(job["id"]))
+        self._maybe_enqueue_graph_job(source)
 
     def _process_note_job(self, job: dict[str, Any]) -> None:
         note_id = str(job.get("note_id") or job["source_id"])
@@ -198,6 +231,7 @@ class RagWorker:
             metadata={"chunk_count": len(chunks)},
         )
         self._mark_job_completed(str(job["id"]))
+        self._maybe_enqueue_graph_job(source)
 
     def _process_annotation_job(self, job: dict[str, Any]) -> None:
         annotation_id = str(job.get("annotation_id") or job["source_id"])
@@ -254,6 +288,7 @@ class RagWorker:
             metadata={"chunk_count": len(chunks)},
         )
         self._mark_job_completed(str(job["id"]))
+        self._maybe_enqueue_graph_job(source)
 
     def _process_chat_memory_job(self, job: dict[str, Any]) -> None:
         user_id = str(job["user_id"])
@@ -319,6 +354,7 @@ class RagWorker:
                 metadata={"chunk_count": 1},
             )
             self._mark_job_completed(str(job["id"]))
+            self._maybe_enqueue_graph_job(source)
         except Exception as exc:
             self._update_chat_memory_summary(
                 user_id,
@@ -330,6 +366,78 @@ class RagWorker:
                 },
             )
             raise
+
+    def _process_knowledge_graph_job(self, job: dict[str, Any]) -> None:
+        if not self._config.graph_extraction_enabled:
+            self._mark_job_completed(
+                str(job["id"]),
+                metadata={"skipped": "graph_extraction_disabled"},
+            )
+            return
+        if self._graph_extractor is None or self._graph_store is None:
+            raise RuntimeError("Graph extractor/store is not configured.")
+
+        metadata = job.get("metadata") or {}
+        original_source_type = str(metadata.get("original_source_type") or "pdf")
+        original_source_id = str(metadata.get("original_source_id") or job["source_id"])
+        user_id = str(job["user_id"])
+        chunks = self._load_chunks_for_graph(user_id, original_source_type, original_source_id)
+        if not chunks:
+            self._graph_store.delete_by_source(user_id, original_source_type, original_source_id)
+            self._mark_job_completed(
+                str(job["id"]),
+                metadata={
+                    **metadata,
+                    "skipped": "no_chunks",
+                    "chunks_processed": 0,
+                    "chunks_failed": 0,
+                },
+            )
+            return
+
+        self._graph_store.delete_by_source(user_id, original_source_type, original_source_id)
+        chunks_processed = 0
+        failures = []
+        nodes_upserted = 0
+        relationships_upserted = 0
+        concurrency = getattr(self._config, "graph_extraction_concurrency", 8)
+
+        def _process_chunk(chunk: dict) -> tuple[dict | None, dict | None]:
+            try:
+                extraction = self._graph_extractor.extract_from_chunk(chunk)
+                stats = self._graph_store.upsert_extraction(user_id, chunk, extraction)
+                return stats, None
+            except Exception as exc:
+                return None, {"chunk_id": chunk.get("chunk_id") or chunk.get("id"), "error": str(exc)[:500]}
+
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            futures = {pool.submit(_process_chunk, chunk): chunk for chunk in chunks}
+            for future in as_completed(futures):
+                stats, error = future.result()
+                if error:
+                    failures.append(error)
+                else:
+                    chunks_processed += 1
+                    nodes_upserted += int(stats.get("nodes_upserted", 0))
+                    relationships_upserted += int(stats.get("relationships_upserted", 0))
+
+        if chunks_processed == 0 and failures:
+            self._mark_job_failed(
+                str(job["id"]),
+                f"Graph extraction failed for all chunks: {failures[:5]}",
+            )
+            return
+        self._mark_job_completed(
+            str(job["id"]),
+            metadata={
+                **metadata,
+                "chunks_processed": chunks_processed,
+                "chunks_failed": len(failures),
+                "nodes_upserted": nodes_upserted,
+                "relationships_upserted": relationships_upserted,
+                "failures": failures[:20],
+            },
+        )
 
     def _fetch_pdf_row(self, pdf_id: str) -> dict[str, Any]:
         response = (
@@ -424,6 +532,73 @@ class RagWorker:
             "user_id",
             user_id,
         ).eq("session_id", session_id).execute()
+
+    def _load_chunks_for_graph(
+        self,
+        user_id: str,
+        source_type: str,
+        source_id: str,
+    ) -> list[dict[str, Any]]:
+        response = (
+            self._supabase.table("rag_chunks")
+            .select(
+                "id, source_type, source_id, pdf_id, page_index, heading_path, content, metadata"
+            )
+            .eq("user_id", user_id)
+            .eq("source_type", source_type)
+            .eq("source_id", source_id)
+            .eq("embedding_status", "completed")
+            .execute()
+        )
+        chunks = []
+        for row in response.data or []:
+            heading_path = row.get("heading_path") or []
+            chunks.append(
+                {
+                    "id": str(row["id"]),
+                    "chunk_id": str(row["id"]),
+                    "source_type": row.get("source_type"),
+                    "source_id": row.get("source_id"),
+                    "pdf_id": row.get("pdf_id"),
+                    "page_index": row.get("page_index"),
+                    "heading": " > ".join(heading_path) if heading_path else None,
+                    "text": row.get("content") or "",
+                }
+            )
+        return chunks
+
+    def _maybe_enqueue_graph_job(self, source: SourceRef) -> None:
+        if not getattr(self._config, "graph_extraction_enabled", False):
+            return
+        try:
+            existing = (
+                self._supabase.table("rag_index_jobs")
+                .select("id")
+                .eq("user_id", source.user_id)
+                .eq("source_type", "knowledge_graph")
+                .eq("source_id", source.source_id)
+                .in_("status", ["pending", "processing"])
+                .maybe_single()
+                .execute()
+            )
+            if existing.data:
+                return
+            self._supabase.table("rag_index_jobs").insert(
+                {
+                    "user_id": source.user_id,
+                    "source_type": "knowledge_graph",
+                    "source_id": source.source_id,
+                    "pdf_id": source.pdf_id,
+                    "status": "pending",
+                    "metadata": {
+                        "original_source_type": source.source_type,
+                        "original_source_id": source.source_id,
+                        "pdf_ids": [source.pdf_id] if source.pdf_id else [],
+                    },
+                }
+            ).execute()
+        except Exception:
+            LOGGER.warning("Failed to enqueue knowledge_graph job.", exc_info=True)
 
     def _upsert_document(
         self,
@@ -536,8 +711,9 @@ class RagWorker:
         indexed_rows = _match_chunk_rows(chunks, returned_rows)
 
         try:
-            embeddings = self._embedder.embed([chunk.content for chunk in chunks])
-            dim = self._embedder.dimension
+            embedder = self._get_embedder()
+            embeddings = embedder.embed([chunk.content for chunk in chunks])
+            dim = embedder.dimension
             if dim is None and embeddings:
                 dim = len(embeddings[0])
             if dim is None:
@@ -547,7 +723,7 @@ class RagWorker:
             )
             sparse_embeddings: list[SparseVectorData | None] = [None] * len(chunks)
             if sparse_enabled:
-                sparse_embeddings = self._sparse_embedder.embed(
+                sparse_embeddings = self._get_sparse_embedder().embed(
                     [chunk.content for chunk in chunks]
                 )
                 if len(sparse_embeddings) != len(chunks):
@@ -555,7 +731,8 @@ class RagWorker:
                         "Sparse embedding provider returned "
                         f"{len(sparse_embeddings)} vectors for {len(chunks)} inputs."
                     )
-            self._qdrant_store.ensure_collection(dim, sparse_enabled=sparse_enabled)
+            qdrant_store = self._get_qdrant_store()
+            qdrant_store.ensure_collection(dim, sparse_enabled=sparse_enabled)
             qdrant_chunks = [
                 _qdrant_chunk_payload(
                     row,
@@ -566,7 +743,7 @@ class RagWorker:
                 )
                 for index, (chunk, row) in enumerate(zip(chunks, indexed_rows))
             ]
-            self._qdrant_store.upsert_chunks(
+            qdrant_store.upsert_chunks(
                 qdrant_chunks,
                 sparse_enabled=sparse_enabled,
             )
@@ -588,7 +765,7 @@ class RagWorker:
         source: SourceRef,
         chunks: list[RagChunk],
     ) -> None:
-        self._qdrant_store.delete_points_by_source(
+        self._get_qdrant_store().delete_points_by_source(
             source.user_id,
             source.source_type,
             source.source_id,
@@ -607,7 +784,7 @@ class RagWorker:
         self._upsert_chunks(rag_document_id, chunks)
 
     def _delete_source_chunks(self, source: SourceRef) -> None:
-        self._qdrant_store.delete_points_by_source(
+        self._get_qdrant_store().delete_points_by_source(
             source.user_id,
             source.source_type,
             source.source_id,
@@ -679,16 +856,21 @@ class RagWorker:
             ).execute()
 
 
-    def _mark_job_completed(self, job_id: str) -> None:
-        self._supabase.table("rag_index_jobs").update(
-            {
+    def _mark_job_completed(
+        self,
+        job_id: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        update = {
                 "status": "completed",
                 "locked_at": None,
                 "completed_at": _utc_now(),
                 "updated_at": _utc_now(),
                 "error_message": None,
-            }
-        ).eq("id", job_id).execute()
+        }
+        if metadata is not None:
+            update["metadata"] = metadata
+        self._supabase.table("rag_index_jobs").update(update).eq("id", job_id).execute()
 
     def _mark_job_failed(self, job_id: str, error_message: str) -> None:
         self._supabase.table("rag_index_jobs").update(
