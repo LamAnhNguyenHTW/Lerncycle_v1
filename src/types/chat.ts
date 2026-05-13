@@ -65,6 +65,20 @@ export interface ChatResponse {
     confidence?: number;
     reasoning_summary?: string;
   } | null;
+  retrieval_plan?: {
+    planner_used?: boolean;
+    fallback_used?: boolean;
+    graph_available?: boolean;
+    error_type?: string;
+    steps?: Array<{
+      tool: string;
+      status: string;
+      top_k?: number;
+      reason?: string | null;
+      result_count?: number;
+      error_type?: string | null;
+    }>;
+  } | null;
 }
 
 export interface StoredChatMessage {

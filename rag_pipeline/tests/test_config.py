@@ -522,3 +522,52 @@ def test_intent_classifier_invalid_bounds_rejected(monkeypatch) -> None:
     monkeypatch.setenv("INTENT_CLASSIFIER_MAX_MESSAGE_CHARS", "199")
     with pytest.raises(ValueError, match="INTENT_CLASSIFIER_MAX_MESSAGE_CHARS"):
         WorkerConfig.from_env()
+
+
+def test_retrieval_planner_config_defaults(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("RETRIEVAL_PLANNER_ENABLED", "false")
+
+    config = WorkerConfig.from_env()
+
+    assert config.retrieval_planner_enabled is False
+    assert config.retrieval_planner_default_top_k == 6
+    assert config.retrieval_planner_memory_top_k == 3
+    assert config.retrieval_planner_include_disabled_steps is True
+
+
+def test_retrieval_planner_config_env_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("RETRIEVAL_PLANNER_ENABLED", "true")
+    monkeypatch.setenv("RETRIEVAL_PLANNER_DEFAULT_TOP_K", "7")
+    monkeypatch.setenv("RETRIEVAL_PLANNER_MEMORY_TOP_K", "4")
+    monkeypatch.setenv("RETRIEVAL_PLANNER_MAX_STEPS", "3")
+    monkeypatch.setenv("RETRIEVAL_PLANNER_INCLUDE_DISABLED_STEPS", "false")
+
+    config = WorkerConfig.from_env()
+
+    assert config.retrieval_planner_enabled is True
+    assert config.retrieval_planner_default_top_k == 7
+    assert config.retrieval_planner_memory_top_k == 4
+    assert config.retrieval_planner_max_steps == 3
+    assert config.retrieval_planner_include_disabled_steps is False
+
+
+def test_retrieval_planner_invalid_top_k_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("RETRIEVAL_PLANNER_WEB_TOP_K", "0")
+
+    with pytest.raises(ValueError, match="RETRIEVAL_PLANNER_WEB_TOP_K"):
+        WorkerConfig.from_env()
+
+
+def test_retrieval_planner_invalid_max_steps_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("RETRIEVAL_PLANNER_MAX_STEPS", "11")
+
+    with pytest.raises(ValueError, match="RETRIEVAL_PLANNER_MAX_STEPS"):
+        WorkerConfig.from_env()

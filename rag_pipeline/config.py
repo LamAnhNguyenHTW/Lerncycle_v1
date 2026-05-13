@@ -74,6 +74,15 @@ class WorkerConfig:
     intent_classifier_max_recent_messages: int = 4
     intent_classifier_max_message_chars: int = 1000
     intent_classifier_fallback_enabled: bool = True
+    retrieval_planner_enabled: bool = False
+    retrieval_planner_default_top_k: int = 6
+    retrieval_planner_pdf_top_k: int = 6
+    retrieval_planner_notes_top_k: int = 4
+    retrieval_planner_annotations_top_k: int = 4
+    retrieval_planner_memory_top_k: int = 3
+    retrieval_planner_web_top_k: int = 5
+    retrieval_planner_max_steps: int = 5
+    retrieval_planner_include_disabled_steps: bool = True
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -263,6 +272,25 @@ class WorkerConfig:
             raise ValueError("INTENT_CLASSIFIER_MAX_RECENT_MESSAGES must be between 0 and 10")
         if not 200 <= intent_classifier_max_message_chars <= 4000:
             raise ValueError("INTENT_CLASSIFIER_MAX_MESSAGE_CHARS must be between 200 and 4000")
+        retrieval_planner_default_top_k = _int_or_default("RETRIEVAL_PLANNER_DEFAULT_TOP_K", 6)
+        retrieval_planner_pdf_top_k = _int_or_default("RETRIEVAL_PLANNER_PDF_TOP_K", 6)
+        retrieval_planner_notes_top_k = _int_or_default("RETRIEVAL_PLANNER_NOTES_TOP_K", 4)
+        retrieval_planner_annotations_top_k = _int_or_default("RETRIEVAL_PLANNER_ANNOTATIONS_TOP_K", 4)
+        retrieval_planner_memory_top_k = _int_or_default("RETRIEVAL_PLANNER_MEMORY_TOP_K", 3)
+        retrieval_planner_web_top_k = _int_or_default("RETRIEVAL_PLANNER_WEB_TOP_K", 5)
+        retrieval_planner_max_steps = _int_or_default("RETRIEVAL_PLANNER_MAX_STEPS", 5)
+        for name, value in {
+            "RETRIEVAL_PLANNER_DEFAULT_TOP_K": retrieval_planner_default_top_k,
+            "RETRIEVAL_PLANNER_PDF_TOP_K": retrieval_planner_pdf_top_k,
+            "RETRIEVAL_PLANNER_NOTES_TOP_K": retrieval_planner_notes_top_k,
+            "RETRIEVAL_PLANNER_ANNOTATIONS_TOP_K": retrieval_planner_annotations_top_k,
+            "RETRIEVAL_PLANNER_MEMORY_TOP_K": retrieval_planner_memory_top_k,
+            "RETRIEVAL_PLANNER_WEB_TOP_K": retrieval_planner_web_top_k,
+        }.items():
+            if not 1 <= value <= 20:
+                raise ValueError(f"{name} must be between 1 and 20")
+        if not 1 <= retrieval_planner_max_steps <= 10:
+            raise ValueError("RETRIEVAL_PLANNER_MAX_STEPS must be between 1 and 10")
 
         return cls(
             supabase_url=required["SUPABASE_URL"] or "",
@@ -362,6 +390,21 @@ class WorkerConfig:
                 os.getenv("INTENT_CLASSIFIER_FALLBACK_ENABLED"),
                 True,
             ),
+            retrieval_planner_enabled=_optional_bool(
+                os.getenv("RETRIEVAL_PLANNER_ENABLED"),
+                False,
+            ),
+            retrieval_planner_default_top_k=retrieval_planner_default_top_k,
+            retrieval_planner_pdf_top_k=retrieval_planner_pdf_top_k,
+            retrieval_planner_notes_top_k=retrieval_planner_notes_top_k,
+            retrieval_planner_annotations_top_k=retrieval_planner_annotations_top_k,
+            retrieval_planner_memory_top_k=retrieval_planner_memory_top_k,
+            retrieval_planner_web_top_k=retrieval_planner_web_top_k,
+            retrieval_planner_max_steps=retrieval_planner_max_steps,
+            retrieval_planner_include_disabled_steps=_optional_bool(
+                os.getenv("RETRIEVAL_PLANNER_INCLUDE_DISABLED_STEPS"),
+                True,
+            ),
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",
@@ -386,6 +429,11 @@ def _optional_int(value: str | None) -> int | None:
     if not value:
         return None
     return int(value)
+
+
+def _int_or_default(name: str, default: int) -> int:
+    parsed = _optional_int(os.getenv(name))
+    return default if parsed is None else parsed
 
 
 def _optional_bool(value: str | None, default: bool) -> bool:

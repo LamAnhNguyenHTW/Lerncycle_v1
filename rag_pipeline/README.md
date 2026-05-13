@@ -277,6 +277,46 @@ Example classifier output:
 }
 ```
 
+Retrieval planning is optional and disabled by default. When
+`RETRIEVAL_PLANNER_ENABLED=true` and a validated intent is available, the RAG
+service builds a deterministic `RetrievalPlan` with ordered steps such as
+`search_pdf_chunks`, `search_notes`, `search_annotations`, `search_chat_memory`,
+and `web_search`. The planner does not classify intent itself and does not run
+autonomous loops; it only converts intent flags into safe executable steps.
+
+Execution still enforces the same controls as the existing RAG path:
+`user_id` is always server-side, selected PDF scope is preserved, chat memory
+requires a verified `session_id`, and web search still requires
+`WEB_SEARCH_ENABLED=true`. Graph questions may add a disabled
+`query_knowledge_graph` step with `graph_available=false`; Graph RAG execution
+is not part of this planner track.
+
+Example retrieval plan:
+
+```json
+{
+  "question_type": "concept_relationship",
+  "planner_version": "v1",
+  "fallback_used": false,
+  "steps": [
+    {
+      "tool": "search_pdf_chunks",
+      "query": "BPMN Process Mining Zusammenhang",
+      "top_k": 6,
+      "status": "enabled",
+      "source_types": ["pdf"]
+    },
+    {
+      "tool": "query_knowledge_graph",
+      "query": "BPMN Process Mining Zusammenhang",
+      "top_k": 5,
+      "status": "disabled",
+      "reason": "Graph RAG is not implemented yet."
+    }
+  ]
+}
+```
+
 Existing dense-only collections are not recreated automatically during normal
 worker execution. Recreate/rebuild hybrid points only via the explicit
 maintenance command:

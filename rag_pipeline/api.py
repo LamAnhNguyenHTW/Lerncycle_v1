@@ -57,6 +57,7 @@ class RagAnswerRequest(BaseModel):
     enable_web_search: bool | None = None
     web_search_query: str | None = Field(default=None, max_length=1000)
     use_intent_classifier: bool | None = None
+    use_retrieval_planner: bool | None = None
 
     @model_validator(mode="after")
     def validate_reranking_bounds(self) -> "RagAnswerRequest":
@@ -94,6 +95,7 @@ class RagAnswerResponse(BaseModel):
     sources: list[dict[str, Any]]
     web_search: dict[str, Any] | None = None
     intent: dict[str, Any] | None = None
+    retrieval_plan: dict[str, Any] | None = None
 
 
 class CompressConversationRequest(BaseModel):
@@ -211,6 +213,8 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             web_search_max_total_context_chars=config.web_search_max_total_context_chars,
             intent_classifier_enabled=bool(intent_classifier_enabled),
             intent_classifier_config=config,
+            retrieval_planner_enabled=config.retrieval_planner_enabled,
+            retrieval_planner_config=config,
         )
     except HTTPException:
         raise

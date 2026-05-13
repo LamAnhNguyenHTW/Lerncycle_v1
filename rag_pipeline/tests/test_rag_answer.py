@@ -9,6 +9,9 @@ from rag_pipeline.rag_answer import (
 from rag_pipeline.reranker import LlmReranker
 from rag_pipeline.web_search import WebSearchOutcome
 from rag_pipeline.intent_classifier import RetrievalIntent
+from rag_pipeline.retrieval_plan import PlanExecutionOutcome
+from rag_pipeline.retrieval_plan import RetrievalPlan
+from rag_pipeline.retrieval_plan import RetrievalPlanStep
 
 
 class FakeLlmClient:
@@ -256,6 +259,59 @@ def test_web_search_used_when_web_mode_on_and_enabled() -> None:
     assert calls
     assert any(source["source_type"] == "web" for source in response["sources"])
     assert response["web_search"]["used"] is True
+
+
+def test_answer_with_rag_does_not_plan_when_disabled() -> None:
+    planner_calls = []
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        intent=_intent(needs_pdf=True),
+        retrieval_planner_enabled=False,
+        retrieval_planner_fn=lambda **kwargs: planner_calls.append(kwargs),
+    )
+
+    assert planner_calls == []
+
+
+def test_answer_with_rag_executes_plan_results() -> None:
+    plan = RetrievalPlan(
+        question_type="document_grounded",
+        steps=[RetrievalPlanStep(tool="search_pdf_chunks", query="Frage", top_k=1)],
+    )
+
+    response = answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [],
+        intent=_intent(needs_pdf=True),
+        retrieval_planner_enabled=True,
+        retrieval_planner_fn=lambda **_: plan,
+        retrieval_plan_executor_fn=lambda **_: PlanExecutionOutcome([_result()], [{"tool": "search_pdf_chunks", "status": "enabled", "result_count": 1, "error_type": None}], 1),
+    )
+
+    assert response["sources"][0]["source_type"] == "pdf"
+    assert response["retrieval_plan"]["planner_used"] is True
+    assert response["retrieval_plan"]["steps"][0]["result_count"] == 1
+
+
+def test_answer_with_rag_planner_failure_falls_back() -> None:
+    response = answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        intent=_intent(needs_pdf=True),
+        retrieval_planner_enabled=True,
+        retrieval_planner_fn=lambda **_: (_ for _ in ()).throw(RuntimeError("planner failed")),
+    )
+
+    assert response["sources"][0]["chunk_id"] == "chunk-1"
+    assert response["retrieval_plan"]["fallback_used"] is True
 
 
 def test_web_search_provider_error_does_not_fail_answer() -> None:

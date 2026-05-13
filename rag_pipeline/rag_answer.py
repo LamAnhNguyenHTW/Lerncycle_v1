@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from types import SimpleNamespace
 from typing import Any, Callable
 
 from rag_pipeline.context_builder import build_rag_context
@@ -11,6 +12,10 @@ from rag_pipeline.graph_retrieval import retrieve_graph_context
 from rag_pipeline.intent_classifier import RetrievalIntent, classify_intent
 from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.memory_intent import detect_memory_intent
+from rag_pipeline.retrieval_plan import PlanExecutionOutcome
+from rag_pipeline.retrieval_plan import RetrievalPlan
+from rag_pipeline.retrieval_plan import build_retrieval_plan
+from rag_pipeline.retrieval_plan import execute_retrieval_plan
 from rag_pipeline.retrieval import search_hybrid_chunks
 from rag_pipeline.source_types import MATERIAL_SOURCE_TYPES
 from rag_pipeline.web_search import WebSearchOutcome, search_web
@@ -156,6 +161,11 @@ def answer_with_rag(
     intent: RetrievalIntent | None = None,
     intent_classifier_fn: Callable[..., RetrievalIntent] | None = None,
     intent_classifier_config: Any = None,
+    retrieval_planner_enabled: bool = False,
+    retrieval_plan: RetrievalPlan | None = None,
+    retrieval_planner_fn: Callable[..., RetrievalPlan] | None = None,
+    retrieval_plan_executor_fn: Callable[..., PlanExecutionOutcome] | None = None,
+    retrieval_planner_config: Any = None,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
     active_retrieval = retrieval_fn or search_hybrid_chunks
@@ -191,15 +201,67 @@ def answer_with_rag(
     retrieval_query = rewrite_query_for_retrieval(query, recent_messages, llm_client)
     retrieval_top_k = reranking_candidate_k if reranking_enabled and reranker is not None else top_k
     material_source_types = source_types or list(MATERIAL_SOURCE_TYPES)
-    results = active_retrieval(
-        query=retrieval_query,
-        user_id=user_id,
-        source_types=material_source_types,
-        top_k=retrieval_top_k,
-        pdf_ids=pdf_ids,
-    )
+    web_outcome = _empty_web_outcome(web_search_provider, web_search_enabled, effective_web_mode)
+    planner_metadata: dict[str, Any] | None = None
+    planner_used = False
+    results: list[dict[str, Any]]
+    if retrieval_plan is not None or (retrieval_planner_enabled and active_intent is not None):
+        try:
+            planner_used = True
+            planner_config = retrieval_planner_config or _planner_config_from_kwargs(
+                web_search_enabled=web_search_enabled,
+                web_search_provider=web_search_provider,
+                web_search_top_k=web_search_top_k or 5,
+                web_search_timeout_seconds=web_search_timeout_seconds,
+                web_search_max_query_chars=web_search_max_query_chars,
+                tavily_api_key=web_search_api_key,
+                chat_memory_top_k=chat_memory_top_k or 2,
+            )
+            plan = retrieval_plan or (retrieval_planner_fn or build_retrieval_plan)(
+                query=retrieval_query,
+                intent=active_intent,
+                config=planner_config,
+                session_id=session_id,
+                selected_pdf_ids=pdf_ids,
+                allowed_source_types=material_source_types,
+            )
+            outcome = (retrieval_plan_executor_fn or execute_retrieval_plan)(
+                plan=plan,
+                query=retrieval_query,
+                user_id=user_id,
+                config=planner_config,
+                retrieval_fns={
+                    "search_hybrid_chunks": active_retrieval,
+                    "search_web": web_search_fn or search_web,
+                },
+                session_id=session_id,
+            )
+            results = outcome.results
+            planner_metadata = _planner_metadata(True, outcome.fallback_used, outcome.step_outcomes)
+            planner_web_results = [result for result in results if result.get("source_type") == "web"]
+            if planner_web_results:
+                effective_web_mode = "on"
+                web_outcome = WebSearchOutcome(planner_web_results, web_search_provider, len(planner_web_results), None)
+        except Exception:
+            logger.warning("Retrieval planner failed; falling back to existing retrieval.", exc_info=True)
+            results = active_retrieval(
+                query=retrieval_query,
+                user_id=user_id,
+                source_types=material_source_types,
+                top_k=retrieval_top_k,
+                pdf_ids=pdf_ids,
+            )
+            planner_metadata = _planner_metadata(False, True, [], error_type="planner_error")
+    else:
+        results = active_retrieval(
+            query=retrieval_query,
+            user_id=user_id,
+            source_types=material_source_types,
+            top_k=retrieval_top_k,
+            pdf_ids=pdf_ids,
+        )
     graph_context = {"context_text": "", "sources": []}
-    if _should_retrieve_graph(query, graph_mode, graph_retrieval_enabled, graph_store):
+    if not planner_used and _should_retrieve_graph(query, graph_mode, graph_retrieval_enabled, graph_store):
         try:
             graph_context = retrieve_graph_context(
                 query=query,
@@ -213,7 +275,7 @@ def answer_with_rag(
             logger.warning("Graph retrieval failed; continuing without graph context.", exc_info=True)
             graph_context = {"context_text": "", "sources": []}
     memory_results: list[dict[str, Any]] = []
-    if _should_retrieve_memory(
+    if not planner_used and _should_retrieve_memory(
         query,
         recent_messages,
         session_id,
@@ -233,8 +295,7 @@ def answer_with_rag(
         except Exception:
             logger.warning("Chat memory retrieval failed; continuing without memory.", exc_info=True)
             memory_results = []
-    web_outcome = _empty_web_outcome(web_search_provider, web_search_enabled, effective_web_mode)
-    if web_search_enabled and effective_web_mode == "on":
+    if not planner_used and web_search_enabled and effective_web_mode == "on":
         try:
             active_web_search = web_search_fn or search_web
             outcome = active_web_search(
@@ -253,7 +314,7 @@ def answer_with_rag(
     if web_outcome.results:
         results = results + web_outcome.results
     if not results and not graph_context.get("context_text"):
-        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode), "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled)}
+        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode), "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled), "retrieval_plan": planner_metadata}
 
     context_results = results
     context_top_k = top_k
@@ -280,7 +341,7 @@ def answer_with_rag(
     graph_text = str(graph_context.get("context_text") or "").strip()
     combined_context = _combine_context(text_context, graph_text)
     if not combined_context:
-        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode), "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled)}
+        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode), "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled), "retrieval_plan": planner_metadata}
 
     active_llm = llm_client or OpenAILlmClient()
     web_text = any(result.get("source_type") == "web" for result in context_results)
@@ -316,6 +377,7 @@ def answer_with_rag(
         "sources": context["sources"] + list(graph_context.get("sources") or []),
         "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode),
         "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
+        "retrieval_plan": planner_metadata,
     }
 
 
@@ -439,3 +501,40 @@ def _intent_metadata(
             }
         )
     return {key: value for key, value in metadata.items() if value is not None}
+
+
+def _planner_config_from_kwargs(**kwargs: Any) -> Any:
+    return SimpleNamespace(
+        retrieval_planner_enabled=True,
+        retrieval_planner_default_top_k=6,
+        retrieval_planner_pdf_top_k=6,
+        retrieval_planner_notes_top_k=4,
+        retrieval_planner_annotations_top_k=4,
+        retrieval_planner_memory_top_k=kwargs.get("chat_memory_top_k", 2),
+        retrieval_planner_web_top_k=kwargs.get("web_search_top_k", 5),
+        retrieval_planner_max_steps=5,
+        retrieval_planner_include_disabled_steps=True,
+        web_search_enabled=kwargs.get("web_search_enabled", False),
+        web_search_provider=kwargs.get("web_search_provider", "tavily"),
+        web_search_timeout_seconds=kwargs.get("web_search_timeout_seconds", 15),
+        web_search_max_query_chars=kwargs.get("web_search_max_query_chars", 300),
+        tavily_api_key=kwargs.get("tavily_api_key"),
+    )
+
+
+def _planner_metadata(
+    planner_used: bool,
+    fallback_used: bool,
+    steps: list[dict[str, Any]],
+    error_type: str | None = None,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "planner_used": planner_used,
+        "fallback_used": fallback_used,
+        "steps": steps,
+    }
+    if error_type:
+        metadata["error_type"] = error_type
+    if any(step.get("tool") == "query_knowledge_graph" for step in steps):
+        metadata["graph_available"] = False
+    return metadata

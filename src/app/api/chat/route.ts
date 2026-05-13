@@ -508,6 +508,7 @@ export async function POST(request: Request) {
   const pdfIds = body.pdf_ids?.filter(Boolean) ?? [];
   const webMode = parseBool(process.env.WEB_SEARCH_ENABLED, false) && body.enableWebSearch === true ? 'on' : 'off';
   const useIntentClassifier = parseBool(process.env.INTENT_CLASSIFIER_ENABLED, false);
+  const useRetrievalPlanner = parseBool(process.env.RETRIEVAL_PLANNER_ENABLED, false);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
 
@@ -555,6 +556,7 @@ export async function POST(request: Request) {
         context_summary: promptContext.contextSummary ?? undefined,
         web_mode: webMode,
         use_intent_classifier: useIntentClassifier,
+        use_retrieval_planner: useRetrievalPlanner,
       }),
       signal: controller.signal,
     });

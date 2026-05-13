@@ -737,3 +737,53 @@ def test_rag_answer_returns_intent_metadata(client, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["intent"]["classifier_used"] is True
+
+
+def test_rag_answer_retrieval_planner_default_off(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setenv("RETRIEVAL_PLANNER_ENABLED", "false")
+    monkeypatch.setattr(api, "answer_with_rag", lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []})
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload(use_retrieval_planner=True))
+
+    assert response.status_code == 200
+    assert calls[0]["retrieval_planner_enabled"] is False
+
+
+def test_rag_answer_retrieval_planner_config_enabled(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setenv("RETRIEVAL_PLANNER_ENABLED", "true")
+    monkeypatch.setattr(api, "answer_with_rag", lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []})
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload(use_retrieval_planner=False))
+
+    assert response.status_code == 200
+    assert calls[0]["retrieval_planner_enabled"] is True
+
+
+def test_rag_answer_rejects_browser_retrieval_plan_fields(client) -> None:
+    test_client, _ = client
+
+    for field in ["retrieval_plan", "steps", "tool", "tools"]:
+        response = test_client.post("/rag/answer", headers=_headers(), json=_payload(**{field: []}))
+        assert response.status_code == 422
+
+
+def test_rag_answer_returns_retrieval_plan_metadata(client, monkeypatch) -> None:
+    test_client, api = client
+    monkeypatch.setattr(
+        api,
+        "answer_with_rag",
+        lambda **_: {
+            "answer": "ok",
+            "sources": [],
+            "retrieval_plan": {"planner_used": True, "steps": [{"tool": "search_pdf_chunks", "result_count": 1}]},
+        },
+    )
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+
+    assert response.status_code == 200
+    assert response.json()["retrieval_plan"]["planner_used"] is True
