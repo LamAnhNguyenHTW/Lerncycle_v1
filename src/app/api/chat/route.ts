@@ -507,6 +507,7 @@ export async function POST(request: Request) {
   const sourceTypes = stripNonMaterialSourceTypes(body.source_types);
   const pdfIds = body.pdf_ids?.filter(Boolean) ?? [];
   const webMode = parseBool(process.env.WEB_SEARCH_ENABLED, false) && body.enableWebSearch === true ? 'on' : 'off';
+  const useIntentClassifier = parseBool(process.env.INTENT_CLASSIFIER_ENABLED, false);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
 
@@ -553,6 +554,7 @@ export async function POST(request: Request) {
         graph_mode: parseBool(process.env.GRAPH_RETRIEVAL_ENABLED, false) ? 'auto' : 'off',
         context_summary: promptContext.contextSummary ?? undefined,
         web_mode: webMode,
+        use_intent_classifier: useIntentClassifier,
       }),
       signal: controller.signal,
     });

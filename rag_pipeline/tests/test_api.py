@@ -677,3 +677,63 @@ def test_rag_answer_returns_web_metadata(client, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["web_search"]["enabled"] is True
+
+
+def test_rag_answer_intent_classifier_default_off(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setenv("INTENT_CLASSIFIER_ENABLED", "false")
+    monkeypatch.setattr(api, "answer_with_rag", lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []})
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+
+    assert response.status_code == 200
+    assert calls[0]["intent_classifier_enabled"] is False
+
+
+def test_rag_answer_intent_classifier_config_enabled(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setenv("INTENT_CLASSIFIER_ENABLED", "true")
+    monkeypatch.setattr(api, "answer_with_rag", lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []})
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+
+    assert response.status_code == 200
+    assert calls[0]["intent_classifier_enabled"] is True
+
+
+def test_rag_answer_does_not_accept_browser_intent_or_needs_web(client) -> None:
+    test_client, _ = client
+
+    intent_response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(intent={"needs_web": True}),
+    )
+    needs_response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(needs_web=True),
+    )
+
+    assert intent_response.status_code == 422
+    assert needs_response.status_code == 422
+
+
+def test_rag_answer_returns_intent_metadata(client, monkeypatch) -> None:
+    test_client, api = client
+    monkeypatch.setattr(
+        api,
+        "answer_with_rag",
+        lambda **_: {
+            "answer": "ok",
+            "sources": [],
+            "intent": {"classifier_used": True, "question_type": "current_external_info"},
+        },
+    )
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+
+    assert response.status_code == 200
+    assert response.json()["intent"]["classifier_used"] is True

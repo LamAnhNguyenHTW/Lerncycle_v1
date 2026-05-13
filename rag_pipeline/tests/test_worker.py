@@ -132,6 +132,11 @@ class GraphWorker(RecordingWorker):
         self.graph_failed.append((job_id, error_message))
 
 
+class FailingGraphQueueSupabase:
+    def table(self, table_name: str):
+        raise AssertionError(f"unexpected Supabase graph queue access: {table_name}")
+
+
 class DeletedSourceWorker(RecordingWorker):
     def __init__(self) -> None:
         super().__init__()
@@ -590,6 +595,19 @@ def test_worker_dispatches_knowledge_graph_job() -> None:
     assert worker.loaded == ("user-1", "pdf", "pdf-1")
     assert worker._graph_store.upserts
     assert worker.graph_completed[0][0] == "job-1"
+
+
+def test_worker_does_not_enqueue_graph_job_for_chat_memory() -> None:
+    worker = GraphWorker()
+    worker._supabase = FailingGraphQueueSupabase()
+
+    worker._maybe_enqueue_graph_job(
+        SourceRef(
+            user_id="user-1",
+            source_type="chat_memory",
+            source_id="session-1",
+        )
+    )
 
 
 def test_worker_deletes_old_graph_by_source_before_reextract() -> None:

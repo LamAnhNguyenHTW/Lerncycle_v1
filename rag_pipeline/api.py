@@ -9,7 +9,7 @@ from uuid import UUID
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from rag_pipeline.config import WorkerConfig
 from rag_pipeline.graph_store_factory import create_graph_store
@@ -36,6 +36,8 @@ class RecentMessage(BaseModel):
 
 
 class RagAnswerRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     query: str = Field(min_length=1, max_length=2000)
     user_id: str = Field(min_length=1)
     source_types: list[SourceType] | None = None
@@ -54,6 +56,7 @@ class RagAnswerRequest(BaseModel):
     web_mode: WebMode = "off"
     enable_web_search: bool | None = None
     web_search_query: str | None = Field(default=None, max_length=1000)
+    use_intent_classifier: bool | None = None
 
     @model_validator(mode="after")
     def validate_reranking_bounds(self) -> "RagAnswerRequest":
@@ -90,6 +93,7 @@ class RagAnswerResponse(BaseModel):
     answer: str
     sources: list[dict[str, Any]]
     web_search: dict[str, Any] | None = None
+    intent: dict[str, Any] | None = None
 
 
 class CompressConversationRequest(BaseModel):
@@ -168,6 +172,11 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
         web_mode = "on" if request.enable_web_search is True else request.web_mode
         if not config.web_search_enabled:
             web_mode = "off"
+        intent_classifier_enabled = (
+            request.use_intent_classifier
+            if request.use_intent_classifier is not None
+            else config.intent_classifier_enabled
+        )
         return answer_with_rag(
             query=request.query.strip(),
             user_id=request.user_id,
@@ -200,6 +209,8 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             web_search_max_context_sources=config.web_search_max_context_sources,
             web_search_max_chars_per_source=config.web_search_max_chars_per_source,
             web_search_max_total_context_chars=config.web_search_max_total_context_chars,
+            intent_classifier_enabled=bool(intent_classifier_enabled),
+            intent_classifier_config=config,
         )
     except HTTPException:
         raise

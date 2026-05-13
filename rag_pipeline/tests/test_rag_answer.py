@@ -8,6 +8,7 @@ from rag_pipeline.rag_answer import (
 )
 from rag_pipeline.reranker import LlmReranker
 from rag_pipeline.web_search import WebSearchOutcome
+from rag_pipeline.intent_classifier import RetrievalIntent
 
 
 class FakeLlmClient:
@@ -99,6 +100,22 @@ def _web_result() -> dict:
         "page_index": None,
         "metadata": {"url": "https://example.com", "provider": "tavily"},
     }
+
+
+def _intent(**overrides) -> RetrievalIntent:
+    payload = {
+        "question_type": "current_external_info",
+        "needs_pdf": True,
+        "needs_notes": True,
+        "needs_annotations": True,
+        "needs_chat_memory": False,
+        "needs_graph": False,
+        "needs_web": False,
+        "confidence": 0.8,
+        "reasoning_summary": "test",
+    }
+    payload.update(overrides)
+    return RetrievalIntent(**payload)
 
 
 def _result() -> dict:
@@ -254,6 +271,85 @@ def test_web_search_provider_error_does_not_fail_answer() -> None:
 
     assert response["answer"] == "Antwort"
     assert response["web_search"]["error_type"] == "provider_error"
+
+
+def test_answer_with_rag_does_not_classify_when_disabled() -> None:
+    calls = []
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        intent_classifier_fn=lambda **kwargs: calls.append(kwargs) or _intent(),
+    )
+
+    assert calls == []
+
+
+def test_answer_with_rag_classifies_when_enabled() -> None:
+    calls = []
+
+    response = answer_with_rag(
+        "Was ist aktuell neu?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        intent_classifier_enabled=True,
+        intent_classifier_fn=lambda **kwargs: calls.append(kwargs) or _intent(needs_web=True),
+        web_search_enabled=False,
+    )
+
+    assert calls
+    assert response["intent"]["needs_web"] is True
+    assert response["intent"]["web_skipped_reason"] == "disabled"
+
+
+def test_intent_needs_web_enables_web_when_config_enabled() -> None:
+    web_calls = []
+
+    response = answer_with_rag(
+        "Was ist aktuell neu?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        intent=_intent(needs_web=True),
+        web_search_enabled=True,
+        web_search_fn=lambda **kwargs: web_calls.append(kwargs) or WebSearchOutcome([_web_result()], "tavily", 1),
+    )
+
+    assert web_calls
+    assert response["web_search"]["used"] is True
+
+
+def test_intent_needs_memory_requires_session_id() -> None:
+    retrieval_calls = []
+
+    answer_with_rag(
+        "Was hatten wir besprochen?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **kwargs: retrieval_calls.append(kwargs) or [_result()],
+        intent=_intent(question_type="conversation_memory", needs_chat_memory=True),
+        chat_memory_retrieval_enabled=True,
+        session_id=None,
+    )
+
+    assert all(call.get("source_types") != ["chat_memory"] for call in retrieval_calls)
+
+
+def test_intent_needs_graph_sets_metadata_but_does_not_force_graph_store() -> None:
+    response = answer_with_rag(
+        "Zusammenhang?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        intent=_intent(question_type="concept_relationship", needs_graph=True),
+        graph_retrieval_enabled=False,
+    )
+
+    assert response["intent"]["graph_requested"] is True
+    assert response["intent"]["graph_available"] is False
 
 
 def test_prompt_distinguishes_web_sources_from_internal_sources() -> None:

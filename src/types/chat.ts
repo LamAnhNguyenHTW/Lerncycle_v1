@@ -52,6 +52,19 @@ export interface ChatResponse {
   answer: string;
   sources: ChatSource[];
   retrieval: ChatRetrievalMeta;
+  intent?: {
+    classifier_used?: boolean;
+    fallback_used?: boolean;
+    question_type?: string;
+    needs_pdf?: boolean;
+    needs_notes?: boolean;
+    needs_annotations?: boolean;
+    needs_chat_memory?: boolean;
+    needs_graph?: boolean;
+    needs_web?: boolean;
+    confidence?: number;
+    reasoning_summary?: string;
+  } | null;
 }
 
 export interface StoredChatMessage {

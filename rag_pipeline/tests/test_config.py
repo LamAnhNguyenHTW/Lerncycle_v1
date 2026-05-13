@@ -361,15 +361,15 @@ def test_web_search_config_defaults(monkeypatch) -> None:
     monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
     for name in [
-        "WEB_SEARCH_ENABLED",
         "WEB_SEARCH_PROVIDER",
         "WEB_SEARCH_TOP_K",
         "WEB_SEARCH_TIMEOUT_SECONDS",
         "WEB_SEARCH_MAX_QUERY_CHARS",
         "WEB_SEARCH_SOURCE_TYPE",
-        "TAVILY_API_KEY",
     ]:
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("WEB_SEARCH_ENABLED", "false")
+    monkeypatch.setenv("TAVILY_API_KEY", "")
 
     config = WorkerConfig.from_env()
 
@@ -449,6 +449,76 @@ def test_missing_tavily_api_key_does_not_crash_config_loading(monkeypatch) -> No
     monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
     monkeypatch.setenv("WEB_SEARCH_ENABLED", "true")
-    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.setenv("TAVILY_API_KEY", "")
 
     assert WorkerConfig.from_env().tavily_api_key is None
+
+
+def test_intent_classifier_config_defaults(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("INTENT_CLASSIFIER_ENABLED", "false")
+    for name in [
+        "INTENT_CLASSIFIER_PROVIDER",
+        "INTENT_CLASSIFIER_MODEL",
+        "INTENT_CLASSIFIER_TIMEOUT_SECONDS",
+        "INTENT_CLASSIFIER_MAX_RECENT_MESSAGES",
+        "INTENT_CLASSIFIER_MAX_MESSAGE_CHARS",
+        "INTENT_CLASSIFIER_FALLBACK_ENABLED",
+    ]:
+        monkeypatch.delenv(name, raising=False)
+
+    config = WorkerConfig.from_env()
+
+    assert config.intent_classifier_enabled is False
+    assert config.intent_classifier_provider == "openai"
+    assert config.intent_classifier_model == "gpt-4.1-mini"
+    assert config.intent_classifier_timeout_seconds == 10
+    assert config.intent_classifier_max_recent_messages == 4
+    assert config.intent_classifier_max_message_chars == 1000
+    assert config.intent_classifier_fallback_enabled is True
+
+
+def test_intent_classifier_config_env_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("INTENT_CLASSIFIER_ENABLED", "true")
+    monkeypatch.setenv("INTENT_CLASSIFIER_MODEL", "gpt-test")
+    monkeypatch.setenv("INTENT_CLASSIFIER_TIMEOUT_SECONDS", "12")
+    monkeypatch.setenv("INTENT_CLASSIFIER_MAX_RECENT_MESSAGES", "2")
+    monkeypatch.setenv("INTENT_CLASSIFIER_MAX_MESSAGE_CHARS", "500")
+    monkeypatch.setenv("INTENT_CLASSIFIER_FALLBACK_ENABLED", "false")
+
+    config = WorkerConfig.from_env()
+
+    assert config.intent_classifier_enabled is True
+    assert config.intent_classifier_model == "gpt-test"
+    assert config.intent_classifier_timeout_seconds == 12
+    assert config.intent_classifier_max_recent_messages == 2
+    assert config.intent_classifier_max_message_chars == 500
+    assert config.intent_classifier_fallback_enabled is False
+
+
+def test_intent_classifier_invalid_provider_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("INTENT_CLASSIFIER_PROVIDER", "other")
+
+    with pytest.raises(ValueError, match="INTENT_CLASSIFIER_PROVIDER"):
+        WorkerConfig.from_env()
+
+
+def test_intent_classifier_invalid_bounds_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("INTENT_CLASSIFIER_TIMEOUT_SECONDS", "2")
+    with pytest.raises(ValueError, match="INTENT_CLASSIFIER_TIMEOUT_SECONDS"):
+        WorkerConfig.from_env()
+    monkeypatch.setenv("INTENT_CLASSIFIER_TIMEOUT_SECONDS", "10")
+    monkeypatch.setenv("INTENT_CLASSIFIER_MAX_RECENT_MESSAGES", "11")
+    with pytest.raises(ValueError, match="INTENT_CLASSIFIER_MAX_RECENT_MESSAGES"):
+        WorkerConfig.from_env()
+    monkeypatch.setenv("INTENT_CLASSIFIER_MAX_RECENT_MESSAGES", "4")
+    monkeypatch.setenv("INTENT_CLASSIFIER_MAX_MESSAGE_CHARS", "199")
+    with pytest.raises(ValueError, match="INTENT_CLASSIFIER_MAX_MESSAGE_CHARS"):
+        WorkerConfig.from_env()

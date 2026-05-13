@@ -67,6 +67,13 @@ class WorkerConfig:
     web_search_max_total_context_chars: int = 4000
     web_search_source_type: str = "web"
     tavily_api_key: str | None = None
+    intent_classifier_enabled: bool = False
+    intent_classifier_provider: str = "openai"
+    intent_classifier_model: str = "gpt-4.1-mini"
+    intent_classifier_timeout_seconds: int = 10
+    intent_classifier_max_recent_messages: int = 4
+    intent_classifier_max_message_chars: int = 1000
+    intent_classifier_fallback_enabled: bool = True
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -238,6 +245,24 @@ class WorkerConfig:
             raise ValueError("WEB_SEARCH_MAX_TOTAL_CONTEXT_CHARS must be between 1000 and 10000")
         if web_search_source_type != "web":
             raise ValueError("WEB_SEARCH_SOURCE_TYPE must be web")
+        intent_classifier_provider = os.getenv("INTENT_CLASSIFIER_PROVIDER", "openai")
+        intent_classifier_timeout_seconds = (
+            _optional_int(os.getenv("INTENT_CLASSIFIER_TIMEOUT_SECONDS")) or 10
+        )
+        intent_classifier_max_recent_messages = (
+            _optional_int(os.getenv("INTENT_CLASSIFIER_MAX_RECENT_MESSAGES")) or 4
+        )
+        intent_classifier_max_message_chars = (
+            _optional_int(os.getenv("INTENT_CLASSIFIER_MAX_MESSAGE_CHARS")) or 1000
+        )
+        if intent_classifier_provider != "openai":
+            raise ValueError("INTENT_CLASSIFIER_PROVIDER must be openai")
+        if not 3 <= intent_classifier_timeout_seconds <= 60:
+            raise ValueError("INTENT_CLASSIFIER_TIMEOUT_SECONDS must be between 3 and 60")
+        if not 0 <= intent_classifier_max_recent_messages <= 10:
+            raise ValueError("INTENT_CLASSIFIER_MAX_RECENT_MESSAGES must be between 0 and 10")
+        if not 200 <= intent_classifier_max_message_chars <= 4000:
+            raise ValueError("INTENT_CLASSIFIER_MAX_MESSAGE_CHARS must be between 200 and 4000")
 
         return cls(
             supabase_url=required["SUPABASE_URL"] or "",
@@ -324,6 +349,19 @@ class WorkerConfig:
             web_search_max_total_context_chars=web_search_max_total_context_chars,
             web_search_source_type=web_search_source_type,
             tavily_api_key=os.getenv("TAVILY_API_KEY") or None,
+            intent_classifier_enabled=_optional_bool(
+                os.getenv("INTENT_CLASSIFIER_ENABLED"),
+                False,
+            ),
+            intent_classifier_provider=intent_classifier_provider,
+            intent_classifier_model=os.getenv("INTENT_CLASSIFIER_MODEL", "gpt-4.1-mini"),
+            intent_classifier_timeout_seconds=intent_classifier_timeout_seconds,
+            intent_classifier_max_recent_messages=intent_classifier_max_recent_messages,
+            intent_classifier_max_message_chars=intent_classifier_max_message_chars,
+            intent_classifier_fallback_enabled=_optional_bool(
+                os.getenv("INTENT_CLASSIFIER_FALLBACK_ENABLED"),
+                True,
+            ),
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",

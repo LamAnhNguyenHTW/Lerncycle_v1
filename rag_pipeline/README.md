@@ -80,6 +80,13 @@ Embedding and retrieval configuration:
 - `WEB_SEARCH_MAX_TOTAL_CONTEXT_CHARS` (default: `4000`)
 - `WEB_SEARCH_SOURCE_TYPE` (must be `web`)
 - `TAVILY_API_KEY`
+- `INTENT_CLASSIFIER_ENABLED` (default: `false`)
+- `INTENT_CLASSIFIER_PROVIDER` (must be `openai`)
+- `INTENT_CLASSIFIER_MODEL` (default: `gpt-4.1-mini`)
+- `INTENT_CLASSIFIER_TIMEOUT_SECONDS` (default: `10`)
+- `INTENT_CLASSIFIER_MAX_RECENT_MESSAGES` (default: `4`)
+- `INTENT_CLASSIFIER_MAX_MESSAGE_CHARS` (default: `1000`)
+- `INTENT_CLASSIFIER_FALLBACK_ENABLED` (default: `true`)
 - `RAG_INTERNAL_API_KEY`
 
 Next.js server-only chat variables:
@@ -93,6 +100,7 @@ Next.js server-only chat variables:
 - `CHAT_MEMORY_MAX_SUMMARY_CHARS`
 - `GRAPH_RETRIEVAL_ENABLED`
 - `WEB_SEARCH_ENABLED`
+- `INTENT_CLASSIFIER_ENABLED`
 
 Durable indexing currently supports OpenAI embeddings. If the durable embedding
 provider has no API key, the job fails and retries instead of storing fake
@@ -241,9 +249,33 @@ Example direct RAG request:
 }
 ```
 
-Known limitations: this track does not add automatic intent classification,
-agentic browsing, web result caching, web embeddings, or Supabase persistence
-for web results.
+Known limitations: web search does not add agentic browsing, web result caching,
+web embeddings, or Supabase persistence for web results.
+
+Intent classification is optional and disabled by default. When enabled, the RAG
+service classifies the current query plus a small truncated recent-message
+window into a validated JSON intent with retrieval flags. The classifier is only
+a routing aid: chat memory still requires a verified `session_id`, web search
+still requires `WEB_SEARCH_ENABLED=true`, and graph intent is returned as
+metadata with `graph_available=false` in this track. LLM classifier failures
+fall back to deterministic German/English keyword routing and never fail the
+chat response.
+
+Example classifier output:
+
+```json
+{
+  "question_type": "concept_relationship",
+  "needs_pdf": true,
+  "needs_notes": false,
+  "needs_annotations": false,
+  "needs_chat_memory": false,
+  "needs_graph": true,
+  "needs_web": false,
+  "confidence": 0.91,
+  "reasoning_summary": "The user asks about the relationship between two concepts."
+}
+```
 
 Existing dense-only collections are not recreated automatically during normal
 worker execution. Recreate/rebuild hybrid points only via the explicit

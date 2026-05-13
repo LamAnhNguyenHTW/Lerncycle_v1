@@ -8,6 +8,7 @@ from typing import Any, Callable
 from rag_pipeline.context_builder import build_rag_context
 from rag_pipeline.graph_retrieval import detect_graph_intent
 from rag_pipeline.graph_retrieval import retrieve_graph_context
+from rag_pipeline.intent_classifier import RetrievalIntent, classify_intent
 from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.memory_intent import detect_memory_intent
 from rag_pipeline.retrieval import search_hybrid_chunks
@@ -151,9 +152,42 @@ def answer_with_rag(
     web_search_max_context_sources: int = 5,
     web_search_max_chars_per_source: int = 1000,
     web_search_max_total_context_chars: int = 4000,
+    intent_classifier_enabled: bool = False,
+    intent: RetrievalIntent | None = None,
+    intent_classifier_fn: Callable[..., RetrievalIntent] | None = None,
+    intent_classifier_config: Any = None,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
     active_retrieval = retrieval_fn or search_hybrid_chunks
+    active_intent = intent
+    classifier_used = False
+    fallback_used = False
+    if active_intent is None and intent_classifier_enabled:
+        classifier_used = True
+        try:
+            active_classifier = intent_classifier_fn or classify_intent
+            active_intent = active_classifier(
+                query=query,
+                recent_messages=recent_messages,
+                config=intent_classifier_config,
+            )
+        except Exception:
+            logger.warning("Intent classifier integration failed; continuing without intent.", exc_info=True)
+            fallback_used = True
+            active_intent = None
+    elif active_intent is not None:
+        classifier_used = True
+
+    effective_web_mode = web_mode
+    effective_memory_mode = memory_mode
+    graph_requested = False
+    if active_intent is not None:
+        if active_intent.needs_web and web_search_enabled:
+            effective_web_mode = "on"
+        if active_intent.needs_chat_memory and session_id and chat_memory_retrieval_enabled:
+            effective_memory_mode = "on"
+        graph_requested = bool(active_intent.needs_graph)
+
     retrieval_query = rewrite_query_for_retrieval(query, recent_messages, llm_client)
     retrieval_top_k = reranking_candidate_k if reranking_enabled and reranker is not None else top_k
     material_source_types = source_types or list(MATERIAL_SOURCE_TYPES)
@@ -183,7 +217,7 @@ def answer_with_rag(
         query,
         recent_messages,
         session_id,
-        memory_mode,
+        effective_memory_mode,
         chat_memory_retrieval_enabled,
     ):
         try:
@@ -199,8 +233,8 @@ def answer_with_rag(
         except Exception:
             logger.warning("Chat memory retrieval failed; continuing without memory.", exc_info=True)
             memory_results = []
-    web_outcome = _empty_web_outcome(web_search_provider, web_search_enabled, web_mode)
-    if web_search_enabled and web_mode == "on":
+    web_outcome = _empty_web_outcome(web_search_provider, web_search_enabled, effective_web_mode)
+    if web_search_enabled and effective_web_mode == "on":
         try:
             active_web_search = web_search_fn or search_web
             outcome = active_web_search(
@@ -219,7 +253,7 @@ def answer_with_rag(
     if web_outcome.results:
         results = results + web_outcome.results
     if not results and not graph_context.get("context_text"):
-        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, web_mode)}
+        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode), "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled)}
 
     context_results = results
     context_top_k = top_k
@@ -246,7 +280,7 @@ def answer_with_rag(
     graph_text = str(graph_context.get("context_text") or "").strip()
     combined_context = _combine_context(text_context, graph_text)
     if not combined_context:
-        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, web_mode)}
+        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode), "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled)}
 
     active_llm = llm_client or OpenAILlmClient()
     web_text = any(result.get("source_type") == "web" for result in context_results)
@@ -280,7 +314,8 @@ def answer_with_rag(
     return {
         "answer": answer,
         "sources": context["sources"] + list(graph_context.get("sources") or []),
-        "web_search": _web_metadata(web_outcome, web_search_enabled, web_mode),
+        "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode),
+        "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
     }
 
 
@@ -362,3 +397,45 @@ def _web_metadata(outcome: WebSearchOutcome, enabled: bool, mode: str) -> dict[s
         "result_count": outcome.result_count,
         "error_type": outcome.error_type,
     }
+
+
+def _intent_metadata(
+    intent: RetrievalIntent | None,
+    classifier_used: bool,
+    fallback_used: bool,
+    graph_requested: bool,
+    web_enabled: bool,
+    session_id: str | None,
+    memory_enabled: bool | None,
+) -> dict[str, Any] | None:
+    if intent is None and not classifier_used:
+        return None
+    metadata: dict[str, Any] = {
+        "classifier_used": classifier_used,
+        "fallback_used": fallback_used,
+    }
+    if intent is not None:
+        metadata.update(
+            {
+                "question_type": intent.question_type.value,
+                "needs_pdf": intent.needs_pdf,
+                "needs_notes": intent.needs_notes,
+                "needs_annotations": intent.needs_annotations,
+                "needs_chat_memory": intent.needs_chat_memory,
+                "needs_graph": intent.needs_graph,
+                "needs_web": intent.needs_web,
+                "confidence": intent.confidence,
+                "reasoning_summary": intent.reasoning_summary,
+                "graph_requested": graph_requested,
+                "graph_available": False if graph_requested else None,
+                "web_skipped_reason": "disabled" if intent.needs_web and not web_enabled else None,
+                "memory_skipped_reason": (
+                    "missing_session_id"
+                    if intent.needs_chat_memory and not session_id
+                    else "disabled"
+                    if intent.needs_chat_memory and memory_enabled is not True
+                    else None
+                ),
+            }
+        )
+    return {key: value for key, value in metadata.items() if value is not None}

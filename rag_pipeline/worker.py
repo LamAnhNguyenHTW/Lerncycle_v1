@@ -27,6 +27,7 @@ from rag_pipeline.source_ingestion import chunks_from_note
 
 LOGGER = logging.getLogger(__name__)
 PDF_BUCKET = "pdfs"
+GRAPH_INDEXABLE_SOURCE_TYPES = {"pdf", "note", "annotation_comment"}
 
 
 class RagWorker:
@@ -570,6 +571,8 @@ class RagWorker:
     def _maybe_enqueue_graph_job(self, source: SourceRef) -> None:
         if not getattr(self._config, "graph_extraction_enabled", False):
             return
+        if source.source_type not in GRAPH_INDEXABLE_SOURCE_TYPES:
+            return
         try:
             existing = (
                 self._supabase.table("rag_index_jobs")
@@ -581,7 +584,7 @@ class RagWorker:
                 .maybe_single()
                 .execute()
             )
-            if existing.data:
+            if getattr(existing, "data", None):
                 return
             self._supabase.table("rag_index_jobs").insert(
                 {
