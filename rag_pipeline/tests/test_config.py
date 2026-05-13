@@ -355,3 +355,100 @@ def test_graph_invalid_context_max_chars_rejected(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="GRAPH_CONTEXT_MAX_CHARS"):
         WorkerConfig.from_env()
+
+
+def test_web_search_config_defaults(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    for name in [
+        "WEB_SEARCH_ENABLED",
+        "WEB_SEARCH_PROVIDER",
+        "WEB_SEARCH_TOP_K",
+        "WEB_SEARCH_TIMEOUT_SECONDS",
+        "WEB_SEARCH_MAX_QUERY_CHARS",
+        "WEB_SEARCH_SOURCE_TYPE",
+        "TAVILY_API_KEY",
+    ]:
+        monkeypatch.delenv(name, raising=False)
+
+    config = WorkerConfig.from_env()
+
+    assert config.web_search_enabled is False
+    assert config.web_search_provider == "tavily"
+    assert config.web_search_top_k == 5
+    assert config.web_search_timeout_seconds == 15
+    assert config.web_search_max_query_chars == 300
+    assert config.web_search_source_type == "web"
+    assert config.tavily_api_key is None
+
+
+def test_web_search_config_env_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("WEB_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("WEB_SEARCH_TOP_K", "7")
+    monkeypatch.setenv("WEB_SEARCH_TIMEOUT_SECONDS", "20")
+    monkeypatch.setenv("WEB_SEARCH_MAX_QUERY_CHARS", "500")
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-key")
+
+    config = WorkerConfig.from_env()
+
+    assert config.web_search_enabled is True
+    assert config.web_search_top_k == 7
+    assert config.web_search_timeout_seconds == 20
+    assert config.web_search_max_query_chars == 500
+    assert config.tavily_api_key == "tvly-key"
+
+
+def test_web_search_invalid_provider_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("WEB_SEARCH_PROVIDER", "other")
+
+    with pytest.raises(ValueError, match="WEB_SEARCH_PROVIDER"):
+        WorkerConfig.from_env()
+
+
+def test_web_search_invalid_top_k_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("WEB_SEARCH_TOP_K", "11")
+
+    with pytest.raises(ValueError, match="WEB_SEARCH_TOP_K"):
+        WorkerConfig.from_env()
+
+
+def test_web_search_invalid_timeout_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("WEB_SEARCH_TIMEOUT_SECONDS", "2")
+
+    with pytest.raises(ValueError, match="WEB_SEARCH_TIMEOUT_SECONDS"):
+        WorkerConfig.from_env()
+
+
+def test_web_search_invalid_max_query_chars_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("WEB_SEARCH_MAX_QUERY_CHARS", "49")
+
+    with pytest.raises(ValueError, match="WEB_SEARCH_MAX_QUERY_CHARS"):
+        WorkerConfig.from_env()
+
+
+def test_web_search_invalid_source_type_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("WEB_SEARCH_SOURCE_TYPE", "internet")
+
+    with pytest.raises(ValueError, match="WEB_SEARCH_SOURCE_TYPE"):
+        WorkerConfig.from_env()
+
+
+def test_missing_tavily_api_key_does_not_crash_config_loading(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("WEB_SEARCH_ENABLED", "true")
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+
+    assert WorkerConfig.from_env().tavily_api_key is None

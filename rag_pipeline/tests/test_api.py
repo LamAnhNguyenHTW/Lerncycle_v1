@@ -608,3 +608,72 @@ def test_rag_answer_graph_disabled_by_config(client, monkeypatch) -> None:
     assert response.status_code == 200
     assert calls[0]["graph_retrieval_enabled"] is False
     assert calls[0]["graph_mode"] == "off"
+
+
+def test_rag_answer_web_mode_defaults_to_off(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setattr(api, "answer_with_rag", lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []})
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+
+    assert response.status_code == 200
+    assert calls[0]["web_mode"] == "off"
+
+
+def test_rag_answer_accepts_web_mode_on(client, monkeypatch) -> None:
+    test_client, api = client
+    monkeypatch.setenv("WEB_SEARCH_ENABLED", "true")
+    monkeypatch.setattr(api, "answer_with_rag", lambda **_: {"answer": "ok", "sources": []})
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload(web_mode="on"))
+
+    assert response.status_code == 200
+
+
+def test_rag_answer_rejects_web_in_source_types(client) -> None:
+    test_client, _ = client
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload(source_types=["web"]))
+
+    assert response.status_code == 422
+
+
+def test_rag_answer_passes_web_options_to_answer_with_rag(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setenv("WEB_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("WEB_SEARCH_TOP_K", "6")
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-key")
+    monkeypatch.setattr(api, "answer_with_rag", lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []})
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(web_mode="on", web_search_query="current query"),
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["web_mode"] == "on"
+    assert calls[0]["web_search_enabled"] is True
+    assert calls[0]["web_search_top_k"] == 6
+    assert calls[0]["web_search_api_key"] == "tvly-key"
+    assert calls[0]["web_search_query"] == "current query"
+
+
+def test_rag_answer_returns_web_metadata(client, monkeypatch) -> None:
+    test_client, api = client
+    monkeypatch.setattr(
+        api,
+        "answer_with_rag",
+        lambda **_: {
+            "answer": "ok",
+            "sources": [],
+            "web_search": {"enabled": True, "requested": True, "used": False},
+        },
+    )
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+
+    assert response.status_code == 200
+    assert response.json()["web_search"]["enabled"] is True

@@ -1,4 +1,4 @@
-export type ChatSourceType = 'pdf' | 'note' | 'annotation_comment' | 'chat_memory' | 'knowledge_graph';
+export type ChatSourceType = 'pdf' | 'note' | 'annotation_comment' | 'chat_memory' | 'knowledge_graph' | 'web';
 export type ChatRole = 'user' | 'assistant';
 
 export interface RecentChatMessage {
@@ -15,6 +15,7 @@ export interface ChatRequest {
   session_id?: string;
   pdf_ids?: string[];
   recent_messages?: RecentChatMessage[];
+  enableWebSearch?: boolean;
 }
 
 export interface ChatSource {
@@ -33,6 +34,11 @@ export interface ChatSource {
     backing_chunk_ids?: string[];
     node_names?: string[];
     relationship_count?: number;
+    url?: string;
+    provider?: string;
+    published_date?: string;
+    retrieved_at?: string;
+    rank?: number;
   };
 }
 

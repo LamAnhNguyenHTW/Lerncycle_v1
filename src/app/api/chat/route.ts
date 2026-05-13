@@ -4,7 +4,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import type {ChatRequest, ChatResponse, ChatRole, ChatSourceType, RecentChatMessage} from '@/types/chat';
 
 const MATERIAL_SOURCE_TYPES: ChatSourceType[] = ['pdf', 'note', 'annotation_comment'];
-const SOURCE_TYPES: ChatSourceType[] = [...MATERIAL_SOURCE_TYPES, 'chat_memory'];
+const SOURCE_TYPES: ChatSourceType[] = [...MATERIAL_SOURCE_TYPES, 'chat_memory', 'web'];
 const RECENT_MESSAGE_LIMIT = 10;
 const RECENT_MESSAGE_CONTENT_LIMIT = 2000;
 const CHAT_MEMORY_DEFAULT_THRESHOLD = 8;
@@ -181,8 +181,10 @@ function clampInt(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function stripChatMemorySourceTypes(sourceTypes: ChatSourceType[] | undefined) {
-  const stripped = (sourceTypes ?? MATERIAL_SOURCE_TYPES).filter((sourceType) => sourceType !== 'chat_memory');
+function stripNonMaterialSourceTypes(sourceTypes: ChatSourceType[] | undefined) {
+  const stripped = (sourceTypes ?? MATERIAL_SOURCE_TYPES).filter((sourceType) =>
+    sourceType !== 'chat_memory' && sourceType !== 'web'
+  );
   return stripped.length > 0 ? stripped : MATERIAL_SOURCE_TYPES;
 }
 
@@ -502,8 +504,9 @@ export async function POST(request: Request) {
   }
 
   const topK = body.top_k ?? 8;
-  const sourceTypes = stripChatMemorySourceTypes(body.source_types);
+  const sourceTypes = stripNonMaterialSourceTypes(body.source_types);
   const pdfIds = body.pdf_ids?.filter(Boolean) ?? [];
+  const webMode = parseBool(process.env.WEB_SEARCH_ENABLED, false) && body.enableWebSearch === true ? 'on' : 'off';
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
 
@@ -549,6 +552,7 @@ export async function POST(request: Request) {
         memory_mode: 'auto',
         graph_mode: parseBool(process.env.GRAPH_RETRIEVAL_ENABLED, false) ? 'auto' : 'off',
         context_summary: promptContext.contextSummary ?? undefined,
+        web_mode: webMode,
       }),
       signal: controller.signal,
     });

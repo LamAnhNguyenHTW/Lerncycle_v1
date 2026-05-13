@@ -8,6 +8,7 @@ from rag_pipeline.config import WorkerConfig
 from rag_pipeline.embeddings import Embedder
 from rag_pipeline.qdrant_store import QdrantStore
 from rag_pipeline.source_types import contains_chat_memory
+from rag_pipeline.source_types import contains_web
 from rag_pipeline.sparse_embeddings import SparseEmbedder
 
 
@@ -23,6 +24,8 @@ def search_chunks(
     store: QdrantStore | None = None,
 ) -> list[dict[str, Any]]:
     """Embed a query and return normalized chunk search results."""
+    if contains_web(source_types):
+        return []
     if contains_chat_memory(source_types) and not source_ids:
         return []
     cfg = config or WorkerConfig.from_env()
@@ -58,6 +61,8 @@ def search_sparse_chunks(
     store: QdrantStore | None = None,
 ) -> list[dict[str, Any]]:
     """Embed a query sparsely and return normalized chunk search results."""
+    if contains_web(source_types):
+        return []
     if contains_chat_memory(source_types) and not source_ids:
         return []
     cfg = config or WorkerConfig.from_env()
@@ -92,6 +97,8 @@ def search_hybrid_chunks(
     store: QdrantStore | None = None,
 ) -> list[dict[str, Any]]:
     """Run hybrid dense+sparse retrieval with RRF fusion."""
+    if contains_web(source_types):
+        return []
     if contains_chat_memory(source_types) and not source_ids:
         return []
     cfg = config or WorkerConfig.from_env()

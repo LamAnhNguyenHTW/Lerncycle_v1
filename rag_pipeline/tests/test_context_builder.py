@@ -228,6 +228,72 @@ def test_normalize_source_chat_memory() -> None:
     }
 
 
+def test_normalize_source_web_returns_url_in_safe_metadata() -> None:
+    source = normalize_source(
+        _result(
+            source_type="web",
+            title="Web Title",
+            page_index=None,
+            text="Web content",
+            metadata={
+                "url": "https://example.com",
+                "provider": "tavily",
+                "retrieved_at": "2026-05-13T12:00:00+00:00",
+                "rank": 1,
+                "raw": "secret",
+            },
+        )
+    )
+
+    assert source["title"] == "Web Title"
+    assert source["page"] is None
+    assert source["metadata"] == {
+        "url": "https://example.com",
+        "provider": "tavily",
+        "retrieved_at": "2026-05-13T12:00:00+00:00",
+        "rank": 1,
+    }
+
+
+def test_context_builder_formats_web_source_with_url_and_title() -> None:
+    context = build_rag_context(
+        [
+            _result(
+                source_type="web",
+                title="Web Title",
+                page_index=None,
+                metadata={"url": "https://example.com", "provider": "tavily"},
+            )
+        ]
+    )
+
+    assert "Type: Web" in context["context_text"]
+    assert "Title: Web Title" in context["context_text"]
+    assert "URL: https://example.com" in context["context_text"]
+
+
+def test_context_builder_web_context_respects_max_sources() -> None:
+    context = build_rag_context(
+        [
+            _result(chunk_id="web-1", source_type="web", page_index=None, metadata={"url": "https://a.example"}),
+            _result(chunk_id="web-2", source_type="web", page_index=None, metadata={"url": "https://b.example"}),
+        ],
+        max_chunks=4,
+        web_max_sources=1,
+    )
+
+    assert len(context["sources"]) == 1
+
+
+def test_context_builder_web_context_respects_chars_per_source() -> None:
+    context = build_rag_context(
+        [_result(source_type="web", page_index=None, text="x" * 500, metadata={"url": "https://a.example"})],
+        web_max_chars_per_source=25,
+    )
+
+    assert "x" * 50 not in context["context_text"]
+
+
 def test_chat_memory_snippet_is_truncated_to_200_chars() -> None:
     source = normalize_source(_result(source_type="chat_memory", text="x" * 250))
 

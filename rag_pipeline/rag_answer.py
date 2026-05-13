@@ -12,6 +12,7 @@ from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.memory_intent import detect_memory_intent
 from rag_pipeline.retrieval import search_hybrid_chunks
 from rag_pipeline.source_types import MATERIAL_SOURCE_TYPES
+from rag_pipeline.web_search import WebSearchOutcome, search_web
 
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,11 @@ GRAPH_SYSTEM_PROMPT_ADDITION = (
     "explain relationships and structure backed by source chunks. If graph context "
     "conflicts with text chunks, prefer the text chunks. Do not treat graph edges as "
     "facts unless they are backed by cited chunks."
+)
+WEB_SYSTEM_PROMPT_ADDITION = (
+    " External web sources may provide current information outside the user's "
+    "uploaded LearnCycle material. Clearly distinguish web information from "
+    "the user's internal materials when relevant."
 )
 
 FALLBACK_ANSWER = (
@@ -133,6 +139,18 @@ def answer_with_rag(
     graph_top_k: int | None = None,
     graph_store: Any = None,
     context_summary: str | None = None,
+    web_mode: str = "off",
+    web_search_enabled: bool = False,
+    web_search_query: str | None = None,
+    web_search_fn: Callable[..., Any] | None = None,
+    web_search_top_k: int | None = None,
+    web_search_provider: str = "tavily",
+    web_search_api_key: str | None = None,
+    web_search_timeout_seconds: int = 15,
+    web_search_max_query_chars: int = 300,
+    web_search_max_context_sources: int = 5,
+    web_search_max_chars_per_source: int = 1000,
+    web_search_max_total_context_chars: int = 4000,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
     active_retrieval = retrieval_fn or search_hybrid_chunks
@@ -181,9 +199,27 @@ def answer_with_rag(
         except Exception:
             logger.warning("Chat memory retrieval failed; continuing without memory.", exc_info=True)
             memory_results = []
+    web_outcome = _empty_web_outcome(web_search_provider, web_search_enabled, web_mode)
+    if web_search_enabled and web_mode == "on":
+        try:
+            active_web_search = web_search_fn or search_web
+            outcome = active_web_search(
+                query=web_search_query or retrieval_query,
+                top_k=web_search_top_k or 5,
+                provider=web_search_provider,
+                api_key=web_search_api_key,
+                timeout_seconds=web_search_timeout_seconds,
+                max_query_chars=web_search_max_query_chars,
+            )
+            web_outcome = _coerce_web_outcome(outcome, web_search_provider)
+        except Exception:
+            logger.warning("Web search failed; continuing without web context.", exc_info=True)
+            web_outcome = WebSearchOutcome([], web_search_provider, 0, "provider_error")
     results = results + memory_results
+    if web_outcome.results:
+        results = results + web_outcome.results
     if not results and not graph_context.get("context_text"):
-        return {"answer": FALLBACK_ANSWER, "sources": []}
+        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, web_mode)}
 
     context_results = results
     context_top_k = top_k
@@ -199,14 +235,26 @@ def answer_with_rag(
             logger.warning("Reranker failed; using original retrieval order.", exc_info=True)
             context_results = results[:reranking_top_k]
 
-    context = build_rag_context(context_results, max_chunks=context_top_k)
+    context = build_rag_context(
+        context_results,
+        max_chunks=context_top_k,
+        web_max_sources=web_search_max_context_sources,
+        web_max_chars_per_source=web_search_max_chars_per_source,
+        web_max_total_chars=web_search_max_total_context_chars,
+    )
     text_context = context["context_text"]
     graph_text = str(graph_context.get("context_text") or "").strip()
     combined_context = _combine_context(text_context, graph_text)
     if not combined_context:
-        return {"answer": FALLBACK_ANSWER, "sources": []}
+        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, web_mode)}
 
     active_llm = llm_client or OpenAILlmClient()
+    web_text = any(result.get("source_type") == "web" for result in context_results)
+    prompt_addition = ""
+    if graph_text:
+        prompt_addition += GRAPH_SYSTEM_PROMPT_ADDITION
+    if web_text:
+        prompt_addition += WEB_SYSTEM_PROMPT_ADDITION
     if recent_messages:
         summary_text = (context_summary or "").strip()
         conversation_prefix = (
@@ -220,16 +268,20 @@ def answer_with_rag(
             f"Retrieved context:\n{combined_context}\n\n"
             f"Current question:\n{query}"
         )
-        system_prompt = CONVERSATION_SYSTEM_PROMPT + (GRAPH_SYSTEM_PROMPT_ADDITION if graph_text else "")
+        system_prompt = CONVERSATION_SYSTEM_PROMPT + prompt_addition
     else:
         user_prompt = (
             "Answer the user's question using only this context.\n\n"
             f"Context:\n{combined_context}\n\n"
             f"Question:\n{query}"
         )
-        system_prompt = SYSTEM_PROMPT + (GRAPH_SYSTEM_PROMPT_ADDITION if graph_text else "")
+        system_prompt = SYSTEM_PROMPT + prompt_addition
     answer = active_llm.complete(system_prompt=system_prompt, user_prompt=user_prompt)
-    return {"answer": answer, "sources": context["sources"] + list(graph_context.get("sources") or [])}
+    return {
+        "answer": answer,
+        "sources": context["sources"] + list(graph_context.get("sources") or []),
+        "web_search": _web_metadata(web_outcome, web_search_enabled, web_mode),
+    }
 
 
 def _should_retrieve_memory(
@@ -281,3 +333,32 @@ def _combine_context(text_context: str, graph_context: str) -> str:
     if graph_context:
         parts.append("Knowledge Graph Context:\n" + graph_context)
     return "\n\n".join(parts)
+
+
+def _empty_web_outcome(provider: str, enabled: bool, mode: str) -> WebSearchOutcome:
+    error_type = None
+    if not enabled:
+        error_type = "disabled"
+    elif mode != "on":
+        error_type = "not_requested"
+    return WebSearchOutcome([], provider, 0, error_type)
+
+
+def _coerce_web_outcome(outcome: Any, provider: str) -> WebSearchOutcome:
+    if isinstance(outcome, WebSearchOutcome):
+        return outcome
+    if isinstance(outcome, list):
+        return WebSearchOutcome(outcome, provider, len(outcome), None if outcome else "empty_results")
+    return WebSearchOutcome([], provider, 0, "provider_error")
+
+
+def _web_metadata(outcome: WebSearchOutcome, enabled: bool, mode: str) -> dict[str, Any]:
+    requested = enabled and mode == "on"
+    return {
+        "enabled": enabled,
+        "requested": requested,
+        "used": bool(outcome.results),
+        "provider": outcome.provider,
+        "result_count": outcome.result_count,
+        "error_type": outcome.error_type,
+    }

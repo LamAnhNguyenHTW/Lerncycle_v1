@@ -57,6 +57,16 @@ class WorkerConfig:
     graph_retrieval_top_k: int = 8
     graph_context_max_chars: int = 6000
     graph_source_type: str = "knowledge_graph"
+    web_search_enabled: bool = False
+    web_search_provider: str = "tavily"
+    web_search_top_k: int = 5
+    web_search_timeout_seconds: int = 15
+    web_search_max_query_chars: int = 300
+    web_search_max_context_sources: int = 5
+    web_search_max_chars_per_source: int = 1000
+    web_search_max_total_context_chars: int = 4000
+    web_search_source_type: str = "web"
+    tavily_api_key: str | None = None
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -193,6 +203,41 @@ class WorkerConfig:
                     "Missing Neo4j environment variables: "
                     + ", ".join(missing_graph)
                 )
+        web_search_enabled = _optional_bool(os.getenv("WEB_SEARCH_ENABLED"), False)
+        web_search_provider = os.getenv("WEB_SEARCH_PROVIDER", "tavily")
+        web_search_top_k = _optional_int(os.getenv("WEB_SEARCH_TOP_K")) or 5
+        web_search_timeout_seconds = (
+            _optional_int(os.getenv("WEB_SEARCH_TIMEOUT_SECONDS")) or 15
+        )
+        web_search_max_query_chars = (
+            _optional_int(os.getenv("WEB_SEARCH_MAX_QUERY_CHARS")) or 300
+        )
+        web_search_max_context_sources = (
+            _optional_int(os.getenv("WEB_SEARCH_MAX_CONTEXT_SOURCES")) or 5
+        )
+        web_search_max_chars_per_source = (
+            _optional_int(os.getenv("WEB_SEARCH_MAX_CHARS_PER_SOURCE")) or 1000
+        )
+        web_search_max_total_context_chars = (
+            _optional_int(os.getenv("WEB_SEARCH_MAX_TOTAL_CONTEXT_CHARS")) or 4000
+        )
+        web_search_source_type = os.getenv("WEB_SEARCH_SOURCE_TYPE", "web")
+        if web_search_provider != "tavily":
+            raise ValueError("WEB_SEARCH_PROVIDER must be tavily")
+        if not 1 <= web_search_top_k <= 10:
+            raise ValueError("WEB_SEARCH_TOP_K must be between 1 and 10")
+        if not 3 <= web_search_timeout_seconds <= 60:
+            raise ValueError("WEB_SEARCH_TIMEOUT_SECONDS must be between 3 and 60")
+        if not 50 <= web_search_max_query_chars <= 1000:
+            raise ValueError("WEB_SEARCH_MAX_QUERY_CHARS must be between 50 and 1000")
+        if not 1 <= web_search_max_context_sources <= 10:
+            raise ValueError("WEB_SEARCH_MAX_CONTEXT_SOURCES must be between 1 and 10")
+        if not 200 <= web_search_max_chars_per_source <= 3000:
+            raise ValueError("WEB_SEARCH_MAX_CHARS_PER_SOURCE must be between 200 and 3000")
+        if not 1000 <= web_search_max_total_context_chars <= 10000:
+            raise ValueError("WEB_SEARCH_MAX_TOTAL_CONTEXT_CHARS must be between 1000 and 10000")
+        if web_search_source_type != "web":
+            raise ValueError("WEB_SEARCH_SOURCE_TYPE must be web")
 
         return cls(
             supabase_url=required["SUPABASE_URL"] or "",
@@ -269,6 +314,16 @@ class WorkerConfig:
             graph_retrieval_top_k=graph_retrieval_top_k,
             graph_context_max_chars=graph_context_max_chars,
             graph_source_type=graph_source_type,
+            web_search_enabled=web_search_enabled,
+            web_search_provider=web_search_provider,
+            web_search_top_k=web_search_top_k,
+            web_search_timeout_seconds=web_search_timeout_seconds,
+            web_search_max_query_chars=web_search_max_query_chars,
+            web_search_max_context_sources=web_search_max_context_sources,
+            web_search_max_chars_per_source=web_search_max_chars_per_source,
+            web_search_max_total_context_chars=web_search_max_total_context_chars,
+            web_search_source_type=web_search_source_type,
+            tavily_api_key=os.getenv("TAVILY_API_KEY") or None,
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",

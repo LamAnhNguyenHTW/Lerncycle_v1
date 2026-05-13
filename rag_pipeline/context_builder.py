@@ -11,6 +11,7 @@ SOURCE_LABELS = {
     "annotation_comment": "Annotation",
     "chat_memory": "Chat Memory",
     "knowledge_graph": "Knowledge Graph",
+    "web": "Web",
 }
 
 
@@ -47,6 +48,15 @@ def normalize_source(result: dict[str, Any]) -> dict[str, Any]:
         safe_metadata["node_names"] = metadata.get("node_names")
         safe_metadata["relationship_count"] = metadata.get("relationship_count")
         safe_metadata = {key: value for key, value in safe_metadata.items() if value}
+    elif source_type == "web":
+        title = _first_text(title, metadata.get("title"), metadata.get("url"), "Web Source")
+        safe_metadata["url"] = metadata.get("url")
+        safe_metadata["provider"] = metadata.get("provider")
+        safe_metadata["published_date"] = metadata.get("published_date")
+        safe_metadata["retrieved_at"] = metadata.get("retrieved_at")
+        safe_metadata["rank"] = metadata.get("rank")
+        safe_metadata = {key: value for key, value in safe_metadata.items() if value is not None}
+        page = None
 
     return {
         "chunk_id": result.get("chunk_id"),
@@ -79,16 +89,29 @@ def build_rag_context(
     results: list[dict[str, Any]],
     max_chunks: int = 8,
     max_chars: int = 12000,
+    web_max_sources: int = 5,
+    web_max_chars_per_source: int = 1000,
+    web_max_total_chars: int = 4000,
 ) -> dict[str, Any]:
     """Build ranked source blocks and citations for a RAG answer."""
     unique_results = _dedupe_by_chunk_id(results)[:max_chunks]
     context_blocks: list[str] = []
     sources: list[dict[str, Any]] = []
     total_chars = 0
+    web_sources = 0
+    web_chars = 0
 
     for result in unique_results:
-        source = normalize_source(result)
-        block = _format_context_block(len(context_blocks) + 1, result, source)
+        block_result = result
+        if result.get("source_type") == "web":
+            if web_sources >= web_max_sources or web_chars >= web_max_total_chars:
+                continue
+            remaining_web_chars = max(0, web_max_total_chars - web_chars)
+            web_text_limit = min(web_max_chars_per_source, remaining_web_chars)
+            block_result = {**result, "text": str(result.get("text") or "")[:web_text_limit].rstrip()}
+            web_sources += 1
+        source = normalize_source(block_result)
+        block = _format_context_block(len(context_blocks) + 1, block_result, source)
         block_len = len(block) + (2 if context_blocks else 0)
         if context_blocks and total_chars + block_len > max_chars:
             break
@@ -98,6 +121,8 @@ def build_rag_context(
         context_blocks.append(block)
         sources.append(source)
         total_chars += block_len
+        if result.get("source_type") == "web":
+            web_chars += len(str(block_result.get("text") or ""))
 
     return {"context_text": "\n\n".join(context_blocks), "sources": sources}
 
@@ -129,6 +154,14 @@ def _format_context_block(index: int, result: dict[str, Any], source: dict[str, 
         lines.append("Role: Session-scoped learning history summary")
     elif source_type == "knowledge_graph":
         lines.append("Role: Concept relationship context backed by chunks")
+    elif source_type == "web":
+        metadata = source.get("metadata", {})
+        lines.append("Role: External web source")
+        lines.append(f"Title: {source.get('title')}")
+        if metadata.get("url"):
+            lines.append(f"URL: {metadata.get('url')}")
+        if metadata.get("retrieved_at"):
+            lines.append(f"Retrieved at: {metadata.get('retrieved_at')}")
 
     if source.get("page") is not None:
         lines.append(f"Page: {source.get('page')}")

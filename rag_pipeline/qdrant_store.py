@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from rag_pipeline.source_types import contains_chat_memory
+from rag_pipeline.source_types import contains_chat_memory, contains_web
 
 
 VECTOR_NAME = "dense"
@@ -126,6 +126,8 @@ class QdrantStore:
     ) -> list[Any]:
         if contains_chat_memory(source_types) and not source_ids:
             return []
+        if contains_web(source_types):
+            return []
         query_filter = _filter(
             {"user_id": user_id},
             source_types=source_types,
@@ -162,6 +164,8 @@ class QdrantStore:
         models = _models()
         if contains_chat_memory(source_types) and not source_ids:
             return []
+        if contains_web(source_types):
+            return []
         query_filter = _filter(
             {"user_id": user_id},
             source_types=source_types,
@@ -195,6 +199,8 @@ class QdrantStore:
     ) -> list[Any]:
         models = _models()
         if contains_chat_memory(source_types) and not source_ids:
+            return []
+        if contains_web(source_types):
             return []
         query_filter = _filter(
             {"user_id": user_id},

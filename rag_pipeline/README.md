@@ -70,6 +70,16 @@ Embedding and retrieval configuration:
 - `GRAPH_RETRIEVAL_TOP_K` (default: `8`)
 - `GRAPH_CONTEXT_MAX_CHARS` (default: `6000`)
 - `GRAPH_SOURCE_TYPE` (must be `knowledge_graph`)
+- `WEB_SEARCH_ENABLED` (default: `false`)
+- `WEB_SEARCH_PROVIDER` (must be `tavily`)
+- `WEB_SEARCH_TOP_K` (default: `5`)
+- `WEB_SEARCH_TIMEOUT_SECONDS` (default: `15`)
+- `WEB_SEARCH_MAX_QUERY_CHARS` (default: `300`)
+- `WEB_SEARCH_MAX_CONTEXT_SOURCES` (default: `5`)
+- `WEB_SEARCH_MAX_CHARS_PER_SOURCE` (default: `1000`)
+- `WEB_SEARCH_MAX_TOTAL_CONTEXT_CHARS` (default: `4000`)
+- `WEB_SEARCH_SOURCE_TYPE` (must be `web`)
+- `TAVILY_API_KEY`
 - `RAG_INTERNAL_API_KEY`
 
 Next.js server-only chat variables:
@@ -82,6 +92,7 @@ Next.js server-only chat variables:
 - `CHAT_MEMORY_KEEP_RECENT`
 - `CHAT_MEMORY_MAX_SUMMARY_CHARS`
 - `GRAPH_RETRIEVAL_ENABLED`
+- `WEB_SEARCH_ENABLED`
 
 Durable indexing currently supports OpenAI embeddings. If the durable embedding
 provider has no API key, the job fails and retries instead of storing fake
@@ -210,6 +221,29 @@ remain the primary factual grounding, and graph retrieval failures fall back to
 normal RAG. Browser requests cannot directly force graph retrieval; Next.js sets
 `graph_mode` server-side from environment config. Graph source cards expose only
 short snippets and backing chunk ids, never raw Cypher or full graph dumps.
+
+Web Search is optional and disabled by default. When `WEB_SEARCH_ENABLED=true`,
+Next.js can forward `web_mode="on"` only when the browser sends the
+`enableWebSearch` hint. The Python RAG service calls Tavily through
+`rag_pipeline.web_search.search_web`, normalizes results as ephemeral
+`source_type="web"` chunks, and merges them with local RAG context for that one
+answer. Web results are never written to Supabase, Qdrant, `rag_chunks`, or
+`rag_index_jobs`. Missing Tavily credentials, provider errors, timeouts, and
+empty results return safe web metadata and fall back to local retrieval.
+
+Example direct RAG request:
+
+```json
+{
+  "query": "Was ist aktuell neu bei OpenAI Agents SDK?",
+  "user_id": "server-verified-user-id",
+  "web_mode": "on"
+}
+```
+
+Known limitations: this track does not add automatic intent classification,
+agentic browsing, web result caching, web embeddings, or Supabase persistence
+for web results.
 
 Existing dense-only collections are not recreated automatically during normal
 worker execution. Recreate/rebuild hybrid points only via the explicit

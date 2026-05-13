@@ -3,7 +3,7 @@
 import {useEffect, useState, useRef} from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import {ChevronDown, FileText, Send, Sparkles, Plus, User, MessageSquare, Trash2, Edit2} from 'lucide-react';
+import {ChevronDown, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {SourceCard} from '@/components/learn/SourceCard';
 import type {Course} from '@/lib/data';
@@ -47,6 +47,7 @@ export function ChatInterface({
       ? [initialPdfId] 
       : allPdfs.map(p => p.id),
   );
+  const [enableWebSearch, setEnableWebSearch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -120,6 +121,7 @@ export function ChatInterface({
           course_id: course.id,
           session_id: sessionId,
           pdf_ids: selectedPdfIds.length === allPdfs.length ? [] : selectedPdfIds,
+          enableWebSearch,
         }),
       });
       const data = await res.json();
@@ -410,6 +412,16 @@ export function ChatInterface({
         <div className="absolute bottom-0 inset-x-0 bg-white pt-6 pb-6 px-4 md:px-8 border-t border-border/40 pointer-events-none">
           <div className="max-w-3xl mx-auto w-full pointer-events-auto">
             <form onSubmit={onSubmit} className="relative flex items-end gap-2 bg-white border border-border shadow-sm rounded-xl px-3 py-2 focus-within:border-black/30 transition-all">
+              <button
+                type="button"
+                onClick={() => setEnableWebSearch((value) => !value)}
+                className={`mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                  enableWebSearch ? 'border-black bg-black text-white' : 'border-border bg-white text-muted-foreground hover:text-foreground'
+                }`}
+                title="Use web search"
+              >
+                <Globe className="h-3.5 w-3.5" />
+              </button>
               <textarea
                 ref={textareaRef}
                 value={message}
@@ -502,11 +514,13 @@ function SourceChip({source}: {source: ChatSource}) {
     ? 'memory'
     : source.source_type === 'knowledge_graph'
       ? 'graph'
+      : source.source_type === 'web'
+        ? 'web'
       : source.source_type.replace('_', ' ');
 
   return (
     <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-white px-2 text-xs text-muted-foreground shadow-sm">
-      <FileText className="h-3 w-3 shrink-0" />
+      {source.source_type === 'web' ? <Globe className="h-3 w-3 shrink-0" /> : <FileText className="h-3 w-3 shrink-0" />}
       <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-semibold uppercase leading-none text-foreground">
         {sourceType}
       </span>

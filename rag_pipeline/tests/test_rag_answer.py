@@ -7,6 +7,7 @@ from rag_pipeline.rag_answer import (
     rewrite_query_for_retrieval,
 )
 from rag_pipeline.reranker import LlmReranker
+from rag_pipeline.web_search import WebSearchOutcome
 
 
 class FakeLlmClient:
@@ -84,6 +85,20 @@ class FakeGraphStore:
                 }
             ]
         }
+
+
+def _web_result() -> dict:
+    return {
+        "chunk_id": "web:1234567890abcdef",
+        "text": "Current web information.",
+        "score": 0.7,
+        "source_type": "web",
+        "source_id": "web:1234567890abcdef",
+        "title": "Web Source",
+        "heading": None,
+        "page_index": None,
+        "metadata": {"url": "https://example.com", "provider": "tavily"},
+    }
 
 
 def _result() -> dict:
@@ -192,6 +207,69 @@ def test_answer_with_rag_returns_answer_and_sources() -> None:
 
     assert response["answer"] == "Eine Antwort"
     assert response["sources"][0]["chunk_id"] == "chunk-1"
+
+
+def test_web_search_not_used_by_default() -> None:
+    calls = []
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        web_search_fn=lambda **kwargs: calls.append(kwargs) or WebSearchOutcome([], "tavily", 0),
+    )
+
+    assert calls == []
+
+
+def test_web_search_used_when_web_mode_on_and_enabled() -> None:
+    calls = []
+
+    response = answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        web_mode="on",
+        web_search_enabled=True,
+        web_search_fn=lambda **kwargs: calls.append(kwargs) or WebSearchOutcome([_web_result()], "tavily", 1),
+    )
+
+    assert calls
+    assert any(source["source_type"] == "web" for source in response["sources"])
+    assert response["web_search"]["used"] is True
+
+
+def test_web_search_provider_error_does_not_fail_answer() -> None:
+    response = answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        web_mode="on",
+        web_search_enabled=True,
+        web_search_fn=lambda **_: WebSearchOutcome([], "tavily", 0, "provider_error"),
+    )
+
+    assert response["answer"] == "Antwort"
+    assert response["web_search"]["error_type"] == "provider_error"
+
+
+def test_prompt_distinguishes_web_sources_from_internal_sources() -> None:
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+        web_mode="on",
+        web_search_enabled=True,
+        web_search_fn=lambda **_: WebSearchOutcome([_web_result()], "tavily", 1),
+    )
+
+    assert "External web sources" in llm.calls[-1]["system_prompt"]
 
 
 def test_answer_with_rag_handles_no_results() -> None:

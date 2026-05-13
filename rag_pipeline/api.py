@@ -27,6 +27,7 @@ if not INTERNAL_API_KEY:
 SourceType = Literal["pdf", "note", "annotation_comment"]
 MemoryMode = Literal["off", "auto", "on"]
 GraphMode = Literal["off", "auto", "on"]
+WebMode = Literal["off", "on"]
 
 
 class RecentMessage(BaseModel):
@@ -50,6 +51,9 @@ class RagAnswerRequest(BaseModel):
     include_memory: bool | None = None
     graph_mode: GraphMode = "auto"
     context_summary: str | None = Field(default=None, max_length=4000)
+    web_mode: WebMode = "off"
+    enable_web_search: bool | None = None
+    web_search_query: str | None = Field(default=None, max_length=1000)
 
     @model_validator(mode="after")
     def validate_reranking_bounds(self) -> "RagAnswerRequest":
@@ -85,6 +89,7 @@ class RagAnswerRequest(BaseModel):
 class RagAnswerResponse(BaseModel):
     answer: str
     sources: list[dict[str, Any]]
+    web_search: dict[str, Any] | None = None
 
 
 class CompressConversationRequest(BaseModel):
@@ -160,6 +165,9 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
         )
         graph_store = create_graph_store(config)
         graph_mode = request.graph_mode if config.graph_retrieval_enabled else "off"
+        web_mode = "on" if request.enable_web_search is True else request.web_mode
+        if not config.web_search_enabled:
+            web_mode = "off"
         return answer_with_rag(
             query=request.query.strip(),
             user_id=request.user_id,
@@ -181,6 +189,17 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             graph_top_k=config.graph_retrieval_top_k,
             graph_store=graph_store,
             context_summary=request.context_summary,
+            web_mode=web_mode,
+            web_search_enabled=config.web_search_enabled,
+            web_search_query=request.web_search_query,
+            web_search_top_k=config.web_search_top_k,
+            web_search_provider=config.web_search_provider,
+            web_search_api_key=config.tavily_api_key,
+            web_search_timeout_seconds=config.web_search_timeout_seconds,
+            web_search_max_query_chars=config.web_search_max_query_chars,
+            web_search_max_context_sources=config.web_search_max_context_sources,
+            web_search_max_chars_per_source=config.web_search_max_chars_per_source,
+            web_search_max_total_context_chars=config.web_search_max_total_context_chars,
         )
     except HTTPException:
         raise
