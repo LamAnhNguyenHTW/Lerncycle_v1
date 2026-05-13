@@ -246,14 +246,18 @@ class Neo4jGraphStore:
         return {"paths": records}
 
     def _records(self, statement: str, parameters: dict[str, Any]) -> list[dict[str, Any]]:
-        result = self._run(statement, parameters)
-        records = []
-        for record in result or []:
-            if hasattr(record, "data"):
-                records.append(record.data())
-            elif isinstance(record, dict):
-                records.append(record)
-        return records
+        session = self.driver.session(database=self.database)
+        if hasattr(session, "__enter__"):
+            with session as active_session:
+                result = active_session.run(statement, parameters or {})
+                return _materialize_records(result)
+        try:
+            result = session.run(statement, parameters or {})
+            return _materialize_records(result)
+        finally:
+            close = getattr(session, "close", None)
+            if close:
+                close()
 
     def _run(
         self,
@@ -270,6 +274,16 @@ class Neo4jGraphStore:
             close = getattr(session, "close", None)
             if close:
                 close()
+
+
+def _materialize_records(result: Any) -> list[dict[str, Any]]:
+    records = []
+    for record in result or []:
+        if hasattr(record, "data"):
+            records.append(record.data())
+        elif isinstance(record, dict):
+            records.append(record)
+    return records
 
 
 def _chunk_payload(user_id: str, chunk: dict[str, Any]) -> dict[str, Any]:

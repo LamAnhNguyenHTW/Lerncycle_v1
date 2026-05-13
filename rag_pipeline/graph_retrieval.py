@@ -34,6 +34,8 @@ GRAPH_INTENT_TRIGGERS = (
 def detect_graph_intent(query: str) -> bool:
     """Return True for relationship or concept-map questions."""
     normalized = query.strip().lower()
+    if any(trigger in normalized for trigger in GRAPH_INTENT_TRIGGERS):
+        return True
     if normalized.startswith(("was ist ", "define ", "explain ", "erkläre ", "erklaere ")):
         return False
     if normalized.startswith("how is ") and " related" not in normalized:
