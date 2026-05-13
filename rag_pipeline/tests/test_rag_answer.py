@@ -274,6 +274,41 @@ def test_answer_with_rag_includes_recent_messages_in_prompt() -> None:
     assert "Retrieved context:" in prompt
 
 
+def test_answer_with_rag_includes_context_summary_before_recent_messages() -> None:
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "Erklär das einfacher.",
+        "user-1",
+        recent_messages=[{"role": "user", "content": "Was ist Process Mining?"}],
+        context_summary="Earlier summary text",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    prompt = llm.calls[-1]["user_prompt"]
+    assert "[Conversation summary" in prompt
+    assert "Earlier summary text" in prompt
+    assert prompt.index("[Conversation summary") < prompt.index("Recent conversation:")
+
+
+def test_answer_with_rag_omits_empty_context_summary_block() -> None:
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "Erklär das einfacher.",
+        "user-1",
+        recent_messages=[{"role": "user", "content": "Was ist Process Mining?"}],
+        context_summary="   ",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    prompt = llm.calls[-1]["user_prompt"]
+    assert "[Conversation summary" not in prompt
+    assert "Recent conversation:" in prompt
+
+
 def test_answer_with_rag_preserves_current_query_as_final_question() -> None:
     llm = FakeLlmClient()
 

@@ -34,6 +34,10 @@ def test_detect_graph_intent_relationship_question() -> None:
     assert detect_graph_intent("Wie hängt Process Mining mit Event Logs zusammen?")
 
 
+def test_detect_graph_intent_was_ist_zusammenhang_question() -> None:
+    assert detect_graph_intent("Was ist der Zusammenhang zwischen Event Logs und Process Mining?")
+
+
 def test_detect_graph_intent_mindmap_question() -> None:
     assert detect_graph_intent("Erstelle eine Konzeptkarte zu Process Mining")
 

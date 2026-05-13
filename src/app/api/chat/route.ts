@@ -11,6 +11,10 @@ const CHAT_MEMORY_DEFAULT_THRESHOLD = 8;
 const CHAT_MEMORY_DEFAULT_INTERVAL = 4;
 const CHAT_MEMORY_DEFAULT_KEEP_RECENT = 4;
 const CHAT_MEMORY_DEFAULT_MAX_CHARS = 2500;
+const PROMPT_COMPACTION_DEFAULT_THRESHOLD = 12;
+const PROMPT_COMPACTION_DEFAULT_INTERVAL = 4;
+const PROMPT_COMPACTION_DEFAULT_KEEP_RECENT = 6;
+const PROMPT_COMPACTION_DEFAULT_MAX_CHARS = 1500;
 
 class SessionNotFoundError extends Error {}
 
@@ -73,18 +77,23 @@ async function getOrCreateSession(
   return data.id as string;
 }
 
-async function loadSessionCourseId(
+async function loadSessionPromptContext(
   supabase: SupabaseClient,
   sessionId: string,
   userId: string,
 ) {
   const {data} = await supabase
     .from('chat_sessions')
-    .select('course_id')
+    .select('course_id, context_summary, context_summary_cursor')
     .eq('id', sessionId)
     .eq('user_id', userId)
     .maybeSingle();
-  return typeof data?.course_id === 'string' ? data.course_id : null;
+  return {
+    courseId: typeof data?.course_id === 'string' ? data.course_id : null,
+    contextSummary: typeof data?.context_summary === 'string' && data.context_summary.trim().length > 0
+      ? data.context_summary.trim()
+      : null,
+  };
 }
 
 async function loadRecentMessages(
@@ -126,6 +135,33 @@ function chatMemoryConfig() {
   };
 }
 
+function promptCompactionConfig() {
+  const keepRecent = Math.max(
+    2,
+    parseIntEnv(process.env.PROMPT_COMPACTION_KEEP_RECENT, PROMPT_COMPACTION_DEFAULT_KEEP_RECENT),
+  );
+  const threshold = Math.max(
+    keepRecent + 1,
+    parseIntEnv(process.env.PROMPT_COMPACTION_THRESHOLD, PROMPT_COMPACTION_DEFAULT_THRESHOLD),
+  );
+  const interval = Math.max(
+    1,
+    parseIntEnv(process.env.PROMPT_COMPACTION_INTERVAL, PROMPT_COMPACTION_DEFAULT_INTERVAL),
+  );
+  const maxSummaryChars = clampInt(
+    parseIntEnv(process.env.PROMPT_COMPACTION_MAX_SUMMARY_CHARS, PROMPT_COMPACTION_DEFAULT_MAX_CHARS),
+    300,
+    4000,
+  );
+  return {
+    enabled: parseBool(process.env.PROMPT_COMPACTION_ENABLED, false),
+    threshold,
+    interval,
+    keepRecent,
+    maxSummaryChars,
+  };
+}
+
 function parseBool(value: string | undefined, fallback: boolean) {
   if (value === undefined || value === '') {
     return fallback;
@@ -139,6 +175,10 @@ function parseIntEnv(value: string | undefined, fallback: number) {
   }
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function clampInt(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function stripChatMemorySourceTypes(sourceTypes: ChatSourceType[] | undefined) {
@@ -280,6 +320,115 @@ async function triggerChatMemorySummary({
   }
 }
 
+async function triggerPromptCompaction({
+  supabase,
+  sessionId,
+  userId,
+  ragApiUrl,
+  internalApiKey,
+}: {
+  supabase: SupabaseClient;
+  sessionId: string;
+  userId: string;
+  ragApiUrl: string;
+  internalApiKey: string;
+}): Promise<void> {
+  try {
+    const config = promptCompactionConfig();
+    if (!config.enabled) {
+      return;
+    }
+
+    const {count, error: countError} = await supabase
+      .from('chat_messages')
+      .select('id', {count: 'exact', head: true})
+      .eq('user_id', userId)
+      .eq('session_id', sessionId);
+    if (countError || count === null || count < config.threshold) {
+      return;
+    }
+
+    const {data: session, error: sessionError} = await supabase
+      .from('chat_sessions')
+      .select('context_summary, context_summary_cursor')
+      .eq('id', sessionId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (sessionError || !session) {
+      return;
+    }
+
+    const cursor = Math.max(0, Number(session.context_summary_cursor ?? 0));
+    const compactUntil = count - config.keepRecent;
+    const newCompressibleCount = compactUntil - cursor;
+    if (compactUntil <= cursor) {
+      return;
+    }
+    if (cursor > 0 && newCompressibleCount < config.interval) {
+      return;
+    }
+
+    const {data: messages, error: messagesError} = await supabase
+      .from('chat_messages')
+      .select('role, content')
+      .eq('user_id', userId)
+      .eq('session_id', sessionId)
+      .order('created_at', {ascending: true})
+      .order('id', {ascending: true})
+      .range(cursor, compactUntil - 1);
+    if (messagesError || !messages || messages.length === 0) {
+      return;
+    }
+
+    const response = await fetch(`${ragApiUrl.replace(/\/$/, '')}/rag/compress`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${internalApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: messages
+          .filter((message) => message.role === 'user' || message.role === 'assistant')
+          .map((message) => ({
+            role: message.role,
+            content: String(message.content ?? '').slice(0, RECENT_MESSAGE_CONTENT_LIMIT),
+          })),
+        existing_summary: typeof session.context_summary === 'string' ? session.context_summary : null,
+        max_chars: config.maxSummaryChars,
+      }),
+    });
+    if (!response.ok) {
+      console.error('RAG prompt compaction failed', {status: response.status});
+      return;
+    }
+
+    const {summary} = await response.json();
+    if (typeof summary !== 'string' || summary.trim().length === 0) {
+      return;
+    }
+
+    const {data: updatedSession, error: updateError} = await supabase
+      .from('chat_sessions')
+      .update({
+        context_summary: summary.trim().slice(0, config.maxSummaryChars),
+        context_summary_cursor: compactUntil,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', sessionId)
+      .eq('user_id', userId)
+      .eq('context_summary_cursor', cursor)
+      .select('id')
+      .maybeSingle();
+    if (updateError) {
+      console.error('Failed to update prompt compaction summary', updateError);
+    } else if (!updatedSession) {
+      console.info('Skipped prompt compaction update because another compaction advanced the cursor.');
+    }
+  } catch (error) {
+    console.error('Prompt compaction trigger failed', error);
+  }
+}
+
 async function loadRelatedMemorySourceIds(
   supabase: SupabaseClient,
   userId: string,
@@ -360,8 +509,13 @@ export async function POST(request: Request) {
 
   try {
     const sessionId = await getOrCreateSession(supabase, user.id, body);
-    const courseId = body.course_id ?? await loadSessionCourseId(supabase, sessionId, user.id);
-    const recentMessages = await loadRecentMessages(supabase, sessionId, user.id);
+    const promptContext = await loadSessionPromptContext(supabase, sessionId, user.id);
+    const courseId = body.course_id ?? promptContext.courseId;
+    const compactionConfig = promptCompactionConfig();
+    const recentMessageLimit = compactionConfig.enabled && promptContext.contextSummary
+      ? compactionConfig.keepRecent
+      : RECENT_MESSAGE_LIMIT;
+    const recentMessages = await loadRecentMessages(supabase, sessionId, user.id, recentMessageLimit);
     const memorySourceIds = await loadRelatedMemorySourceIds(
       supabase,
       user.id,
@@ -394,6 +548,7 @@ export async function POST(request: Request) {
         memory_source_ids: memorySourceIds,
         memory_mode: 'auto',
         graph_mode: parseBool(process.env.GRAPH_RETRIEVAL_ENABLED, false) ? 'auto' : 'off',
+        context_summary: promptContext.contextSummary ?? undefined,
       }),
       signal: controller.signal,
     });
@@ -423,6 +578,13 @@ export async function POST(request: Request) {
       userId: user.id,
       courseId,
       pdfIds,
+      ragApiUrl,
+      internalApiKey,
+    });
+    void triggerPromptCompaction({
+      supabase,
+      sessionId,
+      userId: user.id,
       ragApiUrl,
       internalApiKey,
     });

@@ -12,9 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from rag_pipeline.config import WorkerConfig
-from rag_pipeline.conversation_compressor import compress_conversation
 from rag_pipeline.graph_store_factory import create_graph_store
 from rag_pipeline.llm_client import OpenAILlmClient
+from rag_pipeline.prompt_compaction import compress_conversation_summary
 from rag_pipeline.rag_answer import answer_with_rag
 from rag_pipeline.reranker import create_reranker
 
@@ -49,6 +49,7 @@ class RagAnswerRequest(BaseModel):
     memory_mode: MemoryMode = "auto"
     include_memory: bool | None = None
     graph_mode: GraphMode = "auto"
+    context_summary: str | None = Field(default=None, max_length=4000)
 
     @model_validator(mode="after")
     def validate_reranking_bounds(self) -> "RagAnswerRequest":
@@ -73,6 +74,13 @@ class RagAnswerRequest(BaseModel):
                 raise ValueError("memory_source_ids must be valid UUIDs") from exc
         return self
 
+    @model_validator(mode="after")
+    def normalize_context_summary(self) -> "RagAnswerRequest":
+        if self.context_summary is not None:
+            stripped = self.context_summary.strip()
+            self.context_summary = stripped or None
+        return self
+
 
 class RagAnswerResponse(BaseModel):
     answer: str
@@ -81,8 +89,8 @@ class RagAnswerResponse(BaseModel):
 
 class CompressConversationRequest(BaseModel):
     messages: list[RecentMessage] = Field(default_factory=list, max_length=100)
-    existing_summary: str | None = Field(default=None, max_length=10000)
-    max_chars: int = Field(default=2500, ge=500, le=10000)
+    existing_summary: str | None = Field(default=None, max_length=3000)
+    max_chars: int = Field(default=1500, ge=300, le=4000)
 
 
 class CompressConversationResponse(BaseModel):
@@ -172,6 +180,7 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             graph_mode=graph_mode,
             graph_top_k=config.graph_retrieval_top_k,
             graph_store=graph_store,
+            context_summary=request.context_summary,
         )
     except HTTPException:
         raise
@@ -191,7 +200,7 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
 def rag_compress(request: CompressConversationRequest) -> dict[str, str]:
     try:
         config = WorkerConfig.from_env()
-        summary = compress_conversation(
+        summary = compress_conversation_summary(
             [message.model_dump() for message in request.messages],
             llm_client=OpenAILlmClient(
                 api_key=config.openai_api_key,

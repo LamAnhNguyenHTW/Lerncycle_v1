@@ -264,6 +264,44 @@ def test_rag_answer_passes_recent_messages_to_answer_with_rag(client, monkeypatc
         {"role": "assistant", "content": "Eine kurze Erklärung."},
     ]
 
+def test_rag_answer_passes_context_summary_to_answer_with_rag(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+
+    def fake_answer_with_rag(**kwargs):
+        calls.append(kwargs)
+        return {"answer": "ok", "sources": []}
+
+    monkeypatch.setattr(api, "answer_with_rag", fake_answer_with_rag)
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(context_summary="Earlier summary text"),
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["context_summary"] == "Earlier summary text"
+
+
+def test_rag_answer_normalizes_empty_context_summary(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setattr(
+        api,
+        "answer_with_rag",
+        lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []},
+    )
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(context_summary="   "),
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["context_summary"] is None
+
 
 def test_rag_answer_accepts_reranking_enabled(client, monkeypatch) -> None:
     test_client, api = client
@@ -420,7 +458,7 @@ def test_rag_compress_requires_auth(client) -> None:
 def test_rag_compress_valid_body_returns_summary(client, monkeypatch) -> None:
     test_client, api = client
     monkeypatch.setattr(api, "OpenAILlmClient", lambda **_: object())
-    monkeypatch.setattr(api, "compress_conversation", lambda *_, **__: "summary")
+    monkeypatch.setattr(api, "compress_conversation_summary", lambda *_, **__: "summary")
 
     response = test_client.post(
         "/rag/compress",
@@ -444,6 +482,49 @@ def test_rag_compress_rejects_invalid_messages(client) -> None:
     assert response.status_code == 422
 
 
+def test_rag_compress_passes_existing_summary_and_max_chars(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setattr(api, "OpenAILlmClient", lambda **_: object())
+    monkeypatch.setattr(
+        api,
+        "compress_conversation_summary",
+        lambda *args, **kwargs: calls.append({"args": args, "kwargs": kwargs}) or "summary",
+    )
+
+    response = test_client.post(
+        "/rag/compress",
+        headers=_headers(),
+        json={
+            "messages": [{"role": "user", "content": "Hallo"}],
+            "existing_summary": "old",
+            "max_chars": 700,
+        },
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["kwargs"]["existing_summary"] == "old"
+    assert calls[0]["kwargs"]["max_chars"] == 700
+
+
+def test_rag_compress_rejects_invalid_max_chars(client) -> None:
+    test_client, _ = client
+
+    low = test_client.post(
+        "/rag/compress",
+        headers=_headers(),
+        json={"messages": [], "max_chars": 299},
+    )
+    high = test_client.post(
+        "/rag/compress",
+        headers=_headers(),
+        json={"messages": [], "max_chars": 4001},
+    )
+
+    assert low.status_code == 422
+    assert high.status_code == 422
+
+
 def test_rag_compress_handles_llm_error_safely(client, monkeypatch) -> None:
     test_client, api = client
     monkeypatch.setattr(api, "OpenAILlmClient", lambda **_: object())
@@ -451,7 +532,7 @@ def test_rag_compress_handles_llm_error_safely(client, monkeypatch) -> None:
     def boom(*_, **__):
         raise RuntimeError("secret stack detail")
 
-    monkeypatch.setattr(api, "compress_conversation", boom)
+    monkeypatch.setattr(api, "compress_conversation_summary", boom)
 
     response = test_client.post(
         "/rag/compress",

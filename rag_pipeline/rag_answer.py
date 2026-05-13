@@ -132,6 +132,7 @@ def answer_with_rag(
     graph_mode: str = "auto",
     graph_top_k: int | None = None,
     graph_store: Any = None,
+    context_summary: str | None = None,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
     active_retrieval = retrieval_fn or search_hybrid_chunks
@@ -207,8 +208,15 @@ def answer_with_rag(
 
     active_llm = llm_client or OpenAILlmClient()
     if recent_messages:
+        summary_text = (context_summary or "").strip()
+        conversation_prefix = (
+            "[Conversation summary - earlier in this session]\n"
+            f"{summary_text}\n\n"
+            if summary_text
+            else ""
+        )
         user_prompt = (
-            f"Recent conversation:\n{_format_conversation_block(recent_messages)}\n\n"
+            f"{conversation_prefix}Recent conversation:\n{_format_conversation_block(recent_messages)}\n\n"
             f"Retrieved context:\n{combined_context}\n\n"
             f"Current question:\n{query}"
         )
