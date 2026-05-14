@@ -83,6 +83,10 @@ class WorkerConfig:
     retrieval_planner_web_top_k: int = 5
     retrieval_planner_max_steps: int = 5
     retrieval_planner_include_disabled_steps: bool = True
+    retrieval_tool_registry_enabled: bool = False
+    retrieval_tool_timeout_seconds: int = 20
+    retrieval_tool_max_results_per_tool: int = 20
+    retrieval_tool_allowed_tools: list[str] | None = None
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -292,6 +296,32 @@ class WorkerConfig:
         if not 1 <= retrieval_planner_max_steps <= 10:
             raise ValueError("RETRIEVAL_PLANNER_MAX_STEPS must be between 1 and 10")
 
+        retrieval_tool_registry_enabled = _optional_bool(
+            os.getenv("RETRIEVAL_TOOL_REGISTRY_ENABLED"), False
+        )
+        retrieval_tool_timeout_seconds = _int_or_default("RETRIEVAL_TOOL_TIMEOUT_SECONDS", 20)
+        retrieval_tool_max_results_per_tool = _int_or_default("RETRIEVAL_TOOL_MAX_RESULTS_PER_TOOL", 20)
+        _allowed_tools_raw = os.getenv("RETRIEVAL_TOOL_ALLOWED_TOOLS")
+        retrieval_tool_allowed_tools: list[str] | None = (
+            [t.strip() for t in _allowed_tools_raw.split(",") if t.strip()]
+            if _allowed_tools_raw
+            else None
+        )
+        if not 3 <= retrieval_tool_timeout_seconds <= 120:
+            raise ValueError("RETRIEVAL_TOOL_TIMEOUT_SECONDS must be between 3 and 120")
+        if not 1 <= retrieval_tool_max_results_per_tool <= 50:
+            raise ValueError("RETRIEVAL_TOOL_MAX_RESULTS_PER_TOOL must be between 1 and 50")
+        _known_tool_names = {
+            "search_pdf_chunks", "search_notes", "search_annotations",
+            "search_chat_memory", "web_search", "query_knowledge_graph",
+        }
+        if retrieval_tool_allowed_tools is not None:
+            _invalid = [t for t in retrieval_tool_allowed_tools if t not in _known_tool_names]
+            if _invalid:
+                raise ValueError(
+                    f"RETRIEVAL_TOOL_ALLOWED_TOOLS contains unknown tools: {_invalid}"
+                )
+
         return cls(
             supabase_url=required["SUPABASE_URL"] or "",
             supabase_service_role_key=(
@@ -405,6 +435,10 @@ class WorkerConfig:
                 os.getenv("RETRIEVAL_PLANNER_INCLUDE_DISABLED_STEPS"),
                 True,
             ),
+            retrieval_tool_registry_enabled=retrieval_tool_registry_enabled,
+            retrieval_tool_timeout_seconds=retrieval_tool_timeout_seconds,
+            retrieval_tool_max_results_per_tool=retrieval_tool_max_results_per_tool,
+            retrieval_tool_allowed_tools=retrieval_tool_allowed_tools,
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",

@@ -17,6 +17,7 @@ from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.prompt_compaction import compress_conversation_summary
 from rag_pipeline.rag_answer import answer_with_rag
 from rag_pipeline.reranker import create_reranker
+from rag_pipeline.retrieval_tools import build_default_retrieval_tool_registry
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,12 @@ SourceType = Literal["pdf", "note", "annotation_comment"]
 MemoryMode = Literal["off", "auto", "on"]
 GraphMode = Literal["off", "auto", "on"]
 WebMode = Literal["off", "on"]
+
+# Fields that must never be provided by the browser or forwarded to the RAG service.
+_BROWSER_FORBIDDEN_FIELDS = frozenset({
+    "tools", "tool", "tool_args", "tool_registry", "allowed_tools",
+    "cypher", "neo4j_query",
+})
 
 
 class RecentMessage(BaseModel):
@@ -89,6 +96,18 @@ class RagAnswerRequest(BaseModel):
             self.context_summary = stripped or None
         return self
 
+    @model_validator(mode="before")
+    @classmethod
+    def reject_browser_controlled_tool_fields(cls, values: Any) -> Any:
+        """Explicitly reject tool-control fields that must never come from the browser."""
+        if isinstance(values, dict):
+            forbidden = _BROWSER_FORBIDDEN_FIELDS & values.keys()
+            if forbidden:
+                raise ValueError(
+                    f"Fields not allowed in request: {sorted(forbidden)}"
+                )
+        return values
+
 
 class RagAnswerResponse(BaseModel):
     answer: str
@@ -96,6 +115,7 @@ class RagAnswerResponse(BaseModel):
     web_search: dict[str, Any] | None = None
     intent: dict[str, Any] | None = None
     retrieval_plan: dict[str, Any] | None = None
+    retrieval_tools: dict[str, Any] | None = None
 
 
 class CompressConversationRequest(BaseModel):
@@ -179,6 +199,12 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             if request.use_intent_classifier is not None
             else config.intent_classifier_enabled
         )
+        tool_registry = None
+        if config.retrieval_tool_registry_enabled:
+            tool_registry = build_default_retrieval_tool_registry(
+                config,
+                dependencies={"graph_store": graph_store},
+            )
         return answer_with_rag(
             query=request.query.strip(),
             user_id=request.user_id,
@@ -215,6 +241,7 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             intent_classifier_config=config,
             retrieval_planner_enabled=config.retrieval_planner_enabled,
             retrieval_planner_config=config,
+            tool_registry=tool_registry,
         )
     except HTTPException:
         raise

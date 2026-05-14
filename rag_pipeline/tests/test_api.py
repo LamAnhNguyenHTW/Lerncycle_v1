@@ -11,6 +11,10 @@ def client(monkeypatch):
     monkeypatch.setenv("RAG_INTERNAL_API_KEY", "test-secret")
     monkeypatch.setenv("RERANKING_ENABLED", "false")
     monkeypatch.setenv("RERANKING_PROVIDER", "fastembed")
+    # Disable all graph features so create_graph_store() never imports the neo4j driver
+    monkeypatch.setenv("GRAPH_RETRIEVAL_ENABLED", "false")
+    monkeypatch.setenv("GRAPH_ENABLED", "false")
+    monkeypatch.setenv("GRAPH_EXTRACTION_ENABLED", "false")
     import rag_pipeline.api as api
 
     importlib.reload(api)
@@ -136,6 +140,114 @@ def test_rag_answer_handles_internal_error_cleanly(client, monkeypatch) -> None:
 
     assert response.status_code == 500
     assert "secret stack detail" not in response.text
+
+
+# ---------------------------------------------------------------------------
+# Phase 9 — Browser tool field guardrails
+# ---------------------------------------------------------------------------
+
+def test_api_rejects_browser_tools_field(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json={**_payload(), "tools": ["search_pdf_chunks"]},
+    )
+    assert response.status_code == 422
+
+
+def test_api_rejects_browser_tool_field(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json={**_payload(), "tool": "search_pdf_chunks"},
+    )
+    assert response.status_code == 422
+
+
+def test_api_rejects_browser_tool_args_field(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json={**_payload(), "tool_args": {"top_k": 5}},
+    )
+    assert response.status_code == 422
+
+
+def test_api_rejects_browser_cypher_field(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json={**_payload(), "cypher": "MATCH (n) RETURN n"},
+    )
+    assert response.status_code == 422
+
+
+def test_api_rejects_browser_neo4j_query_field(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json={**_payload(), "neo4j_query": "MATCH (n) RETURN n"},
+    )
+    assert response.status_code == 422
+
+
+def test_api_rejects_browser_tool_registry_field(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json={**_payload(), "tool_registry": {"enabled": True}},
+    )
+    assert response.status_code == 422
+
+
+def test_api_rejects_browser_allowed_tools_field(client) -> None:
+    test_client, _ = client
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json={**_payload(), "allowed_tools": ["search_pdf_chunks"]},
+    )
+    assert response.status_code == 422
+
+
+def test_api_registry_usage_config_driven_only(client, monkeypatch) -> None:
+    """Registry is enabled only by server-side config, not by browser payload."""
+    test_client, api = client
+    calls = []
+
+    monkeypatch.setattr(
+        api,
+        "answer_with_rag",
+        lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []},
+    )
+
+    # Browser cannot enable registry by adding fields to request
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+    assert response.status_code == 200
+    # tool_registry passed to answer_with_rag is determined by server config only
+    call_kwargs = calls[0]
+    assert "tool_registry" in call_kwargs
+
+
+def test_api_never_exposes_neo4j_config(client, monkeypatch) -> None:
+    """Neo4j credentials must never appear in the response body."""
+    test_client, api = client
+    monkeypatch.setenv("NEO4J_PASSWORD", "neo4j-secret-pw")
+    monkeypatch.setattr(
+        api,
+        "answer_with_rag",
+        lambda **_: {"answer": "ok", "sources": []},
+    )
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+
+    assert "neo4j-secret-pw" not in response.text
 
 
 def test_rag_answer_rejects_query_over_2000_chars(client) -> None:

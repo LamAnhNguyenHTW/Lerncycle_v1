@@ -38,7 +38,7 @@ export function SourceCard({source}: {source: ChatSource}) {
           {SOURCE_LABELS[source.source_type]}
         </span>
         {source.source_type === 'web' && <Globe className="h-3.5 w-3.5 text-muted-foreground" />}
-        {source.page !== null && source.source_type !== 'web' && (
+        {source.page !== null && source.source_type !== 'web' && source.source_type !== 'knowledge_graph' && (
           <span className="text-xs text-muted-foreground">Page {source.page}</span>
         )}
       </div>
@@ -52,6 +52,14 @@ export function SourceCard({source}: {source: ChatSource}) {
       {webUrl && <p className="mt-1 truncate text-xs text-muted-foreground">{webUrl}</p>}
       {source.source_type === 'web' && source.metadata.provider && (
         <p className="mt-1 text-xs text-muted-foreground">Provider: {source.metadata.provider}</p>
+      )}
+      {source.source_type === 'knowledge_graph' && source.metadata.provider && (
+        <p className="mt-1 text-xs text-muted-foreground">Provider: {source.metadata.provider}</p>
+      )}
+      {source.source_type === 'knowledge_graph' && source.metadata.node_names && source.metadata.node_names.length > 0 && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Entities: {source.metadata.node_names.slice(0, 5).join(', ')}
+        </p>
       )}
       {source.heading && <p className="mt-1 text-xs text-muted-foreground">{source.heading}</p>}
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{source.snippet}</p>

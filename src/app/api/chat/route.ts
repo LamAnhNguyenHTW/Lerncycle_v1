@@ -15,6 +15,15 @@ const PROMPT_COMPACTION_DEFAULT_THRESHOLD = 12;
 const PROMPT_COMPACTION_DEFAULT_INTERVAL = 4;
 const PROMPT_COMPACTION_DEFAULT_KEEP_RECENT = 6;
 const PROMPT_COMPACTION_DEFAULT_MAX_CHARS = 1500;
+const FORBIDDEN_RAG_TOOL_FIELDS = [
+  'tools',
+  'tool',
+  'tool_args',
+  'tool_registry',
+  'allowed_tools',
+  'cypher',
+  'neo4j_query',
+] as const;
 
 class SessionNotFoundError extends Error {}
 
@@ -481,12 +490,19 @@ export async function POST(request: Request) {
     return errorResponse('Unauthorized', 401);
   }
 
-  let body: Partial<ChatRequest>;
+  let rawBody: Record<string, unknown>;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return errorResponse('Invalid JSON body.', 400);
   }
+  // Explicitly strip fields that must never be forwarded to the Python RAG service.
+  // Browser-controlled tool execution is not allowed; these are server-side-only concerns.
+  const safeRawBody = {...rawBody};
+  for (const field of FORBIDDEN_RAG_TOOL_FIELDS) {
+    delete safeRawBody[field];
+  }
+  const body: Partial<ChatRequest> = safeRawBody as Partial<ChatRequest>;
 
   const validationError = validateBody(body);
   if (validationError) {

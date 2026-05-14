@@ -16,6 +16,10 @@ from rag_pipeline.retrieval import search_hybrid_chunks
 from rag_pipeline.source_types import MATERIAL_SOURCE_TYPES
 from rag_pipeline.web_search import WebSearchOutcome, search_web
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from rag_pipeline.retrieval_tools import RetrievalToolRegistry
+
 
 logger = logging.getLogger(__name__)
 PLANNER_VERSION = "v1"
@@ -87,6 +91,12 @@ class PlanExecutionOutcome:
     step_outcomes: list[dict[str, Any]]
     total_result_count: int
     fallback_used: bool = False
+    registry_used: bool = False
+    tool_outcomes: list[dict[str, Any]] = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        if self.tool_outcomes is None:
+            self.tool_outcomes = []
 
 
 def normalize_plan_query(query: str, max_chars: int = 500) -> str:
@@ -230,8 +240,25 @@ def build_retrieval_plan(
             )
         elif config.retrieval_planner_include_disabled_steps:
             steps.append(_disabled_step(RetrievalTool.WEB_SEARCH, query, config.retrieval_planner_web_top_k, "Web Search is disabled."))
-    if intent.needs_graph and config.retrieval_planner_include_disabled_steps:
-        steps.append(_disabled_step(RetrievalTool.QUERY_KNOWLEDGE_GRAPH, build_graph_query(query, intent), 5, GRAPH_UNAVAILABLE_REASON))
+    if intent.needs_graph:
+        graph_retrieval_enabled = getattr(config, "graph_retrieval_enabled", False)
+        graph_top_k = getattr(config, "graph_retrieval_top_k", 5)
+        if graph_retrieval_enabled:
+            steps.append(
+                RetrievalPlanStep(
+                    tool=RetrievalTool.QUERY_KNOWLEDGE_GRAPH,
+                    query=build_graph_query(query, intent),
+                    top_k=graph_top_k,
+                    source_types=["knowledge_graph"],
+                )
+            )
+        elif config.retrieval_planner_include_disabled_steps:
+            steps.append(_disabled_step(
+                RetrievalTool.QUERY_KNOWLEDGE_GRAPH,
+                build_graph_query(query, intent),
+                5,
+                GRAPH_UNAVAILABLE_REASON,
+            ))
 
     if not any(step.status == PlanStepStatus.ENABLED for step in steps):
         return build_default_plan(query, intent, config, selected_pdf_ids, allowed_source_types)
@@ -251,8 +278,16 @@ def execute_retrieval_plan(
     config: WorkerConfig,
     retrieval_fns: dict[str, Callable[..., Any]] | None = None,
     session_id: str | None = None,
+    tool_registry: "RetrievalToolRegistry | None" = None,
 ) -> PlanExecutionOutcome:
     """Execute enabled retrieval steps with safe per-step failure handling."""
+    registry_enabled = (
+        tool_registry is not None
+        and getattr(config, "retrieval_tool_registry_enabled", False)
+    )
+    if registry_enabled and tool_registry is not None:
+        return _execute_plan_via_registry(plan, user_id, config, session_id, tool_registry)
+
     functions = retrieval_fns or {}
     material_search = functions.get("search_hybrid_chunks") or search_hybrid_chunks
     active_web_search = functions.get("search_web") or search_web
@@ -276,6 +311,73 @@ def execute_retrieval_plan(
             logger.warning("Retrieval plan step failed.", extra={"tool": step.tool.value, "error_type": "tool_error"})
             step_outcomes.append(_step_outcome(step, 0, "tool_error"))
     return PlanExecutionOutcome(results, step_outcomes, len(results), plan.fallback_used)
+
+
+def _execute_plan_via_registry(
+    plan: RetrievalPlan,
+    user_id: str,
+    config: WorkerConfig,
+    session_id: str | None,
+    tool_registry: "RetrievalToolRegistry",
+) -> PlanExecutionOutcome:
+    """Execute plan steps through the RetrievalToolRegistry."""
+    from rag_pipeline.retrieval_tools import RetrievalToolName, RetrievalToolRequest
+
+    results: list[dict[str, Any]] = []
+    step_outcomes: list[dict[str, Any]] = []
+    tool_outcomes_meta: list[dict[str, Any]] = []
+    enabled_count = 0
+
+    for step in plan.steps:
+        if step.status != PlanStepStatus.ENABLED:
+            step_outcomes.append(_step_outcome(step, 0, None))
+            continue
+        if enabled_count >= config.retrieval_planner_max_steps:
+            step_outcomes.append(_step_outcome(step, 0, "max_steps_exceeded", status="skipped"))
+            continue
+        enabled_count += 1
+        try:
+            tool_req = RetrievalToolRequest(
+                tool=RetrievalToolName(step.tool.value),
+                query=step.query,
+                top_k=step.top_k,
+                user_id=user_id,
+                session_id=session_id,
+                source_types=step.source_types,
+                source_ids=step.source_ids,
+                filters=step.filters,
+                metadata=step.metadata,
+            )
+            outcome = tool_registry.execute(tool_req)
+            step_results = [r.model_dump() for r in outcome.results]
+            results.extend(step_results)
+            step_outcomes.append({
+                "tool": step.tool.value,
+                "status": outcome.status.value,
+                "top_k": step.top_k,
+                "reason": step.reason,
+                "result_count": outcome.result_count,
+                "error_type": outcome.error_type.value if outcome.error_type else None,
+                "latency_ms": outcome.latency_ms,
+            })
+            tool_outcomes_meta.append({
+                "tool": step.tool.value,
+                "status": outcome.status.value,
+                "result_count": outcome.result_count,
+                "latency_ms": outcome.latency_ms,
+                "error_type": outcome.error_type.value if outcome.error_type else None,
+            })
+        except Exception:
+            logger.warning(
+                "Registry plan step failed.",
+                extra={"tool": step.tool.value, "error_type": "tool_error"},
+            )
+            step_outcomes.append(_step_outcome(step, 0, "tool_error"))
+
+    outcome_obj = PlanExecutionOutcome(results, step_outcomes, len(results), plan.fallback_used)
+    outcome_obj.registry_used = True
+    outcome_obj.tool_outcomes = tool_outcomes_meta
+    return outcome_obj
 
 
 def _execute_step(

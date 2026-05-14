@@ -20,6 +20,10 @@ from rag_pipeline.retrieval import search_hybrid_chunks
 from rag_pipeline.source_types import MATERIAL_SOURCE_TYPES
 from rag_pipeline.web_search import WebSearchOutcome, search_web
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from rag_pipeline.retrieval_tools import RetrievalToolRegistry
+
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +170,7 @@ def answer_with_rag(
     retrieval_planner_fn: Callable[..., RetrievalPlan] | None = None,
     retrieval_plan_executor_fn: Callable[..., PlanExecutionOutcome] | None = None,
     retrieval_planner_config: Any = None,
+    tool_registry: "RetrievalToolRegistry | None" = None,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
     active_retrieval = retrieval_fn or search_hybrid_chunks
@@ -204,6 +209,8 @@ def answer_with_rag(
     web_outcome = _empty_web_outcome(web_search_provider, web_search_enabled, effective_web_mode)
     planner_metadata: dict[str, Any] | None = None
     planner_used = False
+    _registry_used = False
+    _tool_outcomes: list[dict[str, Any]] = []
     results: list[dict[str, Any]]
     if retrieval_plan is not None or (retrieval_planner_enabled and active_intent is not None):
         try:
@@ -235,9 +242,16 @@ def answer_with_rag(
                     "search_web": web_search_fn or search_web,
                 },
                 session_id=session_id,
+                tool_registry=tool_registry,
             )
             results = outcome.results
-            planner_metadata = _planner_metadata(True, outcome.fallback_used, outcome.step_outcomes)
+            _registry_used = getattr(outcome, "registry_used", False)
+            _tool_outcomes = getattr(outcome, "tool_outcomes", [])
+            planner_metadata = _planner_metadata(
+                True, outcome.fallback_used, outcome.step_outcomes,
+                registry_used=_registry_used,
+                tool_outcomes=_tool_outcomes,
+            )
             planner_web_results = [result for result in results if result.get("source_type") == "web"]
             if planner_web_results:
                 effective_web_mode = "on"
@@ -314,7 +328,14 @@ def answer_with_rag(
     if web_outcome.results:
         results = results + web_outcome.results
     if not results and not graph_context.get("context_text"):
-        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode), "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled), "retrieval_plan": planner_metadata}
+        return {
+            "answer": FALLBACK_ANSWER,
+            "sources": [],
+            "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode),
+            "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
+            "retrieval_plan": planner_metadata,
+            "retrieval_tools": _retrieval_tools_metadata(_registry_used, _tool_outcomes),
+        }
 
     context_results = results
     context_top_k = top_k
@@ -341,7 +362,14 @@ def answer_with_rag(
     graph_text = str(graph_context.get("context_text") or "").strip()
     combined_context = _combine_context(text_context, graph_text)
     if not combined_context:
-        return {"answer": FALLBACK_ANSWER, "sources": [], "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode), "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled), "retrieval_plan": planner_metadata}
+        return {
+            "answer": FALLBACK_ANSWER,
+            "sources": [],
+            "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode),
+            "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
+            "retrieval_plan": planner_metadata,
+            "retrieval_tools": _retrieval_tools_metadata(_registry_used, _tool_outcomes),
+        }
 
     active_llm = llm_client or OpenAILlmClient()
     web_text = any(result.get("source_type") == "web" for result in context_results)
@@ -378,6 +406,7 @@ def answer_with_rag(
         "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode),
         "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
         "retrieval_plan": planner_metadata,
+        "retrieval_tools": _retrieval_tools_metadata(_registry_used, _tool_outcomes),
     }
 
 
@@ -527,6 +556,8 @@ def _planner_metadata(
     fallback_used: bool,
     steps: list[dict[str, Any]],
     error_type: str | None = None,
+    registry_used: bool = False,
+    tool_outcomes: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     metadata: dict[str, Any] = {
         "planner_used": planner_used,
@@ -535,6 +566,32 @@ def _planner_metadata(
     }
     if error_type:
         metadata["error_type"] = error_type
-    if any(step.get("tool") == "query_knowledge_graph" for step in steps):
-        metadata["graph_available"] = False
+    if registry_used:
+        metadata["registry_used"] = True
+    graph_steps = [step for step in steps if step.get("tool") == "query_knowledge_graph"]
+    if graph_steps:
+        # graph is available if at least one graph step is not disabled
+        graph_available = any(s.get("status") not in ("disabled", "skipped") for s in graph_steps)
+        metadata["graph_available"] = graph_available
     return metadata
+
+
+def _retrieval_tools_metadata(
+    registry_used: bool,
+    tool_outcomes: list[dict[str, Any]] | None,
+) -> dict[str, Any] | None:
+    if not registry_used:
+        return None
+    return {
+        "registry_used": True,
+        "tools": [
+            {
+                "tool": t.get("tool"),
+                "status": t.get("status"),
+                "result_count": t.get("result_count"),
+                "latency_ms": t.get("latency_ms"),
+                "error_type": t.get("error_type"),
+            }
+            for t in (tool_outcomes or [])
+        ],
+    }
