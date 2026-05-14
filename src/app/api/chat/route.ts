@@ -23,6 +23,15 @@ const FORBIDDEN_RAG_TOOL_FIELDS = [
   'allowed_tools',
   'cypher',
   'neo4j_query',
+  'retrieval_plan',
+  'intent',
+  'agentic_decision',
+  'refinement_action',
+  'agentic_tool',
+  'agentic_tool_args',
+  'max_tool_calls',
+  'max_refinement_rounds',
+  'raw_tool_calls',
 ] as const;
 
 class SessionNotFoundError extends Error {}

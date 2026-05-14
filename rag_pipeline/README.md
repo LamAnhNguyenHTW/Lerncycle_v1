@@ -87,6 +87,13 @@ Embedding and retrieval configuration:
 - `INTENT_CLASSIFIER_MAX_RECENT_MESSAGES` (default: `4`)
 - `INTENT_CLASSIFIER_MAX_MESSAGE_CHARS` (default: `1000`)
 - `INTENT_CLASSIFIER_FALLBACK_ENABLED` (default: `true`)
+- `RETRIEVAL_PLANNER_ENABLED` (default: `false`)
+- `RETRIEVAL_TOOL_REGISTRY_ENABLED` (default: `false`)
+- `AGENTIC_RETRIEVER_ENABLED` (default: `false`)
+- `AGENTIC_RETRIEVER_QUALITY_ASSESSMENT_MODE` (`heuristic` or `llm`)
+- `AGENTIC_RETRIEVER_REFINEMENT_MODE` (`heuristic` or `llm`)
+- `AGENTIC_RETRIEVER_MAX_REFINEMENT_ROUNDS` (default: `1`)
+- `AGENTIC_RETRIEVER_MAX_TOOL_CALLS` (default: `8`)
 - `RAG_INTERNAL_API_KEY`
 
 Next.js server-only chat variables:
@@ -320,6 +327,45 @@ Example retrieval plan:
 Existing dense-only collections are not recreated automatically during normal
 worker execution. Recreate/rebuild hybrid points only via the explicit
 maintenance command:
+
+Controlled Agentic Retriever is optional and disabled by default. When
+`AGENTIC_RETRIEVER_ENABLED=true`, retrieval planning still creates the initial
+plan, then the controlled retriever executes that plan through the Retrieval
+Tool Registry, assesses result quality, and may perform at most the configured
+bounded refinement step. It does not use the OpenAI Agents SDK and is not an
+unrestricted autonomous agent: LLM mode can only suggest structured refinement
+JSON, and a deterministic validation gate checks tool availability, web/graph
+config, session requirements, selected PDF scope, source filters, tool budget,
+and raw-Cypher-looking queries before anything runs.
+
+Heuristic mode is deterministic. LLM-assisted quality/refinement modes use an
+injected or configured LLM client only for compact summaries and fall back to
+heuristics on failure when `AGENTIC_RETRIEVER_LLM_FALLBACK_TO_HEURISTIC=true`.
+All execution still goes through registered tools; browser requests cannot
+provide agentic decisions, refinement actions, tool names, budgets, raw plans,
+or Cypher.
+
+Example safe metadata:
+
+```json
+{
+  "agentic_retriever": {
+    "enabled": true,
+    "used": true,
+    "quality_mode": "llm",
+    "refinement_mode": "llm",
+    "refinement_used": true,
+    "refinement_rounds": 1,
+    "tool_call_count": 3,
+    "quality": {
+      "status": "sufficient",
+      "missing_aspects": []
+    },
+    "fallback_used": false,
+    "error_type": null
+  }
+}
+```
 
 ```bash
 python -m rag_pipeline.reindex_qdrant --user-id <user-id>

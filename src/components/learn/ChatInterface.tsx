@@ -49,12 +49,19 @@ export function ChatInterface({
   );
   const [enableWebSearch, setEnableWebSearch] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [activeConversationKey, setActiveConversationKey] = useState(() => crypto.randomUUID());
+  const [pendingConversationKeys, setPendingConversationKeys] = useState<string[]>([]);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const activeConversationKeyRef = useRef(activeConversationKey);
+  const isCurrentConversationPending = pendingConversationKeys.includes(activeConversationKey);
+
+  useEffect(() => {
+    activeConversationKeyRef.current = activeConversationKey;
+  }, [activeConversationKey]);
 
   useEffect(() => {
     async function loadSessions() {
@@ -70,7 +77,7 @@ export function ChatInterface({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+  }, [messages, pendingConversationKeys, activeConversationKey]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -89,6 +96,7 @@ export function ChatInterface({
 
   function startNewChat() {
     setSessionId(undefined);
+    setActiveConversationKey(crypto.randomUUID());
     setMessages([]);
     setError(null);
   }
@@ -96,10 +104,12 @@ export function ChatInterface({
   async function onSubmit(event?: React.FormEvent<HTMLFormElement>) {
     if (event) event.preventDefault();
     const trimmed = message.trim();
-    if (!trimmed || isLoading) {
+    if (!trimmed || pendingConversationKeys.includes(activeConversationKey)) {
       return;
     }
-    setIsLoading(true);
+    const requestConversationKey = activeConversationKey;
+    const requestSessionId = sessionId;
+    setPendingConversationKeys((current) => [...current, requestConversationKey]);
     setError(null);
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -119,7 +129,7 @@ export function ChatInterface({
           source_types: ['pdf', 'note', 'annotation_comment'],
           top_k: 8,
           course_id: course.id,
-          session_id: sessionId,
+          session_id: requestSessionId,
           pdf_ids: selectedPdfIds.length === allPdfs.length ? [] : selectedPdfIds,
           enableWebSearch,
         }),
@@ -129,16 +139,19 @@ export function ChatInterface({
         throw new Error(data.error ?? 'Chat request failed.');
       }
       const chatResponse = data as ChatResponse;
-      setSessionId(chatResponse.session_id);
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: chatResponse.answer,
-          sources: chatResponse.sources,
-        },
-      ]);
+      const assistantMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: chatResponse.answer,
+        sources: chatResponse.sources,
+      };
+      if (activeConversationKeyRef.current === requestConversationKey) {
+        if (chatResponse.session_id) {
+          setActiveConversationKey(chatResponse.session_id);
+          setSessionId(chatResponse.session_id);
+        }
+        setMessages((current) => [...current, assistantMessage]);
+      }
       setSessions((current) => {
         const existing = current.filter((session) => session.id !== chatResponse.session_id);
         const existingSession = current.find((session) => session.id === chatResponse.session_id);
@@ -159,10 +172,10 @@ export function ChatInterface({
                 created_at: new Date().toISOString(),
               },
               {
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: chatResponse.answer,
-                sources: chatResponse.sources,
+                id: assistantMessage.id,
+                role: assistantMessage.role,
+                content: assistantMessage.content,
+                sources: assistantMessage.sources ?? [],
                 pdf_ids: selectedPdfIds,
                 created_at: new Date().toISOString(),
               }
@@ -173,9 +186,11 @@ export function ChatInterface({
       });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Chat request failed.');
-      setMessage(trimmed); // Restore message on failure
+      if (activeConversationKeyRef.current === requestConversationKey) {
+        setMessage(trimmed); // Restore message on failure
+      }
     } finally {
-      setIsLoading(false);
+      setPendingConversationKeys((current) => current.filter((key) => key !== requestConversationKey));
     }
   }
 
@@ -275,6 +290,7 @@ export function ChatInterface({
                            type="button"
                            onClick={() => {
                              setSessionId(session.id);
+                             setActiveConversationKey(session.id);
                              setMessages(session.messages.map((stored) => ({
                                id: stored.id,
                                role: stored.role,
@@ -382,7 +398,7 @@ export function ChatInterface({
                   </div>
                 ))}
                 
-                {isLoading && (
+                {isCurrentConversationPending && (
                   <div className="flex gap-4 p-5 rounded-2xl bg-[#F7F7F5] border border-transparent animate-pulse">
                     <div className="mt-1 shrink-0 flex items-center justify-center">
                       <Sparkles className="h-5 w-5 text-black/50" />
@@ -435,7 +451,7 @@ export function ChatInterface({
               />
               <button 
                 type="submit" 
-                disabled={isLoading || !message.trim() || selectedPdfIds.length === 0} 
+                disabled={isCurrentConversationPending || !message.trim() || selectedPdfIds.length === 0} 
                 className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-black hover:bg-black/80 transition-all mb-0.5 disabled:opacity-30 disabled:hover:bg-black" 
                 title="Send"
               >
@@ -516,11 +532,13 @@ function SourceChip({source}: {source: ChatSource}) {
       ? 'graph'
       : source.source_type === 'web'
         ? 'web'
+      : source.source_type === 'general_knowledge'
+        ? 'modell'
       : source.source_type.replace('_', ' ');
 
   return (
     <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-white px-2 text-xs text-muted-foreground shadow-sm">
-      {source.source_type === 'web' ? <Globe className="h-3 w-3 shrink-0" /> : <FileText className="h-3 w-3 shrink-0" />}
+      {source.source_type === 'web' ? <Globe className="h-3 w-3 shrink-0" /> : source.source_type === 'general_knowledge' ? <Sparkles className="h-3 w-3 shrink-0" /> : <FileText className="h-3 w-3 shrink-0" />}
       <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-semibold uppercase leading-none text-foreground">
         {sourceType}
       </span>

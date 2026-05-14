@@ -43,7 +43,7 @@ SYSTEM_PROMPT = (
 )
 REWRITE_SYSTEM_PROMPT = (
     "Rewrite the current user question into a standalone retrieval query using the recent "
-    "conversation only to resolve references. Output only the rewritten query, no "
+    "conversation only to resolve references. If the user just says 'search now', 'try again', or 'activated', output the full actual question from the previous turn. Output only the rewritten query, no "
     "explanation. Keep it concise, at most two short sentences or about 200 characters. "
     "Preserve the user's language. Do not answer the question."
 )

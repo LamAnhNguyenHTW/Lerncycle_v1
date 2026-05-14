@@ -89,7 +89,7 @@ class QueryUnderstanding(BaseModel):
 QUERY_UNDERSTANDING_SYSTEM_PROMPT = (
     "Understand the user's current query for LearnCycle retrieval routing. "
     "Return JSON only. Resolve follow-ups, corrections, abbreviations, and "
-    "implicit references using recent conversation. Decide one route: "
+    "implicit references using recent conversation. If the user just says 'search now', 'try again', or 'I activated it', the resolved_query MUST be the full actual question from the previous turn, NOT the conversational filler. Decide one route: "
     "internal_retrieval, web_search, conversation_only, general_knowledge, "
     "or clarification. LearnCycle is an internal learning system: prefer "
     "internal_retrieval for learning-related questions, concept explanations, "

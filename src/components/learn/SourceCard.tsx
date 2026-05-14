@@ -1,5 +1,5 @@
 import type {ChatSource} from '@/types/chat';
-import {Globe} from 'lucide-react';
+import {Globe, Sparkles} from 'lucide-react';
 
 const SOURCE_LABELS = {
   pdf: 'PDF',
@@ -8,6 +8,7 @@ const SOURCE_LABELS = {
   chat_memory: 'Memory',
   knowledge_graph: 'Graph',
   web: 'Web',
+  general_knowledge: 'Modellwissen',
 };
 
 function getSourceTitle(source: ChatSource) {
@@ -21,6 +22,8 @@ function getSourceTitle(source: ChatSource) {
         ? 'Knowledge Graph'
       : source.source_type === 'web'
         ? 'Web Source'
+      : source.source_type === 'general_knowledge'
+        ? 'Allgemeines Modellwissen'
       : source.source_type === 'annotation_comment'
         ? 'Annotation'
         : source.source_type === 'note'
@@ -38,7 +41,8 @@ export function SourceCard({source}: {source: ChatSource}) {
           {SOURCE_LABELS[source.source_type]}
         </span>
         {source.source_type === 'web' && <Globe className="h-3.5 w-3.5 text-muted-foreground" />}
-        {source.page !== null && source.source_type !== 'web' && source.source_type !== 'knowledge_graph' && (
+        {source.source_type === 'general_knowledge' && <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />}
+        {source.page !== null && source.source_type !== 'web' && source.source_type !== 'knowledge_graph' && source.source_type !== 'general_knowledge' && (
           <span className="text-xs text-muted-foreground">Page {source.page}</span>
         )}
       </div>

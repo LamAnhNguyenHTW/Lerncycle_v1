@@ -1,4 +1,4 @@
-export type ChatSourceType = 'pdf' | 'note' | 'annotation_comment' | 'chat_memory' | 'knowledge_graph' | 'web';
+export type ChatSourceType = 'pdf' | 'note' | 'annotation_comment' | 'chat_memory' | 'knowledge_graph' | 'web' | 'general_knowledge';
 export type ChatRole = 'user' | 'assistant';
 
 export interface RecentChatMessage {
@@ -78,6 +78,21 @@ export interface ChatResponse {
       result_count?: number;
       error_type?: string | null;
     }>;
+  } | null;
+  agentic_retriever?: {
+    enabled?: boolean;
+    used?: boolean;
+    quality_mode?: string;
+    refinement_mode?: string;
+    refinement_used?: boolean;
+    refinement_rounds?: number;
+    tool_call_count?: number;
+    quality?: {
+      status?: string | null;
+      missing_aspects?: string[];
+    };
+    fallback_used?: boolean;
+    error_type?: string | null;
   } | null;
 }
 
