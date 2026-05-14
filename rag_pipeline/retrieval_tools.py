@@ -413,7 +413,7 @@ def execute_search_chat_memory(
     config: Any,
     retrieval_fns: dict[str, Any],
 ) -> RetrievalToolOutcome:
-    """Search chat memory; always uses server-verified session_id, never browser source_ids."""
+    """Search server-approved chat memory session ids."""
     if not request.session_id:
         return safe_empty_tool_outcome(
             RetrievalToolName.SEARCH_CHAT_MEMORY,
@@ -423,8 +423,10 @@ def execute_search_chat_memory(
     try:
         from rag_pipeline.retrieval import search_hybrid_chunks
         material_search = retrieval_fns.get("search_hybrid_chunks") or search_hybrid_chunks
-        # Always overwrite source_ids with the server-verified session_id
-        effective_source_ids = [request.session_id]
+        effective_source_ids = []
+        for source_id in [request.session_id, *(request.source_ids or [])]:
+            if source_id and source_id not in effective_source_ids:
+                effective_source_ids.append(source_id)
         raw = material_search(
             query=request.query,
             user_id=request.user_id,
@@ -545,10 +547,16 @@ def execute_query_knowledge_graph(
         graph_top_k = min(request.top_k, getattr(config, "graph_retrieval_top_k", 8))
         max_chars = getattr(config, "graph_context_max_chars", 6000)
 
+        effective_source_types = (
+            None
+            if request.source_types == ["knowledge_graph"]
+            else request.source_types
+        )
+
         ctx = active_graph_fn(
             query=request.query,
             user_id=request.user_id,
-            source_types=request.source_types,
+            source_types=effective_source_types,
             source_ids=request.source_ids,
             top_k=graph_top_k,
             max_chars=max_chars,

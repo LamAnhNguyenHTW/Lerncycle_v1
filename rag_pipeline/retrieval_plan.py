@@ -172,6 +172,7 @@ def build_retrieval_plan(
     intent: RetrievalIntent,
     config: WorkerConfig,
     session_id: str | None = None,
+    memory_source_ids: list[str] | None = None,
     selected_pdf_ids: list[str] | None = None,
     allowed_source_types: list[str] | None = None,
 ) -> RetrievalPlan:
@@ -217,13 +218,14 @@ def build_retrieval_plan(
         )
     if intent.needs_chat_memory:
         if session_id:
+            memory_ids = _ordered_unique([session_id, *(memory_source_ids or [])])
             steps.append(
                 RetrievalPlanStep(
                     tool=RetrievalTool.SEARCH_CHAT_MEMORY,
                     query=build_memory_query(query, intent),
                     top_k=config.retrieval_planner_memory_top_k,
                     source_types=["chat_memory"],
-                    source_ids=[session_id],
+                    source_ids=memory_ids,
                 )
             )
         elif config.retrieval_planner_include_disabled_steps:
@@ -249,7 +251,8 @@ def build_retrieval_plan(
                     tool=RetrievalTool.QUERY_KNOWLEDGE_GRAPH,
                     query=build_graph_query(query, intent),
                     top_k=graph_top_k,
-                    source_types=["knowledge_graph"],
+                    source_types=[source for source in MATERIAL_SOURCE_ORDER if source in allowed] or None,
+                    source_ids=selected_pdf_ids or None,
                 )
             )
         elif config.retrieval_planner_include_disabled_steps:
@@ -473,6 +476,14 @@ def _limit_enabled_steps(steps: list[RetrievalPlanStep], max_steps: int) -> list
 def _allowed_material_sources(allowed_source_types: list[str] | None) -> set[str]:
     requested = allowed_source_types or list(MATERIAL_SOURCE_TYPES)
     return {source_type for source_type in requested if source_type in MATERIAL_SOURCE_ORDER}
+
+
+def _ordered_unique(values: list[str | None]) -> list[str]:
+    ordered: list[str] = []
+    for value in values:
+        if value and value not in ordered:
+            ordered.append(value)
+    return ordered
 
 
 def _source_types_for_tool(tool: RetrievalTool) -> list[str]:

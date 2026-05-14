@@ -277,6 +277,34 @@ class FakeSupabase:
         return FakeTable(self, name)
 
 
+class FakeChatMemorySummaryTable:
+    def __init__(self, data: Any) -> None:
+        self.data = data
+
+    def select(self, *_args):
+        return self
+
+    def eq(self, *_args):
+        return self
+
+    def maybe_single(self):
+        return self
+
+    def execute(self):
+        if self.data == "__none_response__":
+            return None
+        return FakeResponse(self.data)
+
+
+class FakeChatMemorySummarySupabase:
+    def __init__(self, data: Any) -> None:
+        self.data = data
+
+    def table(self, name: str) -> FakeChatMemorySummaryTable:
+        assert name == "chat_memory_summaries"
+        return FakeChatMemorySummaryTable(self.data)
+
+
 class ChunkWorker(RagWorker):
     def __init__(
         self,
@@ -577,6 +605,25 @@ def test_worker_does_not_mark_job_completed_when_sparse_fails() -> None:
         )
 
     assert worker.completed_jobs == []
+
+
+def test_load_chat_memory_summary_handles_none_supabase_response() -> None:
+    worker = RecordingWorker()
+    worker._supabase = FakeChatMemorySummarySupabase("__none_response__")
+
+    assert worker._load_chat_memory_summary("user-1", "session-1") is None
+
+
+def test_load_chat_memory_summary_returns_first_row_when_response_is_list() -> None:
+    worker = RecordingWorker()
+    worker._supabase = FakeChatMemorySummarySupabase(
+        [{"id": "summary-1", "summary": "Earlier discussion"}]
+    )
+
+    assert worker._load_chat_memory_summary("user-1", "session-1") == {
+        "id": "summary-1",
+        "summary": "Earlier discussion",
+    }
 
 
 def test_worker_dispatches_knowledge_graph_job() -> None:

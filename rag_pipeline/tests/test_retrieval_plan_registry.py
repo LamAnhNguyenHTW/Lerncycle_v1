@@ -341,10 +341,18 @@ class TestBuildRetrievalPlanGraph:
     def test_graph_step_enabled_when_graph_retrieval_enabled(self) -> None:
         cfg = _config(graph_retrieval_enabled=True, graph_retrieval_top_k=8)
         intent = _intent(needs_graph=True)
-        plan = build_retrieval_plan("relationship question", intent, cfg)
+        plan = build_retrieval_plan(
+            "relationship question",
+            intent,
+            cfg,
+            selected_pdf_ids=["pdf-1"],
+            allowed_source_types=["pdf", "note"],
+        )
         graph_steps = [s for s in plan.steps if s.tool == RetrievalTool.QUERY_KNOWLEDGE_GRAPH]
         assert len(graph_steps) == 1
         assert graph_steps[0].status == PlanStepStatus.ENABLED
+        assert graph_steps[0].source_types == ["pdf", "note"]
+        assert graph_steps[0].source_ids == ["pdf-1"]
 
     def test_graph_step_disabled_when_graph_retrieval_disabled(self) -> None:
         cfg = _config(graph_retrieval_enabled=False)

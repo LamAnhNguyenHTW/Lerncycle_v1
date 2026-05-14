@@ -1,17 +1,23 @@
 from __future__ import annotations
 
+import json
+from typing import Any
+
 from rag_pipeline.rag_answer import (
     CONVERSATION_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
     answer_with_rag,
     rewrite_query_for_retrieval,
 )
+from rag_pipeline.agentic_retriever import AgenticRetrievalOutcome
+from rag_pipeline.agentic_retriever import RetrievalQualityAssessment
 from rag_pipeline.reranker import LlmReranker
 from rag_pipeline.web_search import WebSearchOutcome
 from rag_pipeline.intent_classifier import RetrievalIntent
 from rag_pipeline.retrieval_plan import PlanExecutionOutcome
 from rag_pipeline.retrieval_plan import RetrievalPlan
 from rag_pipeline.retrieval_plan import RetrievalPlanStep
+from rag_pipeline.retrieval_tools import build_default_retrieval_tool_registry
 
 
 class FakeLlmClient:
@@ -22,6 +28,16 @@ class FakeLlmClient:
     def complete(self, *, system_prompt: str, user_prompt: str) -> str:
         self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt})
         return self.answer
+
+
+class SequenceLlmClient:
+    def __init__(self, responses: list[str]) -> None:
+        self.responses = responses
+        self.calls = []
+
+    def complete(self, *, system_prompt: str, user_prompt: str) -> str:
+        self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt})
+        return self.responses[min(len(self.calls) - 1, len(self.responses) - 1)]
 
 
 class RaisingLlmClient:
@@ -121,6 +137,25 @@ def _intent(**overrides) -> RetrievalIntent:
     return RetrievalIntent(**payload)
 
 
+def _understanding_payload(**overrides) -> str:
+    payload = {
+        "resolved_query": "Was ist Process Mining?",
+        "question_type": "document_grounded",
+        "route": "internal_retrieval",
+        "needs_pdf": True,
+        "needs_notes": True,
+        "needs_annotations": True,
+        "needs_chat_memory": False,
+        "needs_graph": False,
+        "needs_web": False,
+        "should_show_sources": True,
+        "confidence": 0.9,
+        "reasoning_summary": "test",
+    }
+    payload.update(overrides)
+    return json.dumps(payload)
+
+
 def _result() -> dict:
     return {
         "chunk_id": "chunk-1",
@@ -180,6 +215,32 @@ def test_rewrite_query_keeps_standalone_query_mostly_unchanged() -> None:
 
     assert rewritten == "Was ist Process Mining?"
     assert llm.calls == []
+
+
+def test_rewrite_query_resolves_abbreviation_clarification() -> None:
+    llm = FakeLlmClient("wrong")
+
+    rewritten = rewrite_query_for_retrieval(
+        "process mining",
+        [
+            {"role": "user", "content": "wie viel verdient pm consultant?"},
+            {"role": "assistant", "content": "Ein PMO Consultant verdient ..."},
+        ],
+        llm,
+    )
+
+    assert rewritten == "wie viel verdient process mining consultant?"
+    assert llm.calls == []
+
+
+def test_rewrite_query_resolves_explicit_abbreviation_clarification() -> None:
+    rewritten = rewrite_query_for_retrieval(
+        "pm bedeutet Process Mining",
+        [{"role": "user", "content": "wie viel verdient pm consultant?"}],
+        FakeLlmClient("wrong"),
+    )
+
+    assert rewritten == "wie viel verdient Process Mining consultant?"
 
 
 def test_rewrite_query_falls_back_to_original_on_error() -> None:
@@ -299,6 +360,31 @@ def test_answer_with_rag_executes_plan_results() -> None:
     assert response["retrieval_plan"]["steps"][0]["result_count"] == 1
 
 
+def test_answer_with_rag_passes_related_memory_source_ids_to_planner() -> None:
+    planner_calls: list[dict[str, Any]] = []
+    plan = RetrievalPlan(
+        question_type="conversation_memory",
+        steps=[RetrievalPlanStep(tool="search_chat_memory", query="Frage", top_k=1)],
+    )
+
+    answer_with_rag(
+        "Was hatten wir besprochen?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [],
+        intent=_intent(needs_pdf=False, needs_chat_memory=True),
+        retrieval_planner_enabled=True,
+        retrieval_planner_fn=lambda **kwargs: planner_calls.append(kwargs) or plan,
+        retrieval_plan_executor_fn=lambda **_: PlanExecutionOutcome([], [], 0),
+        session_id="session-current",
+        memory_source_ids=["session-old"],
+        chat_memory_retrieval_enabled=True,
+    )
+
+    assert planner_calls[0]["session_id"] == "session-current"
+    assert planner_calls[0]["memory_source_ids"] == ["session-old"]
+
+
 def test_answer_with_rag_planner_failure_falls_back() -> None:
     response = answer_with_rag(
         "Frage",
@@ -361,7 +447,7 @@ def test_answer_with_rag_classifies_when_enabled() -> None:
     assert response["intent"]["web_skipped_reason"] == "disabled"
 
 
-def test_intent_needs_web_enables_web_when_config_enabled() -> None:
+def test_intent_needs_web_does_not_enable_web_when_frontend_toggle_off() -> None:
     web_calls = []
 
     response = answer_with_rag(
@@ -374,8 +460,67 @@ def test_intent_needs_web_enables_web_when_config_enabled() -> None:
         web_search_fn=lambda **kwargs: web_calls.append(kwargs) or WebSearchOutcome([_web_result()], "tavily", 1),
     )
 
+    assert web_calls == []
+    assert response["web_search"]["used"] is False
+
+
+def test_intent_needs_web_uses_web_when_frontend_toggle_on_and_config_enabled() -> None:
+    web_calls = []
+
+    response = answer_with_rag(
+        "Was ist aktuell neu?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        intent=_intent(needs_web=True),
+        web_mode="on",
+        web_search_enabled=True,
+        web_search_fn=lambda **kwargs: web_calls.append(kwargs) or WebSearchOutcome([_web_result()], "tavily", 1),
+    )
+
     assert web_calls
     assert response["web_search"]["used"] is True
+
+
+def test_planner_config_disables_web_when_frontend_toggle_off() -> None:
+    planner_configs: list[Any] = []
+    cfg = type("Cfg", (), {
+        "retrieval_planner_enabled": True,
+        "retrieval_planner_default_top_k": 6,
+        "retrieval_planner_pdf_top_k": 6,
+        "retrieval_planner_notes_top_k": 4,
+        "retrieval_planner_annotations_top_k": 4,
+        "retrieval_planner_memory_top_k": 3,
+        "retrieval_planner_web_top_k": 5,
+        "retrieval_planner_max_steps": 5,
+        "retrieval_planner_include_disabled_steps": True,
+        "web_search_enabled": True,
+        "web_search_provider": "tavily",
+        "web_search_timeout_seconds": 15,
+        "web_search_max_query_chars": 300,
+        "tavily_api_key": "key",
+    })()
+    plan = RetrievalPlan(
+        question_type="web_augmented",
+        steps=[RetrievalPlanStep(tool="web_search", query="Frage", top_k=1, source_types=["web"])],
+    )
+
+    response = answer_with_rag(
+        "Was ist aktuell neu?",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        intent=_intent(needs_pdf=False, needs_web=True),
+        retrieval_planner_enabled=True,
+        retrieval_planner_config=cfg,
+        retrieval_planner_fn=lambda **kwargs: planner_configs.append(kwargs["config"]) or plan,
+        retrieval_plan_executor_fn=lambda **kwargs: PlanExecutionOutcome([], [], 0),
+        web_search_enabled=True,
+        web_mode="off",
+    )
+
+    assert planner_configs[0].web_search_enabled is False
+    assert response["web_search"]["used"] is False
 
 
 def test_intent_needs_memory_requires_session_id() -> None:
@@ -392,6 +537,81 @@ def test_intent_needs_memory_requires_session_id() -> None:
     )
 
     assert all(call.get("source_types") != ["chat_memory"] for call in retrieval_calls)
+
+
+def test_query_understanding_resolved_query_replaces_rewrite_when_enabled() -> None:
+    retrieval_calls = []
+    llm = SequenceLlmClient([
+        _understanding_payload(
+            resolved_query="wie viel verdient ein Process Mining Consultant in Deutschland",
+            question_type="current_external_info",
+            route="web_search",
+            needs_pdf=False,
+            needs_notes=False,
+            needs_annotations=False,
+            needs_web=True,
+        ),
+        "Antwort",
+    ])
+
+    answer_with_rag(
+        "wie viel verdient pm consultant?",
+        "user-1",
+        llm_client=llm,
+        retrieval_fn=lambda **kwargs: retrieval_calls.append(kwargs) or [_result()],
+        intent_classifier_enabled=True,
+        web_search_enabled=False,
+    )
+
+    assert retrieval_calls == []
+    assert "Resolved query: wie viel verdient ein Process Mining Consultant" in llm.calls[-1]["user_prompt"]
+
+
+def test_query_understanding_internal_route_uses_resolved_query_for_retrieval() -> None:
+    retrieval_calls = []
+    llm = SequenceLlmClient([
+        _understanding_payload(resolved_query="Process Mining Event Logs Zusammenhang"),
+        "Antwort",
+    ])
+
+    answer_with_rag(
+        "und der Zusammenhang?",
+        "user-1",
+        recent_messages=[{"role": "user", "content": "Process Mining und Event Logs"}],
+        llm_client=llm,
+        retrieval_fn=lambda **kwargs: retrieval_calls.append(kwargs) or [_result()],
+        intent_classifier_enabled=True,
+    )
+
+    assert retrieval_calls[0]["query"] == "Process Mining Event Logs Zusammenhang"
+
+
+def test_query_understanding_conversation_only_skips_material_sources() -> None:
+    retrieval_calls = []
+    llm = SequenceLlmClient([
+        _understanding_payload(
+            resolved_query="wie viel netto bleibt ungefähr von 4.441 Euro brutto monatlich",
+            question_type="general_chat",
+            route="conversation_only",
+            needs_pdf=False,
+            needs_notes=False,
+            needs_annotations=False,
+            should_show_sources=False,
+        ),
+        "Grobe Netto-Schätzung.",
+    ])
+
+    response = answer_with_rag(
+        "wie viel ist das netto?",
+        "user-1",
+        recent_messages=[{"role": "assistant", "content": "Brutto monatlich rund 4.441 Euro."}],
+        llm_client=llm,
+        retrieval_fn=lambda **kwargs: retrieval_calls.append(kwargs) or [_result()],
+        intent_classifier_enabled=True,
+    )
+
+    assert response["sources"] == []
+    assert retrieval_calls == []
 
 
 def test_intent_needs_graph_sets_metadata_but_does_not_force_graph_store() -> None:
@@ -504,6 +724,26 @@ def test_answer_with_rag_includes_recent_messages_in_prompt() -> None:
     assert "Retrieved context:" in prompt
 
 
+def test_answer_with_rag_includes_resolved_question_for_abbreviation_clarification() -> None:
+    llm = FakeLlmClient()
+
+    answer_with_rag(
+        "process mining",
+        "user-1",
+        recent_messages=[
+            {"role": "user", "content": "wie viel verdient pm consultant?"},
+            {"role": "assistant", "content": "Ein PMO Consultant verdient ..."},
+        ],
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    prompt = llm.calls[-1]["user_prompt"]
+    assert "Resolved question for retrieval:" in prompt
+    assert "wie viel verdient process mining consultant?" in prompt
+    assert "Current question:\nprocess mining" in prompt
+
+
 def test_answer_with_rag_includes_context_summary_before_recent_messages() -> None:
     llm = FakeLlmClient()
 
@@ -580,6 +820,26 @@ def test_answer_with_rag_does_not_return_recent_messages_as_sources() -> None:
 
     assert all(source.get("source_type") != "chat_message" for source in response["sources"])
     assert "Chat-only detail" not in str(response["sources"])
+
+
+def test_conversation_only_netto_followup_returns_no_material_sources() -> None:
+    retrieval_calls = []
+    llm = FakeLlmClient("Grob geschätzt bleiben 2.700 bis 3.000 Euro netto.")
+
+    response = answer_with_rag(
+        "wie viel ist das netto?",
+        "user-1",
+        recent_messages=[
+            {"role": "user", "content": "wie viel verdient process mining consultant?"},
+            {"role": "assistant", "content": "Das monatliche Bruttogehalt beträgt rund 4.441 Euro."},
+        ],
+        llm_client=llm,
+        retrieval_fn=lambda **kwargs: retrieval_calls.append(kwargs) or [_result()],
+    )
+
+    assert response["sources"] == []
+    assert retrieval_calls == []
+    assert "4.441 Euro" in llm.calls[-1]["user_prompt"]
 
 
 def test_answer_with_rag_uses_rewritten_query_for_retrieval() -> None:
@@ -1051,3 +1311,113 @@ def test_answer_with_rag_returns_knowledge_graph_source_when_used() -> None:
     )
 
     assert any(source["source_type"] == "knowledge_graph" for source in response["sources"])
+
+
+def _agentic_outcome(results: list[dict] | None = None) -> AgenticRetrievalOutcome:
+    rows = results if results is not None else [_result()]
+    return AgenticRetrievalOutcome(
+        results=rows,
+        initial_plan_executed=True,
+        refinement_used=False,
+        refinement_rounds=0,
+        tool_call_count=1,
+        quality=RetrievalQualityAssessment(
+            status="sufficient",
+            total_result_count=len(rows),
+            avg_score=0.9,
+            missing_aspects=[],
+            recommended_decision="none",
+        ),
+        tool_outcomes=[{"tool": "search_pdf_chunks", "status": "success", "result_count": len(rows)}],
+    )
+
+
+def test_answer_with_rag_does_not_use_agentic_when_disabled() -> None:
+    calls = []
+    plan = RetrievalPlan(
+        question_type="document_grounded",
+        steps=[RetrievalPlanStep(tool="search_pdf_chunks", query="Frage", top_k=1)],
+    )
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        intent=_intent(needs_pdf=True),
+        retrieval_planner_enabled=True,
+        retrieval_planner_fn=lambda **_: plan,
+        retrieval_plan_executor_fn=lambda **_: PlanExecutionOutcome([_result()], [], 1),
+        agentic_retriever_enabled=False,
+        agentic_retriever_fn=lambda **kwargs: calls.append(kwargs) or _agentic_outcome(),
+    )
+
+    assert calls == []
+
+
+def test_answer_with_rag_uses_agentic_when_enabled() -> None:
+    calls = []
+    plan = RetrievalPlan(
+        question_type="document_grounded",
+        steps=[RetrievalPlanStep(tool="search_pdf_chunks", query="Frage", top_k=1)],
+    )
+    registry = build_default_retrieval_tool_registry(type("Cfg", (), {
+        "retrieval_tool_registry_enabled": True,
+        "retrieval_tool_allowed_tools": None,
+        "web_search_enabled": False,
+        "graph_retrieval_enabled": False,
+    })())
+
+    response = answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [],
+        intent=_intent(needs_pdf=True),
+        retrieval_planner_enabled=True,
+        retrieval_planner_config=type("Cfg", (), {
+            "retrieval_planner_enabled": True,
+            "retrieval_planner_default_top_k": 6,
+            "retrieval_planner_pdf_top_k": 6,
+            "retrieval_planner_notes_top_k": 4,
+            "retrieval_planner_annotations_top_k": 4,
+            "retrieval_planner_memory_top_k": 3,
+            "retrieval_planner_web_top_k": 5,
+            "retrieval_planner_max_steps": 5,
+            "retrieval_planner_include_disabled_steps": True,
+            "retrieval_tool_registry_enabled": True,
+            "agentic_retriever_quality_assessment_mode": "heuristic",
+            "agentic_retriever_refinement_mode": "heuristic",
+        })(),
+        retrieval_planner_fn=lambda **_: plan,
+        tool_registry=registry,
+        agentic_retriever_enabled=True,
+        agentic_retriever_fn=lambda **kwargs: calls.append(kwargs) or _agentic_outcome(),
+    )
+
+    assert calls
+    assert response["agentic_retriever"]["used"] is True
+    assert response["sources"][0]["chunk_id"] == "chunk-1"
+
+
+def test_answer_with_rag_agentic_failure_falls_back_to_planner() -> None:
+    plan = RetrievalPlan(
+        question_type="document_grounded",
+        steps=[RetrievalPlanStep(tool="search_pdf_chunks", query="Frage", top_k=1)],
+    )
+
+    response = answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(),
+        retrieval_fn=lambda **_: [_result()],
+        intent=_intent(needs_pdf=True),
+        retrieval_planner_enabled=True,
+        retrieval_planner_fn=lambda **_: plan,
+        retrieval_plan_executor_fn=lambda **_: PlanExecutionOutcome([_result()], [], 1),
+        tool_registry=object(),
+        agentic_retriever_enabled=True,
+        agentic_retriever_fn=lambda **_: (_ for _ in ()).throw(RuntimeError("agentic failed")),
+    )
+
+    assert response["sources"][0]["chunk_id"] == "chunk-1"

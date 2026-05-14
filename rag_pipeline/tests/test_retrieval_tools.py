@@ -597,7 +597,7 @@ class TestChatMemoryTool:
         outcome = registry.execute(req)
         assert outcome.error_type == RetrievalToolErrorType.MISSING_SESSION_ID
 
-    def test_chat_memory_tool_ignores_request_source_ids_and_uses_session_id(self) -> None:
+    def test_chat_memory_tool_includes_server_approved_source_ids_with_session_id(self) -> None:
         calls: list[dict[str, Any]] = []
 
         def fake_search(**kwargs: Any) -> list[dict[str, Any]]:
@@ -610,12 +610,12 @@ class TestChatMemoryTool:
         req = _valid_request(
             tool=RetrievalToolName.SEARCH_CHAT_MEMORY,
             session_id="session-verified",
-            source_ids=["some-other-session"],  # this must be ignored
+            source_ids=["session-old"],
         )
         registry.execute(req)
-        assert calls[0]["source_ids"] == ["session-verified"]
+        assert calls[0]["source_ids"] == ["session-verified", "session-old"]
 
-    def test_chat_memory_tool_does_not_accept_cross_session_source_ids(self) -> None:
+    def test_chat_memory_tool_deduplicates_current_session_from_source_ids(self) -> None:
         calls: list[dict[str, Any]] = []
 
         def fake_search(**kwargs: Any) -> list[dict[str, Any]]:
@@ -628,12 +628,10 @@ class TestChatMemoryTool:
         req = _valid_request(
             tool=RetrievalToolName.SEARCH_CHAT_MEMORY,
             session_id="correct-session",
-            source_ids=["attacker-session"],
+            source_ids=["correct-session", "session-old"],
         )
         registry.execute(req)
-        # Must use only the verified session_id
-        assert calls[0]["source_ids"] == ["correct-session"]
-        assert "attacker-session" not in calls[0]["source_ids"]
+        assert calls[0]["source_ids"] == ["correct-session", "session-old"]
 
 
 class TestInternalToolNormalization:
@@ -852,6 +850,38 @@ class TestGraphTool:
         req = _valid_request(tool=RetrievalToolName.QUERY_KNOWLEDGE_GRAPH)
         execute_query_knowledge_graph(req, cfg, graph_fn=fake_graph)
         assert len(calls) == 1
+
+    def test_graph_tool_uses_material_source_filters_not_knowledge_graph(self) -> None:
+        calls: list[Any] = []
+
+        def fake_graph(**kwargs: Any) -> dict[str, Any]:
+            calls.append(kwargs)
+            return _graph_ctx()
+
+        cfg = _graph_config()
+        req = _valid_request(
+            tool=RetrievalToolName.QUERY_KNOWLEDGE_GRAPH,
+            source_types=["pdf", "note"],
+            source_ids=["pdf-1"],
+        )
+        execute_query_knowledge_graph(req, cfg, graph_fn=fake_graph)
+        assert calls[0]["source_types"] == ["pdf", "note"]
+        assert calls[0]["source_ids"] == ["pdf-1"]
+
+    def test_graph_tool_ignores_knowledge_graph_as_backing_filter(self) -> None:
+        calls: list[Any] = []
+
+        def fake_graph(**kwargs: Any) -> dict[str, Any]:
+            calls.append(kwargs)
+            return _graph_ctx()
+
+        cfg = _graph_config()
+        req = _valid_request(
+            tool=RetrievalToolName.QUERY_KNOWLEDGE_GRAPH,
+            source_types=["knowledge_graph"],
+        )
+        execute_query_knowledge_graph(req, cfg, graph_fn=fake_graph)
+        assert calls[0]["source_types"] is None
 
     def test_graph_tool_normalizes_result_to_knowledge_graph_source_type(self) -> None:
         def fake_graph(**kwargs: Any) -> dict[str, Any]:

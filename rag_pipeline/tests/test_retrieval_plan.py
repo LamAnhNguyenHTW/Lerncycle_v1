@@ -101,6 +101,19 @@ def test_plan_adds_ordered_steps_and_respects_scope() -> None:
     assert plan.steps[-1].status == PlanStepStatus.DISABLED
 
 
+def test_plan_chat_memory_includes_related_memory_source_ids() -> None:
+    plan = build_retrieval_plan(
+        "Was hatten wir besprochen?",
+        _intent(needs_pdf=False, needs_chat_memory=True),
+        _config(),
+        session_id="session-current",
+        memory_source_ids=["session-old", "session-current"],
+    )
+
+    memory_step = next(step for step in plan.steps if step.tool == RetrievalTool.SEARCH_CHAT_MEMORY)
+    assert memory_step.source_ids == ["session-current", "session-old"]
+
+
 def test_plan_skips_memory_and_web_when_unavailable() -> None:
     plan = build_retrieval_plan(
         "Was hatten wir aktuell besprochen?",
