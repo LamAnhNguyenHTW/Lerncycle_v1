@@ -43,8 +43,9 @@ SYSTEM_PROMPT = (
 )
 REWRITE_SYSTEM_PROMPT = (
     "Rewrite the current user question into a standalone retrieval query using the recent "
-    "conversation only to resolve references. If the user just says 'search now', 'try again', or 'activated', output the full actual question from the previous turn. Output only the rewritten query, no "
-    "explanation. Keep it concise, at most two short sentences or about 200 characters. "
+    "conversation only to resolve references. If the user just says 'search now', 'try again', or 'activated', output the full actual question from the previous turn. "
+    "Ensure the core subject of the conversation is explicitly included in the rewritten query (e.g. 'Use Cases für PM Consultant' instead of just 'Use Cases'). "
+    "Output only the rewritten query, no explanation. Keep it concise, at most two short sentences or about 200 characters. "
     "Preserve the user's language. Do not answer the question."
 )
 CONVERSATION_SYSTEM_PROMPT = (
@@ -517,7 +518,7 @@ def answer_with_rag(
         results = results + web_outcome.results
     web_allowed_bool = web_search_enabled and effective_web_mode == "on"
     no_info_instruction = (
-        " If you cannot answer it at all, you MUST start your response with the EXACT phrase '[NO_INFO]', and then write a polite message in the user's language saying you cannot find the answer in the provided materials or web results. Do not invent facts or sources."
+        " If you cannot answer it at all, you MUST start your response with the EXACT phrase '[NO_INFO]', and then write a polite message in the user's language saying you cannot find the answer in the provided materials or web results. CRITICAL: DO NOT suggest activating web search, because it is already active! Do not invent facts or sources."
         if web_allowed_bool
         else " If you cannot answer it at all, you MUST start your response with the EXACT phrase '[NO_INFO]', and then write a polite message in the user's language saying you cannot find the answer in the provided materials and suggesting they activate Web Search. Do not invent facts or sources."
     )
