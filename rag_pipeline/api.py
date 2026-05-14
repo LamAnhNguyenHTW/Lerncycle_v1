@@ -33,7 +33,9 @@ WebMode = Literal["off", "on"]
 # Fields that must never be provided by the browser or forwarded to the RAG service.
 _BROWSER_FORBIDDEN_FIELDS = frozenset({
     "tools", "tool", "tool_args", "tool_registry", "allowed_tools",
-    "cypher", "neo4j_query",
+    "cypher", "neo4j_query", "agentic_decision", "refinement_action",
+    "agentic_tool", "agentic_tool_args", "max_tool_calls",
+    "max_refinement_rounds", "raw_tool_calls",
 })
 
 
@@ -116,6 +118,7 @@ class RagAnswerResponse(BaseModel):
     intent: dict[str, Any] | None = None
     retrieval_plan: dict[str, Any] | None = None
     retrieval_tools: dict[str, Any] | None = None
+    agentic_retriever: dict[str, Any] | None = None
 
 
 class CompressConversationRequest(BaseModel):
@@ -242,6 +245,7 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             retrieval_planner_enabled=config.retrieval_planner_enabled,
             retrieval_planner_config=config,
             tool_registry=tool_registry,
+            agentic_retriever_enabled=config.agentic_retriever_enabled,
         )
     except HTTPException:
         raise

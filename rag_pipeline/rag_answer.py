@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import logging
+import re
 from types import SimpleNamespace
 from typing import Any, Callable
 
 from rag_pipeline.context_builder import build_rag_context
+from rag_pipeline.agentic_retriever import AgenticRetrievalOutcome
+from rag_pipeline.agentic_retriever import run_controlled_agentic_retrieval
 from rag_pipeline.graph_retrieval import detect_graph_intent
 from rag_pipeline.graph_retrieval import retrieve_graph_context
 from rag_pipeline.intent_classifier import RetrievalIntent, classify_intent
 from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.memory_intent import detect_memory_intent
+from rag_pipeline.query_understanding import QueryRoute, QueryUnderstanding, understand_query
 from rag_pipeline.retrieval_plan import PlanExecutionOutcome
 from rag_pipeline.retrieval_plan import RetrievalPlan
 from rag_pipeline.retrieval_plan import build_retrieval_plan
@@ -29,9 +33,12 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "You are LearnCycle's learning assistant. Use only the provided context from the "
-    "user's uploaded PDFs, notes, and annotations. If the context does not contain "
-    "enough information, say so clearly. Do not invent facts or sources. Do not begin "
-    'your answer with "Im bereitgestellten Kontext". Prefer German when the user asks '
+    "user's uploaded PDFs, notes, and annotations. "
+    "Pay special attention to the domain and topic of the context. If the user asks for a definition or an acronym (like 'PM'), you MUST deduce the meaning from the context (e.g., if the context is about 'Process Mining', then 'PM' means 'Process Mining', not 'Projektmanagement' or something else). "
+    "Do NOT rely on your pre-trained general knowledge for acronyms if the context implies a different domain. "
+    "If the context does not contain enough information to answer the question, but you can answer it from your general knowledge, "
+    "you MUST start your response with the EXACT phrase '[GENERAL_KNOWLEDGE]'. "
+    'Do not begin your answer with "Im bereitgestellten Kontext". Prefer German when the user asks '
     "in German. Give a helpful learning-oriented explanation."
 )
 REWRITE_SYSTEM_PROMPT = (
@@ -43,9 +50,12 @@ REWRITE_SYSTEM_PROMPT = (
 CONVERSATION_SYSTEM_PROMPT = (
     "You are LearnCycle's learning assistant. Use the retrieved context as the factual "
     "source of truth. The recent conversation is provided only for continuity and "
-    "resolving references. If the retrieved context does not contain enough information, "
-    "say so clearly. Do not invent facts or sources. Do not begin your answer with "
-    '"Im bereitgestellten Kontext". Do not mention raw source metadata. '
+    "resolving references. "
+    "Pay special attention to the domain and topic of the context. If the user asks for a definition or an acronym (like 'PM'), you MUST deduce the meaning from the context (e.g., if the context is about 'Process Mining', then 'PM' means 'Process Mining', not 'Projektmanagement' or something else). "
+    "Do NOT rely on your pre-trained general knowledge for acronyms if the context implies a different domain. "
+    "If the retrieved context does not contain enough information to answer the question, but you can answer it from your general knowledge, "
+    "you MUST start your response with the EXACT phrase '[GENERAL_KNOWLEDGE]'. "
+    'Do not invent facts or sources. Do not begin your answer with "Im bereitgestellten Kontext". Do not mention raw source metadata. '
     'If the user asks to simplify ("einfacher", "kurz", "für Anfänger", "nochmal"): '
     "use short sentences, explain only the main idea first, add one concrete example "
     "if helpful, and do not enumerate unrelated topics from the context. Prefer German "
@@ -100,12 +110,88 @@ def _is_vague_followup(query: str) -> bool:
     return any(cue in normalized for cue in cues)
 
 
+def _last_user_message(recent_messages: list[dict] | None) -> str | None:
+    for message in reversed(recent_messages or []):
+        if message.get("role") == "user":
+            content = str(message.get("content") or "").strip()
+            if content:
+                return content
+    return None
+
+
+def _normalize_clarification_phrase(query: str) -> str:
+    normalized = " ".join(query.strip().split())
+    lowered = normalized.lower()
+    prefixes = [
+        "ich meinte ",
+        "ich meine ",
+        "damit meine ich ",
+        "damit meinte ich ",
+        "pm bedeutet ",
+        "pm heisst ",
+        "pm heißt ",
+        "pm = ",
+    ]
+    for prefix in prefixes:
+        if lowered.startswith(prefix):
+            return normalized[len(prefix):].strip(" .:;-")
+    return normalized
+
+
+def _rewrite_abbreviation_clarification(query: str, recent_messages: list[dict] | None) -> str | None:
+    phrase = _normalize_clarification_phrase(query)
+    words = [word for word in re.split(r"\s+", phrase.strip()) if word]
+    if not 1 <= len(words) <= 4:
+        return None
+    initials = "".join(word[0] for word in words if word[:1].isalpha()).lower()
+    if len(initials) < 2:
+        return None
+    previous = _last_user_message(recent_messages)
+    if not previous:
+        return None
+    pattern = re.compile(rf"\b{re.escape(initials)}\b", re.IGNORECASE)
+    if not pattern.search(previous):
+        return None
+    rewritten = pattern.sub(phrase, previous)
+    return rewritten if rewritten != previous else None
+
+
+def _is_conversation_only_followup(query: str, recent_messages: list[dict] | None) -> bool:
+    if not recent_messages:
+        return False
+    normalized = query.lower().strip()
+    if len(normalized) > 120:
+        return False
+    phrase_cues = [
+        "wie viel ist das netto",
+        "was ist das netto",
+        "netto",
+        "brutto",
+        "monatlich",
+        "jährlich",
+        "jaehrlich",
+        "davon",
+        "daraus",
+        "umgerechnet",
+        "pro monat",
+        "pro jahr",
+    ]
+    word_cues = ["davon", "daraus"]
+    return any(cue in normalized for cue in phrase_cues) or any(
+        re.search(rf"\b{re.escape(cue)}\b", normalized)
+        for cue in word_cues
+    )
+
+
 def rewrite_query_for_retrieval(
     query: str,
     recent_messages: list[dict] | None = None,
     llm_client: Any = None,
 ) -> str:
     """Rewrite vague follow-up questions into standalone retrieval queries."""
+    abbreviation_rewrite = _rewrite_abbreviation_clarification(query, recent_messages)
+    if abbreviation_rewrite:
+        return abbreviation_rewrite[:200]
     if not recent_messages or not _is_vague_followup(query):
         return query
 
@@ -171,13 +257,27 @@ def answer_with_rag(
     retrieval_plan_executor_fn: Callable[..., PlanExecutionOutcome] | None = None,
     retrieval_planner_config: Any = None,
     tool_registry: "RetrievalToolRegistry | None" = None,
+    agentic_retriever_enabled: bool = False,
+    agentic_retriever_fn: Callable[..., AgenticRetrievalOutcome] | None = None,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
     active_retrieval = retrieval_fn or search_hybrid_chunks
+    query_understanding: QueryUnderstanding | None = None
+    conversation_only_followup = False
     active_intent = intent
     classifier_used = False
     fallback_used = False
-    if active_intent is None and intent_classifier_enabled:
+    if active_intent is None and intent_classifier_enabled and intent_classifier_fn is None:
+        classifier_used = True
+        query_understanding = understand_query(
+            query,
+            recent_messages=recent_messages,
+            llm_client=llm_client,
+            config=intent_classifier_config,
+        )
+        active_intent = query_understanding.to_intent()
+        conversation_only_followup = query_understanding.route == QueryRoute.CONVERSATION_ONLY
+    elif active_intent is None and intent_classifier_enabled:
         classifier_used = True
         try:
             active_classifier = intent_classifier_fn or classify_intent
@@ -192,18 +292,23 @@ def answer_with_rag(
             active_intent = None
     elif active_intent is not None:
         classifier_used = True
+    if query_understanding is None:
+        conversation_only_followup = _is_conversation_only_followup(query, recent_messages)
 
     effective_web_mode = web_mode
     effective_memory_mode = memory_mode
     graph_requested = False
     if active_intent is not None:
-        if active_intent.needs_web and web_search_enabled:
+        if active_intent.needs_web and web_search_enabled and web_mode == "on":
             effective_web_mode = "on"
         if active_intent.needs_chat_memory and session_id and chat_memory_retrieval_enabled:
             effective_memory_mode = "on"
         graph_requested = bool(active_intent.needs_graph)
 
-    retrieval_query = rewrite_query_for_retrieval(query, recent_messages, llm_client)
+    if query_understanding is not None:
+        retrieval_query = query_understanding.resolved_query
+    else:
+        retrieval_query = rewrite_query_for_retrieval(query, recent_messages, llm_client)
     retrieval_top_k = reranking_candidate_k if reranking_enabled and reranker is not None else top_k
     material_source_types = source_types or list(MATERIAL_SOURCE_TYPES)
     web_outcome = _empty_web_outcome(web_search_provider, web_search_enabled, effective_web_mode)
@@ -211,12 +316,22 @@ def answer_with_rag(
     planner_used = False
     _registry_used = False
     _tool_outcomes: list[dict[str, Any]] = []
+    agentic_metadata: dict[str, Any] | None = None
     results: list[dict[str, Any]]
-    if retrieval_plan is not None or (retrieval_planner_enabled and active_intent is not None):
+    semantic_route = query_understanding.route if query_understanding is not None else None
+    skip_internal_retrieval = semantic_route in {
+        QueryRoute.WEB_SEARCH,
+        QueryRoute.CONVERSATION_ONLY,
+        QueryRoute.GENERAL_KNOWLEDGE,
+        QueryRoute.CLARIFICATION,
+    }
+    if conversation_only_followup or skip_internal_retrieval:
+        results = []
+    elif retrieval_plan is not None or (retrieval_planner_enabled and active_intent is not None):
         try:
             planner_used = True
             planner_config = retrieval_planner_config or _planner_config_from_kwargs(
-                web_search_enabled=web_search_enabled,
+                web_search_enabled=web_search_enabled and effective_web_mode == "on",
                 web_search_provider=web_search_provider,
                 web_search_top_k=web_search_top_k or 5,
                 web_search_timeout_seconds=web_search_timeout_seconds,
@@ -224,29 +339,102 @@ def answer_with_rag(
                 tavily_api_key=web_search_api_key,
                 chat_memory_top_k=chat_memory_top_k or 2,
             )
+            planner_config = _planner_config_with_web_gate(
+                planner_config,
+                web_allowed=web_search_enabled and effective_web_mode == "on",
+            )
             plan = retrieval_plan or (retrieval_planner_fn or build_retrieval_plan)(
                 query=retrieval_query,
                 intent=active_intent,
                 config=planner_config,
                 session_id=session_id,
+                memory_source_ids=memory_source_ids,
                 selected_pdf_ids=pdf_ids,
                 allowed_source_types=material_source_types,
             )
-            outcome = (retrieval_plan_executor_fn or execute_retrieval_plan)(
-                plan=plan,
-                query=retrieval_query,
-                user_id=user_id,
-                config=planner_config,
-                retrieval_fns={
-                    "search_hybrid_chunks": active_retrieval,
-                    "search_web": web_search_fn or search_web,
-                },
-                session_id=session_id,
-                tool_registry=tool_registry,
-            )
-            results = outcome.results
-            _registry_used = getattr(outcome, "registry_used", False)
-            _tool_outcomes = getattr(outcome, "tool_outcomes", [])
+            if agentic_retriever_enabled and active_intent is not None and tool_registry is not None:
+                try:
+                    agentic = (agentic_retriever_fn or run_controlled_agentic_retrieval)(
+                        query=retrieval_query,
+                        intent=active_intent,
+                        plan=plan,
+                        user_id=user_id,
+                        config=planner_config,
+                        tool_registry=tool_registry,
+                        plan_executor_fn=retrieval_plan_executor_fn,
+                        llm_client=llm_client,
+                        session_id=session_id,
+                        selected_pdf_ids=pdf_ids,
+                        allowed_source_types=material_source_types,
+                    )
+                    results = agentic.results
+                    _registry_used = True
+                    _tool_outcomes = agentic.tool_outcomes
+                    outcome = PlanExecutionOutcome(
+                        results=agentic.results,
+                        step_outcomes=agentic.tool_outcomes,
+                        total_result_count=len(agentic.results),
+                        fallback_used=agentic.fallback_used,
+                        registry_used=True,
+                        tool_outcomes=agentic.tool_outcomes,
+                    )
+                    agentic_metadata = _agentic_retriever_metadata(
+                        enabled=True,
+                        used=True,
+                        quality_mode=getattr(planner_config, "agentic_retriever_quality_assessment_mode", "heuristic"),
+                        refinement_mode=getattr(planner_config, "agentic_retriever_refinement_mode", "heuristic"),
+                        outcome=agentic,
+                    )
+                except Exception:
+                    logger.warning("Agentic retriever failed; falling back to planner execution.", exc_info=True)
+                    outcome = (retrieval_plan_executor_fn or execute_retrieval_plan)(
+                        plan=plan,
+                        query=retrieval_query,
+                        user_id=user_id,
+                        config=planner_config,
+                        retrieval_fns={
+                            "search_hybrid_chunks": active_retrieval,
+                            "search_web": web_search_fn or search_web,
+                        },
+                        session_id=session_id,
+                        tool_registry=tool_registry,
+                    )
+                    results = outcome.results
+                    _registry_used = getattr(outcome, "registry_used", False)
+                    _tool_outcomes = getattr(outcome, "tool_outcomes", [])
+                    agentic_metadata = _agentic_retriever_metadata(
+                        enabled=True,
+                        used=False,
+                        quality_mode=getattr(planner_config, "agentic_retriever_quality_assessment_mode", "heuristic"),
+                        refinement_mode=getattr(planner_config, "agentic_retriever_refinement_mode", "heuristic"),
+                        fallback_used=True,
+                        error_type="agentic_error",
+                    )
+            else:
+                outcome = (retrieval_plan_executor_fn or execute_retrieval_plan)(
+                    plan=plan,
+                    query=retrieval_query,
+                    user_id=user_id,
+                    config=planner_config,
+                    retrieval_fns={
+                        "search_hybrid_chunks": active_retrieval,
+                        "search_web": web_search_fn or search_web,
+                    },
+                    session_id=session_id,
+                    tool_registry=tool_registry,
+                )
+                results = outcome.results
+                _registry_used = getattr(outcome, "registry_used", False)
+                _tool_outcomes = getattr(outcome, "tool_outcomes", [])
+                if agentic_retriever_enabled:
+                    agentic_metadata = _agentic_retriever_metadata(
+                        enabled=True,
+                        used=False,
+                        quality_mode=getattr(planner_config, "agentic_retriever_quality_assessment_mode", "heuristic"),
+                        refinement_mode=getattr(planner_config, "agentic_retriever_refinement_mode", "heuristic"),
+                        fallback_used=True,
+                        error_type="registry_unavailable",
+                    )
             planner_metadata = _planner_metadata(
                 True, outcome.fallback_used, outcome.step_outcomes,
                 registry_used=_registry_used,
@@ -275,7 +463,7 @@ def answer_with_rag(
             pdf_ids=pdf_ids,
         )
     graph_context = {"context_text": "", "sources": []}
-    if not planner_used and _should_retrieve_graph(query, graph_mode, graph_retrieval_enabled, graph_store):
+    if not conversation_only_followup and not planner_used and _should_retrieve_graph(query, graph_mode, graph_retrieval_enabled, graph_store):
         try:
             graph_context = retrieve_graph_context(
                 query=query,
@@ -289,7 +477,7 @@ def answer_with_rag(
             logger.warning("Graph retrieval failed; continuing without graph context.", exc_info=True)
             graph_context = {"context_text": "", "sources": []}
     memory_results: list[dict[str, Any]] = []
-    if not planner_used and _should_retrieve_memory(
+    if not conversation_only_followup and not planner_used and _should_retrieve_memory(
         query,
         recent_messages,
         session_id,
@@ -309,7 +497,7 @@ def answer_with_rag(
         except Exception:
             logger.warning("Chat memory retrieval failed; continuing without memory.", exc_info=True)
             memory_results = []
-    if not planner_used and web_search_enabled and effective_web_mode == "on":
+    if not conversation_only_followup and not planner_used and web_search_enabled and effective_web_mode == "on":
         try:
             active_web_search = web_search_fn or search_web
             outcome = active_web_search(
@@ -327,6 +515,56 @@ def answer_with_rag(
     results = results + memory_results
     if web_outcome.results:
         results = results + web_outcome.results
+    web_allowed_bool = web_search_enabled and effective_web_mode == "on"
+    no_info_instruction = (
+        " If you cannot answer it at all, you MUST start your response with the EXACT phrase '[NO_INFO]', and then write a polite message in the user's language saying you cannot find the answer in the provided materials or web results. Do not invent facts or sources."
+        if web_allowed_bool
+        else " If you cannot answer it at all, you MUST start your response with the EXACT phrase '[NO_INFO]', and then write a polite message in the user's language saying you cannot find the answer in the provided materials and suggesting they activate Web Search. Do not invent facts or sources."
+    )
+
+    if _should_answer_without_retrieval(
+        query_understanding,
+        conversation_only_followup=conversation_only_followup,
+        recent_messages=recent_messages,
+        retrieval_query=retrieval_query,
+        query=query,
+        web_allowed=web_allowed_bool,
+        has_results=bool(results or graph_context.get("context_text")),
+    ):
+        active_llm = llm_client or OpenAILlmClient()
+        user_prompt = _no_retrieval_prompt(
+            query=query,
+            retrieval_query=retrieval_query,
+            recent_messages=recent_messages,
+            query_understanding=query_understanding,
+            web_allowed=web_allowed_bool,
+        )
+        answer = active_llm.complete(
+            system_prompt=CONVERSATION_SYSTEM_PROMPT + no_info_instruction,
+            user_prompt=user_prompt,
+        )
+        
+        synthetic_sources = []
+        if answer.strip().startswith("[NO_INFO]"):
+            answer = answer.replace("[NO_INFO]", "", 1).strip()
+        else:
+            if answer.strip().startswith("[GENERAL_KNOWLEDGE]"):
+                answer = answer.replace("[GENERAL_KNOWLEDGE]", "", 1).strip()
+            
+            if query_understanding and getattr(query_understanding, "route", None) == QueryRoute.GENERAL_KNOWLEDGE and getattr(query_understanding, "should_show_sources", False):
+                from rag_pipeline.query_understanding import synthetic_general_knowledge_source
+                synthetic_sources.append(synthetic_general_knowledge_source())
+
+        return {
+            "answer": answer,
+            "sources": synthetic_sources,
+            "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode),
+            "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
+            "retrieval_plan": planner_metadata,
+            "retrieval_tools": _retrieval_tools_metadata(_registry_used, _tool_outcomes),
+            "agentic_retriever": agentic_metadata,
+        }
+
     if not results and not graph_context.get("context_text"):
         return {
             "answer": FALLBACK_ANSWER,
@@ -335,6 +573,7 @@ def answer_with_rag(
             "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
             "retrieval_plan": planner_metadata,
             "retrieval_tools": _retrieval_tools_metadata(_registry_used, _tool_outcomes),
+            "agentic_retriever": agentic_metadata,
         }
 
     context_results = results
@@ -369,6 +608,7 @@ def answer_with_rag(
             "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
             "retrieval_plan": planner_metadata,
             "retrieval_tools": _retrieval_tools_metadata(_registry_used, _tool_outcomes),
+            "agentic_retriever": agentic_metadata,
         }
 
     active_llm = llm_client or OpenAILlmClient()
@@ -386,27 +626,44 @@ def answer_with_rag(
             if summary_text
             else ""
         )
+        resolved_question_block = (
+            f"Resolved question for retrieval:\n{retrieval_query}\n\n"
+            if retrieval_query != query
+            else ""
+        )
         user_prompt = (
             f"{conversation_prefix}Recent conversation:\n{_format_conversation_block(recent_messages)}\n\n"
             f"Retrieved context:\n{combined_context}\n\n"
+            f"{resolved_question_block}"
             f"Current question:\n{query}"
         )
-        system_prompt = CONVERSATION_SYSTEM_PROMPT + prompt_addition
+        system_prompt = CONVERSATION_SYSTEM_PROMPT + prompt_addition + no_info_instruction
     else:
         user_prompt = (
             "Answer the user's question using only this context.\n\n"
             f"Context:\n{combined_context}\n\n"
             f"Question:\n{query}"
         )
-        system_prompt = SYSTEM_PROMPT + prompt_addition
+        system_prompt = SYSTEM_PROMPT + prompt_addition + no_info_instruction
     answer = active_llm.complete(system_prompt=system_prompt, user_prompt=user_prompt)
+    
+    final_sources = context["sources"] + list(graph_context.get("sources") or [])
+    if answer.strip().startswith("[NO_INFO]"):
+        answer = answer.replace("[NO_INFO]", "", 1).strip()
+        final_sources = []
+    elif answer.strip().startswith("[GENERAL_KNOWLEDGE]"):
+        answer = answer.replace("[GENERAL_KNOWLEDGE]", "", 1).strip()
+        from rag_pipeline.query_understanding import synthetic_general_knowledge_source
+        final_sources = [synthetic_general_knowledge_source()]
+
     return {
         "answer": answer,
-        "sources": context["sources"] + list(graph_context.get("sources") or []),
+        "sources": final_sources,
         "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode),
         "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
         "retrieval_plan": planner_metadata,
         "retrieval_tools": _retrieval_tools_metadata(_registry_used, _tool_outcomes),
+        "agentic_retriever": agentic_metadata,
     }
 
 
@@ -424,6 +681,57 @@ def _should_retrieve_memory(
     if memory_mode == "on":
         return True
     return detect_memory_intent(query, recent_messages)
+
+
+def _should_answer_without_retrieval(
+    understanding: QueryUnderstanding | None,
+    *,
+    conversation_only_followup: bool,
+    recent_messages: list[dict] | None,
+    retrieval_query: str,
+    query: str,
+    web_allowed: bool,
+    has_results: bool,
+) -> bool:
+    if has_results:
+        return False
+    if understanding is not None:
+        if understanding.route in {
+            QueryRoute.CONVERSATION_ONLY,
+            QueryRoute.GENERAL_KNOWLEDGE,
+            QueryRoute.CLARIFICATION,
+        }:
+            return True
+        if understanding.route == QueryRoute.WEB_SEARCH and not web_allowed:
+            return True
+    return bool(conversation_only_followup and recent_messages and retrieval_query == query)
+
+
+def _no_retrieval_prompt(
+    *,
+    query: str,
+    retrieval_query: str,
+    recent_messages: list[dict] | None,
+    query_understanding: QueryUnderstanding | None,
+    web_allowed: bool,
+) -> str:
+    parts = [
+        "Answer the current question without uploaded-material citations.",
+        "Do not cite PDF, note, annotation, or chat-memory sources because no retrieval context is used.",
+    ]
+    if query_understanding is not None:
+        parts.append(f"Route: {query_understanding.route.value}.")
+        parts.append(f"Resolved query: {query_understanding.resolved_query}")
+        if query_understanding.needs_web and not web_allowed:
+            parts.append(
+                "Web search is not enabled for this request. Give a cautious general answer or say that current sourced values require enabling web search."
+            )
+    elif retrieval_query != query:
+        parts.append(f"Resolved query: {retrieval_query}")
+    if recent_messages:
+        parts.extend(["", f"Recent conversation:\n{_format_conversation_block(recent_messages)}"])
+    parts.extend(["", f"Current question:\n{query}"])
+    return "\n".join(parts)
 
 
 def _memory_source_ids(
@@ -551,6 +859,17 @@ def _planner_config_from_kwargs(**kwargs: Any) -> Any:
     )
 
 
+def _planner_config_with_web_gate(config: Any, *, web_allowed: bool) -> Any:
+    if web_allowed or not getattr(config, "web_search_enabled", False):
+        return config
+    if hasattr(config, "model_dump"):
+        values = config.model_dump()
+    else:
+        values = vars(config).copy()
+    values["web_search_enabled"] = False
+    return SimpleNamespace(**values)
+
+
 def _planner_metadata(
     planner_used: bool,
     fallback_used: bool,
@@ -594,4 +913,32 @@ def _retrieval_tools_metadata(
             }
             for t in (tool_outcomes or [])
         ],
+    }
+
+
+def _agentic_retriever_metadata(
+    *,
+    enabled: bool,
+    used: bool,
+    quality_mode: str,
+    refinement_mode: str,
+    outcome: AgenticRetrievalOutcome | None = None,
+    fallback_used: bool = False,
+    error_type: str | None = None,
+) -> dict[str, Any]:
+    quality = outcome.quality if outcome else None
+    return {
+        "enabled": enabled,
+        "used": used,
+        "quality_mode": quality_mode,
+        "refinement_mode": refinement_mode,
+        "refinement_used": bool(outcome.refinement_used) if outcome else False,
+        "refinement_rounds": outcome.refinement_rounds if outcome else 0,
+        "tool_call_count": outcome.tool_call_count if outcome else 0,
+        "quality": {
+            "status": quality.status.value if quality else None,
+            "missing_aspects": quality.missing_aspects if quality else [],
+        },
+        "fallback_used": bool(outcome.fallback_used) if outcome else fallback_used,
+        "error_type": outcome.error_type if outcome else error_type,
     }

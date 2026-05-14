@@ -899,3 +899,60 @@ def test_rag_answer_returns_retrieval_plan_metadata(client, monkeypatch) -> None
 
     assert response.status_code == 200
     assert response.json()["retrieval_plan"]["planner_used"] is True
+
+
+def test_rag_answer_agentic_default_off(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setenv("AGENTIC_RETRIEVER_ENABLED", "false")
+    monkeypatch.setattr(api, "answer_with_rag", lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []})
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+
+    assert response.status_code == 200
+    assert calls[0]["agentic_retriever_enabled"] is False
+
+
+def test_rag_answer_agentic_config_enabled(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+    monkeypatch.setenv("AGENTIC_RETRIEVER_ENABLED", "true")
+    monkeypatch.setattr(api, "answer_with_rag", lambda **kwargs: calls.append(kwargs) or {"answer": "ok", "sources": []})
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+
+    assert response.status_code == 200
+    assert calls[0]["agentic_retriever_enabled"] is True
+
+
+def test_rag_answer_rejects_browser_agentic_fields(client) -> None:
+    test_client, _ = client
+    for field in [
+        "agentic_decision",
+        "refinement_action",
+        "agentic_tool",
+        "agentic_tool_args",
+        "max_tool_calls",
+        "max_refinement_rounds",
+        "raw_tool_calls",
+    ]:
+        response = test_client.post("/rag/answer", headers=_headers(), json=_payload(**{field: "bad"}))
+        assert response.status_code == 422
+
+
+def test_rag_answer_returns_agentic_metadata(client, monkeypatch) -> None:
+    test_client, api = client
+    monkeypatch.setattr(
+        api,
+        "answer_with_rag",
+        lambda **_: {
+            "answer": "ok",
+            "sources": [],
+            "agentic_retriever": {"enabled": True, "used": True, "quality": {"status": "sufficient"}},
+        },
+    )
+
+    response = test_client.post("/rag/answer", headers=_headers(), json=_payload())
+
+    assert response.status_code == 200
+    assert response.json()["agentic_retriever"]["used"] is True

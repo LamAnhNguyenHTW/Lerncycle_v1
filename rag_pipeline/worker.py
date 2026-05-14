@@ -500,7 +500,10 @@ class RagWorker:
             .maybe_single()
             .execute()
         )
-        return response.data
+        data = getattr(response, "data", None)
+        if isinstance(data, list):
+            return data[0] if data else None
+        return data
 
     def _fetch_latest_chunk_row(
         self,

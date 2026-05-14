@@ -87,6 +87,18 @@ class WorkerConfig:
     retrieval_tool_timeout_seconds: int = 20
     retrieval_tool_max_results_per_tool: int = 20
     retrieval_tool_allowed_tools: list[str] | None = None
+    agentic_retriever_enabled: bool = False
+    agentic_retriever_mode: str = "controlled"
+    agentic_retriever_quality_assessment_mode: str = "heuristic"
+    agentic_retriever_refinement_mode: str = "heuristic"
+    agentic_retriever_llm_model: str = "gpt-4.1-mini"
+    agentic_retriever_llm_timeout_seconds: int = 10
+    agentic_retriever_llm_fallback_to_heuristic: bool = True
+    agentic_retriever_max_refinement_rounds: int = 1
+    agentic_retriever_max_tool_calls: int = 8
+    agentic_retriever_min_total_results: int = 3
+    agentic_retriever_min_avg_score: float = 0.25
+    agentic_retriever_max_latency_seconds: int = 30
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -322,6 +334,59 @@ class WorkerConfig:
                     f"RETRIEVAL_TOOL_ALLOWED_TOOLS contains unknown tools: {_invalid}"
                 )
 
+        agentic_retriever_enabled = _optional_bool(os.getenv("AGENTIC_RETRIEVER_ENABLED"), False)
+        agentic_retriever_mode = os.getenv("AGENTIC_RETRIEVER_MODE", "controlled")
+        agentic_retriever_quality_assessment_mode = os.getenv(
+            "AGENTIC_RETRIEVER_QUALITY_ASSESSMENT_MODE", "heuristic"
+        )
+        agentic_retriever_refinement_mode = os.getenv(
+            "AGENTIC_RETRIEVER_REFINEMENT_MODE", "heuristic"
+        )
+        agentic_retriever_llm_model = os.getenv(
+            "AGENTIC_RETRIEVER_LLM_MODEL", "gpt-4.1-mini"
+        )
+        agentic_retriever_llm_timeout_seconds = _int_or_default(
+            "AGENTIC_RETRIEVER_LLM_TIMEOUT_SECONDS", 10
+        )
+        agentic_retriever_llm_fallback_to_heuristic = _optional_bool(
+            os.getenv("AGENTIC_RETRIEVER_LLM_FALLBACK_TO_HEURISTIC"), True
+        )
+        agentic_retriever_max_refinement_rounds = _int_or_default(
+            "AGENTIC_RETRIEVER_MAX_REFINEMENT_ROUNDS", 1
+        )
+        agentic_retriever_max_tool_calls = _int_or_default(
+            "AGENTIC_RETRIEVER_MAX_TOOL_CALLS", 8
+        )
+        agentic_retriever_min_total_results = _int_or_default(
+            "AGENTIC_RETRIEVER_MIN_TOTAL_RESULTS", 3
+        )
+        agentic_retriever_min_avg_score = _float_or_default(
+            "AGENTIC_RETRIEVER_MIN_AVG_SCORE", 0.25
+        )
+        agentic_retriever_max_latency_seconds = _int_or_default(
+            "AGENTIC_RETRIEVER_MAX_LATENCY_SECONDS", 30
+        )
+        if agentic_retriever_mode != "controlled":
+            raise ValueError("AGENTIC_RETRIEVER_MODE must be controlled")
+        if agentic_retriever_quality_assessment_mode not in {"heuristic", "llm"}:
+            raise ValueError(
+                "AGENTIC_RETRIEVER_QUALITY_ASSESSMENT_MODE must be heuristic or llm"
+            )
+        if agentic_retriever_refinement_mode not in {"heuristic", "llm"}:
+            raise ValueError("AGENTIC_RETRIEVER_REFINEMENT_MODE must be heuristic or llm")
+        if not 0 <= agentic_retriever_max_refinement_rounds <= 2:
+            raise ValueError("AGENTIC_RETRIEVER_MAX_REFINEMENT_ROUNDS must be between 0 and 2")
+        if not 1 <= agentic_retriever_max_tool_calls <= 20:
+            raise ValueError("AGENTIC_RETRIEVER_MAX_TOOL_CALLS must be between 1 and 20")
+        if not 0 <= agentic_retriever_min_total_results <= 20:
+            raise ValueError("AGENTIC_RETRIEVER_MIN_TOTAL_RESULTS must be between 0 and 20")
+        if not 0 <= agentic_retriever_min_avg_score <= 1:
+            raise ValueError("AGENTIC_RETRIEVER_MIN_AVG_SCORE must be between 0 and 1")
+        if not 3 <= agentic_retriever_max_latency_seconds <= 120:
+            raise ValueError("AGENTIC_RETRIEVER_MAX_LATENCY_SECONDS must be between 3 and 120")
+        if not 3 <= agentic_retriever_llm_timeout_seconds <= 60:
+            raise ValueError("AGENTIC_RETRIEVER_LLM_TIMEOUT_SECONDS must be between 3 and 60")
+
         return cls(
             supabase_url=required["SUPABASE_URL"] or "",
             supabase_service_role_key=(
@@ -439,6 +504,18 @@ class WorkerConfig:
             retrieval_tool_timeout_seconds=retrieval_tool_timeout_seconds,
             retrieval_tool_max_results_per_tool=retrieval_tool_max_results_per_tool,
             retrieval_tool_allowed_tools=retrieval_tool_allowed_tools,
+            agentic_retriever_enabled=agentic_retriever_enabled,
+            agentic_retriever_mode=agentic_retriever_mode,
+            agentic_retriever_quality_assessment_mode=agentic_retriever_quality_assessment_mode,
+            agentic_retriever_refinement_mode=agentic_retriever_refinement_mode,
+            agentic_retriever_llm_model=agentic_retriever_llm_model,
+            agentic_retriever_llm_timeout_seconds=agentic_retriever_llm_timeout_seconds,
+            agentic_retriever_llm_fallback_to_heuristic=agentic_retriever_llm_fallback_to_heuristic,
+            agentic_retriever_max_refinement_rounds=agentic_retriever_max_refinement_rounds,
+            agentic_retriever_max_tool_calls=agentic_retriever_max_tool_calls,
+            agentic_retriever_min_total_results=agentic_retriever_min_total_results,
+            agentic_retriever_min_avg_score=agentic_retriever_min_avg_score,
+            agentic_retriever_max_latency_seconds=agentic_retriever_max_latency_seconds,
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",
@@ -468,6 +545,11 @@ def _optional_int(value: str | None) -> int | None:
 def _int_or_default(name: str, default: int) -> int:
     parsed = _optional_int(os.getenv(name))
     return default if parsed is None else parsed
+
+
+def _float_or_default(name: str, default: float) -> float:
+    value = os.getenv(name)
+    return default if not value else float(value)
 
 
 def _optional_bool(value: str | None, default: bool) -> bool:

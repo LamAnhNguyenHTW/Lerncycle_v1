@@ -153,6 +153,7 @@ def test_reranking_config_parses_enabled_true(monkeypatch) -> None:
 
 
 def test_chat_memory_config_defaults(monkeypatch) -> None:
+    monkeypatch.setattr("rag_pipeline.config._load_dotenv", lambda: None)
     monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
     for name in [
