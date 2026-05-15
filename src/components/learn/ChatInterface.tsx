@@ -19,6 +19,28 @@ type ChatMessage = {
   sources?: ChatSource[];
 };
 
+function buildFeynmanGreeting(
+  language: 'de' | 'en',
+  displayName: string,
+): ChatMessage {
+  const content = language === 'de'
+    ? `Hallo ${displayName}, was erklärst du mir heute?`
+    : `Hi ${displayName}, what will you explain to me today?`;
+  return { id: crypto.randomUUID(), role: 'assistant', content };
+}
+
+function initialMessagesFor(
+  chatMode: ChatMode,
+  language: 'de' | 'en',
+  displayName: string,
+  initialSessionId: string | undefined,
+): ChatMessage[] {
+  if (chatMode === 'feynman' && !initialSessionId) {
+    return [buildFeynmanGreeting(language, displayName)];
+  }
+  return [];
+}
+
 export function ChatInterface({
   course,
   initialPdfId,
@@ -106,20 +128,9 @@ export function ChatInterface({
     topicSuggestionsRef.current = topicSuggestions;
   }, [topicSuggestions]);
 
-  useEffect(() => {
-    if (chatMode !== 'feynman' || messages.length > 0 || sessionId) {
-      return;
-    }
-
-    const greeting = language === 'de'
-      ? `Hallo ${displayName}, was erklärst du mir heute?`
-      : `Hi ${displayName}, what will you explain to me today?`;
-    setMessages([{
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: greeting,
-    }]);
-  }, [chatMode, displayName, language, messages.length, sessionId]);
+  // Greeting seeding happens inside the session-load effect and startNewChat;
+  // see initialMessagesFor(). Doing it in a separate effect previously raced
+  // against the session-load effect's unconditional setMessages([]) reset.
 
   const selectedPdfIdsKey = selectedPdfIds.join(',');
 
@@ -194,9 +205,13 @@ export function ChatInterface({
     }
     setSessionId(undefined);
     setActiveConversationKey(crypto.randomUUID());
-    setMessages([]);
+    setMessages(initialMessagesFor(chatMode, language, displayName, initialSessionId));
     setError(null);
     loadSessions();
+    // language/displayName intentionally NOT in deps: switching language must
+    // not wipe an in-progress chat session. The greeting will reflect whatever
+    // language was active at the time the mode/session was entered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course.id, initialSessionId, chatMode]);
 
   useEffect(() => {
@@ -221,7 +236,7 @@ export function ChatInterface({
   function startNewChat() {
     setSessionId(undefined);
     setActiveConversationKey(crypto.randomUUID());
-    setMessages([]);
+    setMessages(initialMessagesFor(chatMode, language, displayName, undefined));
     setError(null);
   }
 

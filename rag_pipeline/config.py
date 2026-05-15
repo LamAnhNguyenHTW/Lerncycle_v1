@@ -104,6 +104,10 @@ class WorkerConfig:
     agentic_retriever_min_total_results: int = 3
     agentic_retriever_min_avg_score: float = 0.25
     agentic_retriever_max_latency_seconds: int = 30
+    revision_llm_model: str = "gpt-4o-mini"
+    revision_max_cards_per_deck: int = 30
+    revision_max_questions_per_test: int = 20
+    revision_retrieval_top_k: int = 8
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
 
@@ -420,6 +424,17 @@ class WorkerConfig:
         if not 3 <= agentic_retriever_llm_timeout_seconds <= 60:
             raise ValueError("AGENTIC_RETRIEVER_LLM_TIMEOUT_SECONDS must be between 3 and 60")
 
+        revision_llm_model = os.getenv("REVISION_LLM_MODEL", "gpt-4o-mini")
+        revision_max_cards_per_deck = _int_or_default("REVISION_MAX_CARDS_PER_DECK", 30)
+        revision_max_questions_per_test = _int_or_default("REVISION_MAX_QUESTIONS_PER_TEST", 20)
+        revision_retrieval_top_k = _int_or_default("REVISION_RETRIEVAL_TOP_K", 8)
+        if not 1 <= revision_max_cards_per_deck <= 100:
+            raise ValueError("REVISION_MAX_CARDS_PER_DECK must be between 1 and 100")
+        if not 1 <= revision_max_questions_per_test <= 50:
+            raise ValueError("REVISION_MAX_QUESTIONS_PER_TEST must be between 1 and 50")
+        if not 1 <= revision_retrieval_top_k <= 30:
+            raise ValueError("REVISION_RETRIEVAL_TOP_K must be between 1 and 30")
+
         return cls(
             supabase_url=required["SUPABASE_URL"] or "",
             supabase_service_role_key=(
@@ -554,6 +569,10 @@ class WorkerConfig:
             agentic_retriever_min_total_results=agentic_retriever_min_total_results,
             agentic_retriever_min_avg_score=agentic_retriever_min_avg_score,
             agentic_retriever_max_latency_seconds=agentic_retriever_max_latency_seconds,
+            revision_llm_model=revision_llm_model,
+            revision_max_cards_per_deck=revision_max_cards_per_deck,
+            revision_max_questions_per_test=revision_max_questions_per_test,
+            revision_retrieval_top_k=revision_retrieval_top_k,
             chunking_strategy=os.getenv(
                 "RAG_CHUNKING_STRATEGY",
                 "docling_hybrid_semantic_refinement",

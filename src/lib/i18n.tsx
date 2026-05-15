@@ -143,7 +143,71 @@ export type TranslationKey =
   | 'pdf.color.yellow'
   | 'pdf.color.green'
   | 'pdf.color.blue'
-  | 'pdf.color.pink';
+  | 'pdf.color.pink'
+  | 'revision.tabs.flashcards'
+  | 'revision.tabs.mindmap'
+  | 'revision.tabs.mocktest'
+  | 'revision.headline'
+  | 'revision.subtitle'
+  | 'revision.flashcards.newDeck'
+  | 'revision.flashcards.title'
+  | 'revision.flashcards.titlePlaceholder'
+  | 'revision.flashcards.count'
+  | 'revision.flashcards.sources'
+  | 'revision.flashcards.generate'
+  | 'revision.flashcards.generating'
+  | 'revision.flashcards.empty'
+  | 'revision.flashcards.failed'
+  | 'revision.flashcards.review'
+  | 'revision.flashcards.reviewEmpty'
+  | 'revision.flashcards.flip'
+  | 'revision.flashcards.again'
+  | 'revision.flashcards.hard'
+  | 'revision.flashcards.good'
+  | 'revision.flashcards.easy'
+  | 'revision.flashcards.cardCount'
+  | 'revision.flashcards.dueCount'
+  | 'revision.flashcards.delete'
+  | 'revision.flashcards.deleteConfirm'
+  | 'revision.flashcards.statusReady'
+  | 'revision.flashcards.statusPending'
+  | 'revision.flashcards.statusFailed'
+  | 'revision.flashcards.cardLabel'
+  | 'revision.flashcards.question'
+  | 'revision.flashcards.answer'
+  | 'revision.flashcards.due'
+  | 'revision.flashcards.nextDue'
+  | 'revision.flashcards.repetitions'
+  | 'revision.flashcards.easeFactor'
+  | 'revision.flashcards.newCard'
+  | 'revision.mocktest.newTest'
+  | 'revision.mocktest.title'
+  | 'revision.mocktest.count'
+  | 'revision.mocktest.questionCount'
+  | 'revision.mocktest.start'
+  | 'revision.mocktest.submit'
+  | 'revision.mocktest.next'
+  | 'revision.mocktest.previous'
+  | 'revision.mocktest.score'
+  | 'revision.mocktest.completed'
+  | 'revision.mocktest.empty'
+  | 'revision.mocktest.questionOf'
+  | 'revision.mocktest.correct'
+  | 'revision.mocktest.incorrect'
+  | 'revision.mocktest.explanation'
+  | 'revision.mocktest.tryAgain'
+  | 'revision.mocktest.back'
+  | 'revision.mocktest.delete'
+  | 'revision.mindmap.selectPdf'
+  | 'revision.mindmap.empty'
+  | 'revision.mindmap.generatingHint'
+  | 'revision.mindmap.loading'
+  | 'revision.common.cancel'
+  | 'revision.common.create'
+  | 'revision.common.close'
+  | 'revision.common.back'
+  | 'revision.common.pdfSelectAll'
+  | 'revision.common.pdfSelectNone';
 
 const translations: Record<Language, Record<TranslationKey, string>> = {
   en: {
@@ -285,6 +349,70 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'pdf.color.green': 'Green',
     'pdf.color.blue': 'Blue',
     'pdf.color.pink': 'Pink',
+    'revision.tabs.flashcards': 'Flashcards',
+    'revision.tabs.mindmap': 'Mindmap',
+    'revision.tabs.mocktest': 'Mock Test',
+    'revision.headline': 'Revision',
+    'revision.subtitle': 'Practice flashcards, explore a mindmap, and take mock tests on your materials.',
+    'revision.flashcards.newDeck': 'New deck',
+    'revision.flashcards.title': 'Title',
+    'revision.flashcards.titlePlaceholder': 'e.g. Chapter 1 — Process Mining',
+    'revision.flashcards.count': 'Cards',
+    'revision.flashcards.sources': 'Source PDFs',
+    'revision.flashcards.generate': 'Generate',
+    'revision.flashcards.generating': 'Generating cards...',
+    'revision.flashcards.empty': 'No decks yet. Create your first one.',
+    'revision.flashcards.failed': 'Generation failed',
+    'revision.flashcards.review': 'Review',
+    'revision.flashcards.reviewEmpty': 'No cards are due right now. Great job!',
+    'revision.flashcards.flip': 'Show answer',
+    'revision.flashcards.again': 'Again',
+    'revision.flashcards.hard': 'Hard',
+    'revision.flashcards.good': 'Good',
+    'revision.flashcards.easy': 'Easy',
+    'revision.flashcards.cardCount': '{count} card{plural}',
+    'revision.flashcards.dueCount': '{count} due',
+    'revision.flashcards.delete': 'Delete deck',
+    'revision.flashcards.deleteConfirm': 'Delete this deck and all its cards?',
+    'revision.flashcards.statusReady': 'Ready',
+    'revision.flashcards.statusPending': 'Generating',
+    'revision.flashcards.statusFailed': 'Failed',
+    'revision.flashcards.cardLabel': 'Card {n}',
+    'revision.flashcards.question': 'Question',
+    'revision.flashcards.answer': 'Answer',
+    'revision.flashcards.due': 'Due',
+    'revision.flashcards.nextDue': 'Next due date',
+    'revision.flashcards.repetitions': 'Repetitions',
+    'revision.flashcards.easeFactor': 'Ease Factor',
+    'revision.flashcards.newCard': 'New card',
+    'revision.mocktest.newTest': 'New test',
+    'revision.mocktest.title': 'Title',
+    'revision.mocktest.count': 'Questions',
+    'revision.mocktest.questionCount': '{count} question{plural}',
+    'revision.mocktest.start': 'Start test',
+    'revision.mocktest.submit': 'Submit',
+    'revision.mocktest.next': 'Next',
+    'revision.mocktest.previous': 'Previous',
+    'revision.mocktest.score': 'Score',
+    'revision.mocktest.completed': 'Completed ({score}%)',
+    'revision.mocktest.empty': 'No tests yet. Generate your first.',
+    'revision.mocktest.questionOf': 'Question {n} of {total}',
+    'revision.mocktest.correct': 'Correct',
+    'revision.mocktest.incorrect': 'Incorrect',
+    'revision.mocktest.explanation': 'Explanation',
+    'revision.mocktest.tryAgain': 'Try again',
+    'revision.mocktest.back': 'Back to tests',
+    'revision.mocktest.delete': 'Delete test',
+    'revision.mindmap.selectPdf': 'Select a PDF to view its mindmap',
+    'revision.mindmap.empty': 'No learning structure has been generated for this PDF yet.',
+    'revision.mindmap.generatingHint': 'Mindmaps are built from the Learning Graph extracted by the indexing worker. Once your PDF has been processed, its concept hierarchy will appear here.',
+    'revision.mindmap.loading': 'Loading mindmap...',
+    'revision.common.cancel': 'Cancel',
+    'revision.common.create': 'Create',
+    'revision.common.close': 'Close',
+    'revision.common.back': 'Back',
+    'revision.common.pdfSelectAll': 'Select all',
+    'revision.common.pdfSelectNone': 'Clear',
   },
   de: {
     'nav.home': 'Home',
@@ -425,6 +553,70 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'pdf.color.green': 'Grün',
     'pdf.color.blue': 'Blau',
     'pdf.color.pink': 'Pink',
+    'revision.tabs.flashcards': 'Karteikarten',
+    'revision.tabs.mindmap': 'Mindmap',
+    'revision.tabs.mocktest': 'Mocktest',
+    'revision.headline': 'Revision',
+    'revision.subtitle': 'Übe mit Karteikarten, erkunde eine Mindmap und schreibe Mocktests aus deinen Materialien.',
+    'revision.flashcards.newDeck': 'Neues Deck',
+    'revision.flashcards.title': 'Titel',
+    'revision.flashcards.titlePlaceholder': 'z. B. Kapitel 1 — Process Mining',
+    'revision.flashcards.count': 'Karten',
+    'revision.flashcards.sources': 'Quell-PDFs',
+    'revision.flashcards.generate': 'Erstellen',
+    'revision.flashcards.generating': 'Karten werden erstellt...',
+    'revision.flashcards.empty': 'Noch keine Decks. Erstelle dein erstes.',
+    'revision.flashcards.failed': 'Erstellung fehlgeschlagen',
+    'revision.flashcards.review': 'Wiederholen',
+    'revision.flashcards.reviewEmpty': 'Aktuell sind keine Karten fällig. Sehr gut!',
+    'revision.flashcards.flip': 'Antwort zeigen',
+    'revision.flashcards.again': 'Nochmal',
+    'revision.flashcards.hard': 'Schwer',
+    'revision.flashcards.good': 'Gut',
+    'revision.flashcards.easy': 'Einfach',
+    'revision.flashcards.cardCount': '{count} Karte{plural}',
+    'revision.flashcards.dueCount': '{count} fällig',
+    'revision.flashcards.delete': 'Deck löschen',
+    'revision.flashcards.deleteConfirm': 'Dieses Deck und alle Karten löschen?',
+    'revision.flashcards.statusReady': 'Bereit',
+    'revision.flashcards.statusPending': 'Wird erstellt',
+    'revision.flashcards.statusFailed': 'Fehlgeschlagen',
+    'revision.flashcards.cardLabel': 'Karte {n}',
+    'revision.flashcards.question': 'Frage',
+    'revision.flashcards.answer': 'Antwort',
+    'revision.flashcards.due': 'Fällig',
+    'revision.flashcards.nextDue': 'Nächste Fälligkeit',
+    'revision.flashcards.repetitions': 'Wiederholungen',
+    'revision.flashcards.easeFactor': 'Leichtigkeit',
+    'revision.flashcards.newCard': 'Neue Karte',
+    'revision.mocktest.newTest': 'Neuer Test',
+    'revision.mocktest.title': 'Titel',
+    'revision.mocktest.count': 'Fragen',
+    'revision.mocktest.questionCount': '{count} Frage{plural}',
+    'revision.mocktest.start': 'Test starten',
+    'revision.mocktest.submit': 'Abgeben',
+    'revision.mocktest.next': 'Weiter',
+    'revision.mocktest.previous': 'Zurück',
+    'revision.mocktest.score': 'Ergebnis',
+    'revision.mocktest.completed': 'Absolviert ({score}%)',
+    'revision.mocktest.empty': 'Noch keine Tests. Erstelle deinen ersten.',
+    'revision.mocktest.questionOf': 'Frage {n} von {total}',
+    'revision.mocktest.correct': 'Richtig',
+    'revision.mocktest.incorrect': 'Falsch',
+    'revision.mocktest.explanation': 'Erklärung',
+    'revision.mocktest.tryAgain': 'Erneut starten',
+    'revision.mocktest.back': 'Zurück zur Liste',
+    'revision.mocktest.delete': 'Test löschen',
+    'revision.mindmap.selectPdf': 'Wähle ein PDF, um die Mindmap anzuzeigen',
+    'revision.mindmap.empty': 'Für dieses PDF wurde noch keine Lernstruktur erstellt.',
+    'revision.mindmap.generatingHint': 'Mindmaps werden aus dem Learning Graph erzeugt, den der Indexierungs-Worker baut. Sobald dein PDF verarbeitet ist, erscheint hier die Konzepthierarchie.',
+    'revision.mindmap.loading': 'Mindmap wird geladen...',
+    'revision.common.cancel': 'Abbrechen',
+    'revision.common.create': 'Erstellen',
+    'revision.common.close': 'Schließen',
+    'revision.common.back': 'Zurück',
+    'revision.common.pdfSelectAll': 'Alle auswählen',
+    'revision.common.pdfSelectNone': 'Auswahl löschen',
   },
 };
 

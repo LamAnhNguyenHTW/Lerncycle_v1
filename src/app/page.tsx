@@ -8,6 +8,7 @@ import {ProfileView} from '@/components/ProfileView';
 import {StudyInterface} from '@/components/study/StudyInterface';
 import {ChatInterface} from '@/components/learn/ChatInterface';
 import {ActiveLearningSection} from '@/components/active-learning/ActiveLearningSection';
+import {RevisionSection} from '@/components/revision/RevisionSection';
 
 interface Props {
   searchParams: Promise<{courseId?: string; tab?: string; pdfId?: string; sessionId?: string}>;
@@ -59,7 +60,7 @@ export default async function Page({searchParams}: Props) {
               </>
             )}
             {tab === 'feynman' && <ActiveLearningSection course={activeCourse} initialPdfId={pdfId} initialSessionId={sessionId} profile={profile} />}
-            {tab === 'revision' && <div className="py-8"><h1 className="text-2xl font-bold">Revision</h1><p className="text-muted-foreground mt-2">Active Recall und Karteikarten.</p></div>}
+            {tab === 'revision' && <RevisionSection course={activeCourse} />}
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center flex-col text-center mt-20">

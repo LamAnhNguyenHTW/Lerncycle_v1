@@ -19,6 +19,7 @@ from rag_pipeline.prompt_compaction import compress_conversation_summary
 from rag_pipeline.rag_answer import answer_with_rag
 from rag_pipeline.reranker import create_reranker
 from rag_pipeline.retrieval_tools import build_default_retrieval_tool_registry
+from rag_pipeline.revision.generator import generate_flashcards, generate_mock_test
 
 
 logger = logging.getLogger(__name__)
@@ -136,6 +137,50 @@ class CompressConversationRequest(BaseModel):
 
 class CompressConversationResponse(BaseModel):
     summary: str
+
+
+class RevisionGenerateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: str = Field(min_length=1)
+    pdf_ids: list[str] = Field(min_length=1, max_length=20)
+    count: int = Field(ge=1, le=50)
+    language: ChatLanguage = "de"
+
+    @model_validator(mode="after")
+    def validate_uuids(self) -> "RevisionGenerateRequest":
+        try:
+            UUID(self.user_id)
+        except ValueError as exc:
+            raise ValueError("user_id must be a valid UUID") from exc
+        for pdf_id in self.pdf_ids:
+            try:
+                UUID(pdf_id)
+            except ValueError as exc:
+                raise ValueError("pdf_ids must be valid UUIDs") from exc
+        return self
+
+
+class RevisionFlashcardOut(BaseModel):
+    front: str
+    back: str
+    source_chunk_ids: list[str] = Field(default_factory=list)
+
+
+class RevisionFlashcardsResponse(BaseModel):
+    cards: list[RevisionFlashcardOut]
+
+
+class RevisionMockQuestionOut(BaseModel):
+    prompt: str
+    choices: list[str]
+    correct_index: int
+    explanation: str = ""
+    source_chunk_ids: list[str] = Field(default_factory=list)
+
+
+class RevisionMockTestResponse(BaseModel):
+    questions: list[RevisionMockQuestionOut]
 
 
 class LearningTreeResponse(BaseModel):
@@ -313,6 +358,100 @@ def rag_compress(request: CompressConversationRequest) -> dict[str, str]:
             status_code=500,
             detail="RAG conversation compression failed.",
         ) from None
+
+
+def _build_revision_registry_and_llm(config: WorkerConfig) -> tuple[Any, OpenAILlmClient]:
+    """Build the retrieval tool registry and LLM client for revision generation.
+
+    The registry is built directly (independent of `RETRIEVAL_TOOL_REGISTRY_ENABLED`)
+    because revision generation always relies on retrieval tools regardless of the
+    chat-side feature flag.
+    """
+    graph_store = create_graph_store(config)
+    registry = build_default_retrieval_tool_registry(
+        config,
+        dependencies={"graph_store": graph_store},
+    )
+    if not config.openai_api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="OPENAI_API_KEY is required for revision generation.",
+        )
+    llm_client = OpenAILlmClient(
+        api_key=config.openai_api_key,
+        model=config.revision_llm_model,
+    )
+    return registry, llm_client
+
+
+@app.post(
+    "/revision/flashcards",
+    response_model=RevisionFlashcardsResponse,
+    dependencies=[Depends(require_internal_auth)],
+)
+def revision_flashcards(request: RevisionGenerateRequest) -> dict[str, Any]:
+    try:
+        config = WorkerConfig.from_env()
+        if request.count > config.revision_max_cards_per_deck:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "count exceeds REVISION_MAX_CARDS_PER_DECK "
+                    f"({config.revision_max_cards_per_deck})"
+                ),
+            )
+        registry, llm_client = _build_revision_registry_and_llm(config)
+        batch = generate_flashcards(
+            user_id=request.user_id,
+            pdf_ids=request.pdf_ids,
+            count=request.count,
+            language=request.language,
+            registry=registry,
+            llm_client=llm_client,
+            retrieval_top_k=config.revision_retrieval_top_k,
+            max_cards=config.revision_max_cards_per_deck,
+        )
+        return {"cards": [card.model_dump() for card in batch.cards]}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Flashcard generation failed")
+        raise HTTPException(status_code=500, detail="Flashcard generation failed.") from None
+
+
+@app.post(
+    "/revision/mocktest",
+    response_model=RevisionMockTestResponse,
+    dependencies=[Depends(require_internal_auth)],
+)
+def revision_mocktest(request: RevisionGenerateRequest) -> dict[str, Any]:
+    try:
+        config = WorkerConfig.from_env()
+        if request.count > config.revision_max_questions_per_test:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "count exceeds REVISION_MAX_QUESTIONS_PER_TEST "
+                    f"({config.revision_max_questions_per_test})"
+                ),
+            )
+        registry, llm_client = _build_revision_registry_and_llm(config)
+        batch = generate_mock_test(
+            user_id=request.user_id,
+            pdf_ids=request.pdf_ids,
+            count=request.count,
+            language=request.language,
+            registry=registry,
+            llm_client=llm_client,
+            retrieval_top_k=config.revision_retrieval_top_k,
+            max_questions=config.revision_max_questions_per_test,
+        )
+        return {"questions": [q.model_dump() for q in batch.questions]}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Mock test generation failed")
+        raise HTTPException(status_code=500, detail="Mock test generation failed.") from None
 
 
 @app.get(
