@@ -33,6 +33,7 @@ export interface ChatRequest {
   topic?: string;
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
   language?: LearningLanguage;
+  learner_name?: string;
   source_types?: ChatSourceType[];
   use_rag?: boolean;
   top_k?: number;

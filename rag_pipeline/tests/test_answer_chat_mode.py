@@ -47,9 +47,17 @@ def test_guided_learning_mode_uses_guided_prompt() -> None:
 def test_feynman_mode_uses_feynman_prompt() -> None:
     llm = FakeLlmClient()
 
-    answer_with_rag("Frage", "user-1", chat_mode="feynman", llm_client=llm, retrieval_fn=lambda **_: [_result()])
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        chat_mode="feynman",
+        active_learning_state={"mode": "feynman", "learner_name": "Mira", "language": "de"},
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
 
     assert "5-year-old" in llm.calls[-1]["system_prompt"].lower()
+    assert '"learner_name":"Mira"' in llm.calls[-1]["user_prompt"]
 
 
 def test_guided_learning_forwards_pdf_ids_unchanged() -> None:

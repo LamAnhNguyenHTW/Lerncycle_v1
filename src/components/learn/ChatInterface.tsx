@@ -106,6 +106,21 @@ export function ChatInterface({
     topicSuggestionsRef.current = topicSuggestions;
   }, [topicSuggestions]);
 
+  useEffect(() => {
+    if (chatMode !== 'feynman' || messages.length > 0 || sessionId) {
+      return;
+    }
+
+    const greeting = language === 'de'
+      ? `Hallo ${displayName}, ich bin heute wie ein neugieriges 5-jähriges Kind. Was erklärst du mir heute ganz einfach?`
+      : `Hi ${displayName}, today I am like a curious 5-year-old. What will you explain to me in super simple words?`;
+    setMessages([{
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: greeting,
+    }]);
+  }, [chatMode, displayName, language, messages.length, sessionId]);
+
   const selectedPdfIdsKey = selectedPdfIds.join(',');
 
   useEffect(() => {
@@ -243,6 +258,7 @@ export function ChatInterface({
           topic: activeLearningTopic.trim() || undefined,
           difficulty: activeLearningDifficulty || undefined,
           language,
+          learner_name: displayName,
           pdf_ids: selectedPdfIds.length === allPdfs.length ? [] : selectedPdfIds,
           enableWebSearch,
         }),

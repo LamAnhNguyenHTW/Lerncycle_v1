@@ -19,6 +19,8 @@ def test_feynman_prompt_mentions_child_explanation():
     assert FEYNMAN_SYSTEM_PROMPT.strip()
     prompt = FEYNMAN_SYSTEM_PROMPT.lower()
     assert "5-year-old" in prompt or "5 jahre" in prompt
+    assert "learner_name" in prompt
+    assert "hallo <name>" in prompt
 
 
 def test_extract_al_state_update_strips_sentinel_and_merges_state():

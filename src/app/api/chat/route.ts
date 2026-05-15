@@ -82,6 +82,9 @@ function validateBody(body: Partial<ChatRequest>) {
   if (body.language !== undefined && !['de', 'en'].includes(body.language)) {
     return 'language must be de or en.';
   }
+  if (body.learner_name !== undefined && typeof body.learner_name !== 'string') {
+    return 'learner_name must be a string.';
+  }
   return null;
 }
 
@@ -156,6 +159,7 @@ async function getOrCreateSession(
       ...(body.topic ? {topic: body.topic.trim()} : {}),
       ...(body.difficulty ? {difficulty: body.difficulty} : {}),
       ...(body.language ? {language: body.language} : {}),
+      ...(body.learner_name ? {learner_name: body.learner_name.trim().slice(0, 80)} : {}),
     }
     : {};
   const insertPayload = {
@@ -681,6 +685,7 @@ export async function POST(request: Request) {
         ...(body.topic ? {topic: body.topic.trim()} : {}),
         ...(body.difficulty ? {difficulty: body.difficulty} : {}),
         ...(body.language ? {language: body.language} : {}),
+        ...(body.learner_name ? {learner_name: body.learner_name.trim().slice(0, 80)} : {}),
       };
     const courseId = body.course_id ?? promptContext.courseId;
     const compactionConfig = promptCompactionConfig();
