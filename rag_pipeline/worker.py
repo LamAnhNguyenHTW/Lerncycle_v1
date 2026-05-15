@@ -15,6 +15,14 @@ from rag_pipeline.embeddings import Embedder
 from rag_pipeline.graph_extractor import GraphExtractionError
 from rag_pipeline.graph_extractor import GraphExtractor
 from rag_pipeline.graph_store_factory import create_graph_store
+from rag_pipeline.learning_structure.chunk_grouper import build_groups
+from rag_pipeline.learning_structure.coverage import compute_coverage
+from rag_pipeline.learning_structure.extractor import LearningExtraction, LearningExtractionError, LearningExtractor
+from rag_pipeline.learning_structure.hierarchy_builder import build_hierarchy
+from rag_pipeline.learning_structure.models import ChunkForExtraction, ExtractionReport
+from rag_pipeline.learning_structure.neo4j_store import write_learning_graph
+from rag_pipeline.learning_structure.normalizer import merge_duplicates
+from rag_pipeline.learning_structure.validator import validate_extraction
 from rag_pipeline.models import RagChunk, SourceRef
 from rag_pipeline.qdrant_store import QdrantStore
 from rag_pipeline.refinement import SemanticRefiner
@@ -77,6 +85,7 @@ class RagWorker:
                 max_edges=config.graph_max_edges_per_chunk,
             )
             self._graph_store = self._graph_store or create_graph_store(config)
+        self._learning_extractor = LearningExtractor()
 
     def _get_embedder(self) -> Embedder:
         if self._embedder is None:
@@ -129,6 +138,12 @@ class RagWorker:
         return jobs[0] if jobs else None
 
     def _process_job(self, job: dict[str, Any]) -> None:
+        job_kind = str(job.get("job_kind") or "index_source")
+        if job_kind == "extract_learning_graph":
+            self._process_learning_graph_job(job)
+            return
+        if job_kind != "index_source":
+            raise RuntimeError(f"Unsupported RAG job_kind: {job_kind}")
         source_type = str(job.get("source_type") or "pdf")
         if source_type == "pdf":
             self._process_pdf_job(job)
@@ -185,6 +200,7 @@ class RagWorker:
         )
         self._mark_job_completed(str(job["id"]))
         self._maybe_enqueue_graph_job(source)
+        self._maybe_enqueue_learning_graph_job(source)
 
     def _process_note_job(self, job: dict[str, Any]) -> None:
         note_id = str(job.get("note_id") or job["source_id"])
@@ -595,6 +611,7 @@ class RagWorker:
                     "source_type": "knowledge_graph",
                     "source_id": source.source_id,
                     "pdf_id": source.pdf_id,
+                    "job_kind": "index_source",
                     "status": "pending",
                     "metadata": {
                         "original_source_type": source.source_type,
@@ -605,6 +622,197 @@ class RagWorker:
             ).execute()
         except Exception:
             LOGGER.warning("Failed to enqueue knowledge_graph job.", exc_info=True)
+
+    def _maybe_enqueue_learning_graph_job(self, source: SourceRef) -> None:
+        if not getattr(self._config, "learning_graph_extraction_enabled", False):
+            return
+        if source.source_type != "pdf":
+            return
+        try:
+            existing = (
+                self._supabase.table("rag_index_jobs")
+                .select("id")
+                .eq("user_id", source.user_id)
+                .eq("source_type", source.source_type)
+                .eq("source_id", source.source_id)
+                .in_("status", ["pending", "processing"])
+                .maybe_single()
+                .execute()
+            )
+            if getattr(existing, "data", None):
+                return
+            self._supabase.table("rag_index_jobs").insert(
+                {
+                    "user_id": source.user_id,
+                    "source_type": source.source_type,
+                    "source_id": source.source_id,
+                    "pdf_id": source.pdf_id,
+                    "job_kind": "extract_learning_graph",
+                    "status": "pending",
+                    "metadata": {"reason": "post_index_learning_graph"},
+                }
+            ).execute()
+        except Exception:
+            LOGGER.warning("Failed to enqueue learning graph job.", exc_info=True)
+
+    def _process_learning_graph_job(self, job: dict[str, Any]) -> None:
+        source_type = str(job.get("source_type") or "")
+        if source_type != "pdf":
+            self._mark_job_completed(
+                str(job["id"]),
+                metadata={"reason": "unsupported_source_type"},
+            )
+            return
+        if not getattr(self._config, "learning_graph_extraction_enabled", False):
+            self._mark_job_completed(
+                str(job["id"]),
+                metadata={"reason": "learning_graph_extraction_disabled"},
+            )
+            return
+
+        user_id = str(job["user_id"])
+        source_id = str(job["source_id"])
+        chunks = self._load_chunks_for_learning_graph(user_id, source_type, source_id)
+        if not chunks:
+            report = ExtractionReport(
+                total_groups=0,
+                successful_groups=0,
+                failed_groups=0,
+                accepted_topics=0,
+                accepted_concepts=0,
+                accepted_objectives=0,
+                rejected_count=0,
+                rejected_samples=[],
+                avg_confidence=0,
+                chunk_coverage_ratio=0,
+                page_coverage_ratio=0,
+                quality_flag="low_quality",
+            )
+            self._mark_job_completed(
+                str(job["id"]),
+                metadata={"learning_graph_extraction_report": report.model_dump()},
+            )
+            return
+
+        groups = build_groups(chunks, self._config)
+        accepted_topics = []
+        accepted_concepts = []
+        accepted_objectives = []
+        rejected_samples = []
+        failed_groups = 0
+        successful_groups = 0
+        for group in groups:
+            try:
+                extraction = self._learning_extractor.extract_from_group(group)
+                accepted, rejected = validate_extraction(extraction, group, self._config)
+                accepted_topics.extend(accepted.topics)
+                accepted_concepts.extend(accepted.concepts)
+                accepted_objectives.extend(accepted.objectives)
+                rejected_samples.extend(rejected)
+                successful_groups += 1
+            except LearningExtractionError as exc:
+                failed_groups += 1
+                rejected_samples.append({"group_id": group.group_id, "reason": "group_failed", "error": str(exc)[:500]})
+
+        if successful_groups == 0 and failed_groups > 0:
+            self._mark_job_failed(str(job["id"]), "Learning graph extraction failed for all groups.")
+            return
+
+        accepted_topics = merge_duplicates(accepted_topics)
+        accepted_concepts = merge_duplicates(accepted_concepts)
+        accepted_objectives = merge_duplicates(accepted_objectives)
+        tree = build_hierarchy(
+            user_id,
+            source_id,
+            accepted_topics,
+            accepted_concepts,
+            accepted_objectives,
+            self._config,
+        )
+        coverage = compute_coverage(
+            chunks,
+            accepted_topics,
+            accepted_concepts,
+            accepted_objectives,
+            self._config,
+        )
+        self._write_learning_graph(
+            user_id,
+            {"source_id": source_id, "source_type": source_type, "title": job.get("source_title")},
+            tree,
+            chunks,
+        )
+        report = ExtractionReport(
+            total_groups=len(groups),
+            successful_groups=successful_groups,
+            failed_groups=failed_groups,
+            accepted_topics=len(accepted_topics),
+            accepted_concepts=len(accepted_concepts),
+            accepted_objectives=len(accepted_objectives),
+            rejected_count=len(rejected_samples),
+            rejected_samples=rejected_samples,
+            avg_confidence=float(coverage["avg_confidence"]),
+            chunk_coverage_ratio=float(coverage["chunk_coverage_ratio"]),
+            page_coverage_ratio=float(coverage["page_coverage_ratio"]),
+            quality_flag=str(coverage["quality_flag"]),
+        )
+        self._mark_job_completed(
+            str(job["id"]),
+            metadata={"learning_graph_extraction_report": report.model_dump()},
+        )
+
+    def _load_chunks_for_learning_graph(
+        self,
+        user_id: str,
+        source_type: str,
+        source_id: str,
+    ) -> list[ChunkForExtraction]:
+        response = (
+            self._supabase.table("rag_chunks")
+            .select("id, content, page_index, heading_path, content_hash")
+            .eq("user_id", user_id)
+            .eq("source_type", source_type)
+            .eq("source_id", source_id)
+            .execute()
+        )
+        return [
+            ChunkForExtraction(
+                chunk_id=str(row["id"]),
+                text=str(row.get("content") or ""),
+                page_index=row.get("page_index"),
+                heading_path=row.get("heading_path") or [],
+                content_hash=row.get("content_hash"),
+            )
+            for row in response.data or []
+            if str(row.get("content") or "").strip()
+        ]
+
+    def _write_learning_graph(
+        self,
+        user_id: str,
+        document_meta: dict[str, Any],
+        tree,
+        chunks: list[ChunkForExtraction],
+    ) -> None:
+        from neo4j import GraphDatabase
+
+        if not self._config.neo4j_uri or not self._config.neo4j_user or not self._config.neo4j_password:
+            raise RuntimeError("Neo4j is not configured for learning graph writes.")
+        driver = GraphDatabase.driver(
+            self._config.neo4j_uri,
+            auth=(self._config.neo4j_user, self._config.neo4j_password),
+        )
+        try:
+            write_learning_graph(
+                user_id,
+                document_meta,
+                tree,
+                chunks,
+                driver=driver,
+                database=getattr(self._config, "neo4j_database", None),
+            )
+        finally:
+            driver.close()
 
     def _upsert_document(
         self,

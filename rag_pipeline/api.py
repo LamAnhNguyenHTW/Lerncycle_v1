@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from rag_pipeline.config import WorkerConfig
 from rag_pipeline.graph_store_factory import create_graph_store
+from rag_pipeline.learning_structure.retrieval import get_document_learning_tree
 from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.prompt_compaction import compress_conversation_summary
 from rag_pipeline.rag_answer import answer_with_rag
@@ -137,6 +138,16 @@ class CompressConversationResponse(BaseModel):
     summary: str
 
 
+class LearningTreeResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    label: str
+    type: str
+    chunk_ids: list[str]
+    children: list[dict[str, Any]] = Field(default_factory=list)
+
+
 app = FastAPI(title="LearnCycle RAG API")
 app.add_middleware(
     CORSMiddleware,
@@ -157,6 +168,18 @@ def require_internal_auth(authorization: str | None = Header(default=None)) -> N
     expected = f"Bearer {INTERNAL_API_KEY}"
     if authorization != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+def create_neo4j_driver(config: WorkerConfig) -> Any:
+    """Create a Neo4j driver for Learning Graph reads."""
+    if not config.neo4j_uri or not config.neo4j_user or not config.neo4j_password:
+        raise RuntimeError("Neo4j is not configured.")
+    from neo4j import GraphDatabase
+
+    return GraphDatabase.driver(
+        config.neo4j_uri,
+        auth=(config.neo4j_user, config.neo4j_password),
+    )
 
 
 @app.get("/health")
@@ -290,3 +313,34 @@ def rag_compress(request: CompressConversationRequest) -> dict[str, str]:
             status_code=500,
             detail="RAG conversation compression failed.",
         ) from None
+
+
+@app.get(
+    "/learning-graph/{source_id}/tree",
+    dependencies=[Depends(require_internal_auth)],
+)
+def learning_graph_tree(source_id: str, user_id: str) -> dict[str, Any]:
+    """Return a server-to-server Learning Graph tree for one user/source."""
+    driver = None
+    try:
+        config = WorkerConfig.from_env()
+        driver = create_neo4j_driver(config)
+        tree = get_document_learning_tree(
+            user_id,
+            source_id,
+            driver=driver,
+        )
+        if tree is None:
+            raise HTTPException(status_code=404, detail="Learning graph not found.")
+        if isinstance(tree, dict):
+            return tree
+        return tree.model_dump()
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Learning graph retrieval failed")
+        raise HTTPException(status_code=500, detail="Learning graph retrieval failed.") from None
+    finally:
+        close = getattr(driver, "close", None) if driver is not None else None
+        if close:
+            close()

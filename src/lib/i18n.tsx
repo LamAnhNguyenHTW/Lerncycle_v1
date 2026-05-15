@@ -148,10 +148,10 @@ export type TranslationKey =
 const translations: Record<Language, Record<TranslationKey, string>> = {
   en: {
     'nav.home': 'Home',
-    'nav.notetaking': 'Notetaking',
-    'nav.learn': 'Learn & Research',
+    'nav.notetaking': 'Notes',
+    'nav.learn': 'Chat & Research',
     'nav.activeLearning': 'Active Learning',
-    'nav.revision': 'Revision',
+    'nav.revision': 'Spaced Review',
     'nav.openSidebar': 'Open sidebar',
     'nav.collapseSidebar': 'Collapse sidebar',
     'nav.logout': 'Log out',
@@ -289,9 +289,9 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
   de: {
     'nav.home': 'Home',
     'nav.notetaking': 'Notizen',
-    'nav.learn': 'Lernen & Recherchieren',
+    'nav.learn': 'Chat & Recherche',
     'nav.activeLearning': 'Aktives Lernen',
-    'nav.revision': 'Wiederholen',
+    'nav.revision': 'Spaced Review',
     'nav.openSidebar': 'Sidebar öffnen',
     'nav.collapseSidebar': 'Sidebar einklappen',
     'nav.logout': 'Abmelden',

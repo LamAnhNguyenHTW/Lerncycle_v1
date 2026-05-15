@@ -26,12 +26,14 @@ interface Props {
 export function LeftSidebar({courses, activeCourseId, activeTab = 'home', activePdfId, profile}: Props) {
   const router = useRouter();
   const {language, setLanguage, t} = useLanguage();
-  const [collapsed, setCollapsed] = useState(activeTab === 'notetaking' || activeTab === 'learn');
+  const collapsingTabs = ['notetaking', 'learn', 'feynman', 'revision'];
+  const [collapsed, setCollapsed] = useState(collapsingTabs.includes(activeTab));
 
   useEffect(() => {
-    if (activeTab === 'notetaking' || activeTab === 'learn') {
+    if (collapsingTabs.includes(activeTab)) {
       setCollapsed(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
   const displayName = profile?.display_name || 'User';
   const avatarName = profile?.avatar_name || 'ni-avatar-male-2';
@@ -68,7 +70,7 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
 
         <nav className="flex flex-col gap-2 mt-8">
           <NavItem
-            icon={<NotionIcon name="ni-browser" className="w-[24px] h-[24px]" />}
+            icon={<NotionIcon name="ni-house" className="w-[24px] h-[24px]" />}
             label={t('nav.home')}
             active={activeTab === 'home'}
             href={`/?courseId=${activeCourseId}&tab=home`}
@@ -82,7 +84,7 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
             collapsed={collapsed}
           />
           <NavItem
-            icon={<NotionIcon name="ni-award" className="w-[24px] h-[24px]" />}
+            icon={<NotionIcon name="ni-comment-text" className="w-[24px] h-[24px]" />}
             label={t('nav.learn')}
             active={activeTab === 'learn'}
             href={`/?courseId=${activeCourseId}&tab=learn${activePdfId ? `&pdfId=${activePdfId}` : ''}`}
@@ -96,7 +98,7 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
             collapsed={collapsed}
           />
           <NavItem
-            icon={<NotionIcon name="ni-recycle" className="w-[24px] h-[24px]" />}
+            icon={<NotionIcon name="ni-timeline" className="w-[24px] h-[24px]" />}
             label={t('nav.revision')}
             active={activeTab === 'revision'}
             href={`/?courseId=${activeCourseId}&tab=revision`}

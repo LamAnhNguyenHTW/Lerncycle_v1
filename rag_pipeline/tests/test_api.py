@@ -997,3 +997,49 @@ def test_rag_answer_returns_agentic_metadata(client, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["agentic_retriever"]["used"] is True
+
+
+def test_learning_graph_tree_requires_auth(client) -> None:
+    test_client, _ = client
+
+    response = test_client.get("/learning-graph/source-1/tree?user_id=user-1")
+
+    assert response.status_code == 401
+
+
+def test_learning_graph_tree_returns_tree(client, monkeypatch) -> None:
+    test_client, api = client
+    tree = {
+        "id": "document:source-1",
+        "label": "Document",
+        "type": "document",
+        "chunk_ids": [],
+        "children": [],
+    }
+    monkeypatch.setattr(api, "create_neo4j_driver", lambda _config: object())
+    monkeypatch.setattr(api, "get_document_learning_tree", lambda user_id, source_id, driver: tree)
+
+    response = test_client.get("/learning-graph/source-1/tree?user_id=user-1", headers=_headers())
+
+    assert response.status_code == 200
+    assert response.json()["id"] == "document:source-1"
+
+
+def test_learning_graph_tree_missing_graph_returns_404(client, monkeypatch) -> None:
+    test_client, api = client
+    monkeypatch.setattr(api, "create_neo4j_driver", lambda _config: object())
+    monkeypatch.setattr(api, "get_document_learning_tree", lambda user_id, source_id, driver: None)
+
+    response = test_client.get("/learning-graph/source-1/tree?user_id=user-2", headers=_headers())
+
+    assert response.status_code == 404
+
+
+def test_learning_graph_tree_cross_user_returns_404_not_403(client, monkeypatch) -> None:
+    test_client, api = client
+    monkeypatch.setattr(api, "create_neo4j_driver", lambda _config: object())
+    monkeypatch.setattr(api, "get_document_learning_tree", lambda user_id, source_id, driver: None)
+
+    response = test_client.get("/learning-graph/source-1/tree?user_id=other-user", headers=_headers())
+
+    assert response.status_code == 404

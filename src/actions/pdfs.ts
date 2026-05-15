@@ -104,6 +104,7 @@ export async function uploadPdf(
       source_type: 'pdf',
       source_id: pdfRow.id,
       pdf_id: pdfRow.id,
+      job_kind: 'index_source',
       status: 'pending',
     });
 

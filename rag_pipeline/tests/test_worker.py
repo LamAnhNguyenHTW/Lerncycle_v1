@@ -132,6 +132,76 @@ class GraphWorker(RecordingWorker):
         self.graph_failed.append((job_id, error_message))
 
 
+class LearningGraphWorker(RecordingWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self._config.learning_graph_extraction_enabled = True
+        self._config.learning_graph_max_chunks_per_group = 8
+        self._config.learning_graph_min_confidence = 0.5
+        self._config.learning_graph_max_topics_per_doc = 30
+        self._config.learning_graph_min_chunk_coverage = 0.35
+        self.learning_completed: list[tuple[str, dict[str, Any] | None]] = []
+        self.learning_failed: list[tuple[str, str]] = []
+        self.loaded_learning_chunks: list[tuple[str, str, str]] = []
+        self.learning_writes = []
+
+    def _load_chunks_for_learning_graph(self, user_id: str, source_type: str, source_id: str):
+        self.loaded_learning_chunks.append((user_id, source_type, source_id))
+        return []
+
+    def _write_learning_graph(self, user_id, document_meta, tree, chunks) -> None:
+        self.learning_writes.append((user_id, document_meta, tree, chunks))
+
+    def _mark_job_completed(self, job_id: str, metadata: dict[str, Any] | None = None) -> None:
+        self.learning_completed.append((job_id, metadata))
+
+    def _mark_job_failed(self, job_id: str, error_message: str) -> None:
+        self.learning_failed.append((job_id, error_message))
+
+
+class FakeGraphQueueTable:
+    def __init__(self, supabase, name: str) -> None:
+        self.supabase = supabase
+        self.name = name
+        self.filters = {}
+        self.inserted = None
+
+    def select(self, *_args):
+        return self
+
+    def eq(self, key, value):
+        self.filters[key] = value
+        return self
+
+    def in_(self, key, value):
+        self.filters[key] = value
+        return self
+
+    def maybe_single(self):
+        return self
+
+    def insert(self, value):
+        self.inserted = value
+        self.supabase.inserts.append(value)
+        return self
+
+    def execute(self):
+        if self.inserted is not None:
+            return FakeResponse([self.inserted])
+        return FakeResponse(None)
+
+
+class FakeGraphQueueSupabase:
+    def __init__(self) -> None:
+        self.inserts = []
+        self.queries = []
+
+    def table(self, name: str):
+        table = FakeGraphQueueTable(self, name)
+        self.queries.append(table)
+        return table
+
+
 class FailingGraphQueueSupabase:
     def table(self, table_name: str):
         raise AssertionError(f"unexpected Supabase graph queue access: {table_name}")
@@ -731,3 +801,61 @@ def test_worker_marks_graph_job_completed_when_no_chunks() -> None:
 
     assert store.deleted == [("user-1", "pdf", "pdf-1")]
     assert worker.graph_completed[0][1]["skipped"] == "no_chunks"
+
+
+def test_learning_graph_job_note_guard_completes_without_loading_or_writing() -> None:
+    worker = LearningGraphWorker()
+
+    worker._process_job(
+        {
+            "id": "job-1",
+            "user_id": "user-1",
+            "source_type": "note",
+            "source_id": "note-1",
+            "job_kind": "extract_learning_graph",
+        }
+    )
+
+    assert worker.learning_completed == [("job-1", {"reason": "unsupported_source_type"})]
+    assert worker.loaded_learning_chunks == []
+    assert worker.learning_writes == []
+
+
+def test_worker_dispatches_learning_graph_job_kind_for_pdf() -> None:
+    worker = LearningGraphWorker()
+
+    worker._process_job(
+        {
+            "id": "job-1",
+            "user_id": "user-1",
+            "source_type": "pdf",
+            "source_id": "pdf-1",
+            "job_kind": "extract_learning_graph",
+        }
+    )
+
+    assert worker.loaded_learning_chunks == [("user-1", "pdf", "pdf-1")]
+    assert worker.learning_completed[0][0] == "job-1"
+    assert worker.learning_completed[0][1]["learning_graph_extraction_report"]["total_groups"] == 0
+
+
+def test_worker_auto_enqueues_learning_graph_after_pdf_index_when_enabled() -> None:
+    worker = RecordingWorker()
+    worker._config.learning_graph_extraction_enabled = True
+    worker._supabase = FakeGraphQueueSupabase()
+
+    worker._maybe_enqueue_learning_graph_job(
+        SourceRef(user_id="user-1", source_type="pdf", source_id="pdf-1", pdf_id="pdf-1")
+    )
+
+    assert worker._supabase.inserts == [
+        {
+            "user_id": "user-1",
+            "source_type": "pdf",
+            "source_id": "pdf-1",
+            "pdf_id": "pdf-1",
+            "job_kind": "extract_learning_graph",
+            "status": "pending",
+            "metadata": {"reason": "post_index_learning_graph"},
+        }
+    ]

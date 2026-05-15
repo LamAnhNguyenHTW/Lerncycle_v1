@@ -1,9 +1,11 @@
 import {NextResponse} from 'next/server';
 import {createClient} from '@/lib/supabase/server';
+import {getTopicExtractionFlags, resolveTopicExtractionMode} from '@/lib/server-env';
 
 const MAX_PDFS = 20;
 const MAX_CHUNKS = 120;
 const MAX_TOPICS = 5;
+const DOCUMENT_ORDER_SCORE_WINDOW = 60;
 
 const STOPWORDS = new Set([
   'about',
@@ -43,6 +45,24 @@ const STOPWORDS = new Set([
   'with',
 ]);
 
+const LOW_VALUE_TOPIC_PHRASES = new Set([
+  'article information',
+  'architecture overview',
+  'contents',
+  'overview',
+  'themen',
+  'table of contents',
+]);
+
+const DOMAIN_TOPIC_TERMS = [
+  'case oriented process mining',
+  'object oriented process mining',
+  'event log',
+  'event logs',
+  'object centric',
+  'process mining',
+];
+
 type Topic = {
   name: string;
   normalizedName: string;
@@ -60,6 +80,24 @@ type RagChunk = {
   heading_path: string[] | null;
   page_index: number | null;
 };
+
+type LearningTreeNode = {
+  id: string;
+  label: string;
+  type: 'document' | 'topic' | 'subtopic' | 'concept' | 'objective';
+  confidence?: number | null;
+  order_index?: number | null;
+  orderIndex?: number | null;
+  page_start?: number | null;
+  pageStart?: number | null;
+  chunk_ids?: string[];
+  chunkIds?: string[];
+  children?: LearningTreeNode[];
+};
+
+export function topicExtractionModeForEnv(env: NodeJS.ProcessEnv = process.env) {
+  return resolveTopicExtractionMode(getTopicExtractionFlags(env));
+}
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({error: message}, {status});
@@ -168,7 +206,76 @@ function extractTopicsFromChunks(chunks: RagChunk[]) {
     .slice(0, MAX_TOPICS);
 }
 
+export function flattenTopicsFromLearningTrees(trees: LearningTreeNode[]) {
+  const topics = new Map<string, Topic>();
+
+  const visit = (node: LearningTreeNode, depth: number, pdfId?: string) => {
+    if (node.type === 'topic' || node.type === 'subtopic' || node.type === 'concept') {
+      addTopic(topics, node.label, learningTopicScore(node, depth), {
+        heading: node.label,
+        pdf_id: pdfId,
+      });
+    }
+    for (const child of node.children ?? []) {
+      visit(child, depth + 1, pdfId);
+    }
+  };
+
+  trees.forEach((tree) => visit(tree, 0));
+  return [...topics.values()]
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+    .slice(0, MAX_TOPICS);
+}
+
+function learningTopicScore(node: LearningTreeNode, depth: number) {
+  const normalized = normalizeName(node.label);
+  const confidenceScore = Math.round((node.confidence ?? 0.5) * 100);
+  const orderIndex = node.order_index ?? node.orderIndex;
+  const pageStart = node.page_start ?? node.pageStart;
+  const chunkCount = (node.chunk_ids ?? node.chunkIds ?? []).length;
+  const topicChildren = (node.children ?? []).filter((child) => child.type === 'topic' || child.type === 'subtopic').length;
+  const evidenceChildren = (node.children ?? []).filter((child) => child.type === 'concept' || child.type === 'objective').length;
+  const orderBonus = typeof orderIndex === 'number'
+    ? Math.max(0, DOCUMENT_ORDER_SCORE_WINDOW - orderIndex)
+    : typeof pageStart === 'number'
+      ? Math.max(0, DOCUMENT_ORDER_SCORE_WINDOW - pageStart)
+      : 0;
+  const rootBonus = node.type === 'topic' ? 25 : 0;
+  const conceptPenalty = node.type === 'concept' ? 10 : 0;
+  const structureBonus = topicChildren * 18 + evidenceChildren * 6 + Math.min(chunkCount, 4) * 3;
+  const domainBonus = DOMAIN_TOPIC_TERMS.some((term) => normalized.includes(term)) ? 35 : 0;
+  const depthPenalty = depth * 12;
+  const lowValuePenalty = LOW_VALUE_TOPIC_PHRASES.has(normalized) ? 45 : 0;
+
+  return confidenceScore + rootBonus + structureBonus + orderBonus + domainBonus - depthPenalty - lowValuePenalty - conceptPenalty;
+}
+
+async function fetchLearningTree(sourceId: string, userId: string): Promise<LearningTreeNode | null> {
+  const ragApiUrl = process.env.RAG_API_URL;
+  const internalApiKey = process.env.RAG_INTERNAL_API_KEY;
+  if (!ragApiUrl || !internalApiKey) {
+    return null;
+  }
+  const url = new URL(`${ragApiUrl.replace(/\/$/, '')}/learning-graph/${sourceId}/tree`);
+  url.searchParams.set('user_id', userId);
+  const response = await fetch(url, {
+    headers: {Authorization: `Bearer ${internalApiKey}`},
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error('Learning graph service failed.');
+  }
+  return await response.json() as LearningTreeNode;
+}
+
 export async function POST(request: Request) {
+  const extractionMode = topicExtractionModeForEnv();
+  if (extractionMode === 'disabled') {
+    return NextResponse.json({topics: []});
+  }
+
   const supabase = await createClient();
   const {data: {user}} = await supabase.auth.getUser();
 
@@ -207,6 +314,21 @@ export async function POST(request: Request) {
   const ownedPdfIds = (ownedPdfs ?? []).map((pdf) => pdf.id as string);
   if (ownedPdfIds.length === 0) {
     return NextResponse.json({topics: []});
+  }
+
+  if (extractionMode === 'learning_graph') {
+    // Temporary compatibility adapter: new learning features should call /api/learning-graph/[sourceId]/tree directly.
+    const trees = (
+      await Promise.all(ownedPdfIds.map((pdfId) => fetchLearningTree(pdfId, user.id)))
+    ).filter((tree): tree is LearningTreeNode => tree !== null);
+    return NextResponse.json({
+      topics: flattenTopicsFromLearningTrees(trees).map((topic) => ({
+        name: topic.name,
+        normalizedName: topic.normalizedName,
+        score: topic.score,
+        masteryState: 'new',
+      })),
+    });
   }
 
   const {data: existingTopics} = await supabase

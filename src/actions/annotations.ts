@@ -48,6 +48,7 @@ async function enqueueAnnotationIndexJob(
     source_id: annotationId,
     annotation_id: annotationId,
     pdf_id: pdfId,
+    job_kind: 'index_source',
     status: 'pending',
   });
 

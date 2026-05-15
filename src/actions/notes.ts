@@ -30,6 +30,7 @@ async function enqueueNoteIndexJob(
     source_id: noteId,
     note_id: noteId,
     pdf_id: pdfId,
+    job_kind: 'index_source',
     status: 'pending',
   });
 

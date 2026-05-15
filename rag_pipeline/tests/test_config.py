@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+import rag_pipeline.config as config_module
 from rag_pipeline.config import WorkerConfig
 
 
@@ -355,6 +356,66 @@ def test_graph_invalid_context_max_chars_rejected(monkeypatch) -> None:
     monkeypatch.setenv("GRAPH_CONTEXT_MAX_CHARS", "999")
 
     with pytest.raises(ValueError, match="GRAPH_CONTEXT_MAX_CHARS"):
+        WorkerConfig.from_env()
+
+
+def test_learning_graph_config_defaults(monkeypatch) -> None:
+    monkeypatch.setattr(config_module, "_load_dotenv", lambda: None)
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    for name in [
+        "LEARNING_GRAPH_EXTRACTION_ENABLED",
+        "LEARNING_GRAPH_MAX_CHUNKS_PER_GROUP",
+        "LEARNING_GRAPH_MIN_CONFIDENCE",
+        "LEARNING_GRAPH_MAX_TOPICS_PER_DOC",
+        "LEARNING_GRAPH_MIN_CHUNK_COVERAGE",
+    ]:
+        monkeypatch.delenv(name, raising=False)
+
+    config = WorkerConfig.from_env()
+
+    assert config.learning_graph_extraction_enabled is False
+    assert config.learning_graph_max_chunks_per_group == 8
+    assert config.learning_graph_min_confidence == 0.5
+    assert config.learning_graph_max_topics_per_doc == 30
+    assert config.learning_graph_min_chunk_coverage == 0.35
+
+
+def test_learning_graph_config_env_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("LEARNING_GRAPH_EXTRACTION_ENABLED", "true")
+    monkeypatch.setenv("LEARNING_GRAPH_MAX_CHUNKS_PER_GROUP", "12")
+    monkeypatch.setenv("LEARNING_GRAPH_MIN_CONFIDENCE", "0.7")
+    monkeypatch.setenv("LEARNING_GRAPH_MAX_TOPICS_PER_DOC", "40")
+    monkeypatch.setenv("LEARNING_GRAPH_MIN_CHUNK_COVERAGE", "0.45")
+
+    config = WorkerConfig.from_env()
+
+    assert config.learning_graph_extraction_enabled is True
+    assert config.learning_graph_max_chunks_per_group == 12
+    assert config.learning_graph_min_confidence == 0.7
+    assert config.learning_graph_max_topics_per_doc == 40
+    assert config.learning_graph_min_chunk_coverage == 0.45
+
+
+def test_learning_graph_invalid_bounds_rejected(monkeypatch) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("LEARNING_GRAPH_MAX_CHUNKS_PER_GROUP", "0")
+    with pytest.raises(ValueError, match="LEARNING_GRAPH_MAX_CHUNKS_PER_GROUP"):
+        WorkerConfig.from_env()
+    monkeypatch.setenv("LEARNING_GRAPH_MAX_CHUNKS_PER_GROUP", "8")
+    monkeypatch.setenv("LEARNING_GRAPH_MIN_CONFIDENCE", "1.1")
+    with pytest.raises(ValueError, match="LEARNING_GRAPH_MIN_CONFIDENCE"):
+        WorkerConfig.from_env()
+    monkeypatch.setenv("LEARNING_GRAPH_MIN_CONFIDENCE", "0.5")
+    monkeypatch.setenv("LEARNING_GRAPH_MAX_TOPICS_PER_DOC", "0")
+    with pytest.raises(ValueError, match="LEARNING_GRAPH_MAX_TOPICS_PER_DOC"):
+        WorkerConfig.from_env()
+    monkeypatch.setenv("LEARNING_GRAPH_MAX_TOPICS_PER_DOC", "30")
+    monkeypatch.setenv("LEARNING_GRAPH_MIN_CHUNK_COVERAGE", "-0.1")
+    with pytest.raises(ValueError, match="LEARNING_GRAPH_MIN_CHUNK_COVERAGE"):
         WorkerConfig.from_env()
 
 

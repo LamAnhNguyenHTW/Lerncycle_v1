@@ -96,10 +96,17 @@ export function ChatInterface({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeConversationKeyRef = useRef(activeConversationKey);
   const isCurrentConversationPending = pendingConversationKeys.includes(activeConversationKey);
+  const topicSuggestionsRef = useRef(topicSuggestions);
 
   useEffect(() => {
     activeConversationKeyRef.current = activeConversationKey;
   }, [activeConversationKey]);
+
+  useEffect(() => {
+    topicSuggestionsRef.current = topicSuggestions;
+  }, [topicSuggestions]);
+
+  const selectedPdfIdsKey = selectedPdfIds.join(',');
 
   useEffect(() => {
     if (!showActiveLearningModes || selectedPdfIds.length === 0) {
@@ -122,7 +129,7 @@ export function ChatInterface({
         });
 
         if (!res.ok) {
-          setActiveTopicSuggestions(topicSuggestions.slice(0, 5));
+          setActiveTopicSuggestions(topicSuggestionsRef.current.slice(0, 5));
           return;
         }
 
@@ -136,14 +143,15 @@ export function ChatInterface({
         setActiveTopicSuggestions(topics);
       } catch (caught) {
         if ((caught as Error).name !== 'AbortError') {
-          setActiveTopicSuggestions(topicSuggestions.slice(0, 5));
+          setActiveTopicSuggestions(topicSuggestionsRef.current.slice(0, 5));
         }
       }
     }
 
     loadTopicSuggestions();
     return () => controller.abort();
-  }, [course.id, selectedPdfIds, showActiveLearningModes, topicSuggestions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course.id, selectedPdfIdsKey, showActiveLearningModes]);
 
   useEffect(() => {
     async function loadSessions() {
@@ -314,7 +322,7 @@ export function ChatInterface({
       <div className="hidden md:flex w-[280px] shrink-0 border-r border-border bg-gray-50/30 flex-col h-full">
         <div className="p-5 flex items-center justify-between border-b border-border/50">
           <div className="font-semibold text-sm flex items-center gap-2">
-            <NotionIcon name={isActiveLearning ? 'ni-rocket' : 'ni-award'} className="w-[20px] h-[20px]" />
+            <NotionIcon name={isActiveLearning ? 'ni-rocket' : 'ni-comment-text'} className="w-[20px] h-[20px]" />
             {showActiveLearningModes ? 'Active Learning' : 'Learn & Research'}
           </div>
           <button onClick={startNewChat} className="text-muted-foreground hover:text-foreground transition-colors" title={t('chat.newChat')}>
@@ -380,19 +388,19 @@ export function ChatInterface({
               )}
 
               <div className="grid gap-2">
-                <label className="space-y-1">
+                <div className="space-y-1">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('active.difficulty')}</span>
-                  <select
+                  <DifficultySelect
                     value={activeLearningDifficulty}
-                    onChange={(event) => onActiveLearningDifficultyChange?.(event.target.value as '' | 'beginner' | 'intermediate' | 'advanced')}
-                    className="h-8 w-full rounded-md border border-border bg-white px-2 text-xs outline-none focus:border-foreground/30"
-                  >
-                    <option value="">{t('active.auto')}</option>
-                    <option value="beginner">{t('active.beginner')}</option>
-                    <option value="intermediate">{t('active.intermediate')}</option>
-                    <option value="advanced">{t('active.advanced')}</option>
-                  </select>
-                </label>
+                    onChange={(value) => onActiveLearningDifficultyChange?.(value)}
+                    options={[
+                      {value: '', label: t('active.auto')},
+                      {value: 'beginner', label: t('active.beginner')},
+                      {value: 'intermediate', label: t('active.intermediate')},
+                      {value: 'advanced', label: t('active.advanced')},
+                    ]}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -734,5 +742,81 @@ function SourceChip({source}: {source: ChatSource}) {
       <span className="min-w-0 max-w-[180px] truncate text-foreground">{title}</span>
       {page && <span className="shrink-0 text-muted-foreground">{page}</span>}
     </span>
+  );
+}
+
+type DifficultyValue = '' | 'beginner' | 'intermediate' | 'advanced';
+
+function DifficultySelect({
+  value,
+  onChange,
+  options,
+}: {
+  value: DifficultyValue;
+  onChange: (value: DifficultyValue) => void;
+  options: {value: DifficultyValue; label: string}[];
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  const selected = options.find((option) => option.value === value) ?? options[0];
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex h-8 w-full items-center justify-between rounded-md border border-border bg-white px-2 text-xs font-medium text-foreground outline-none transition-colors hover:bg-muted/60 focus:border-foreground/30"
+      >
+        <span className="truncate">{selected.label}</span>
+        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border bg-white py-1 shadow-md"
+        >
+          {options.map((option) => {
+            const active = option.value === value;
+            return (
+              <li key={option.value}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted/70 ${active ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+                >
+                  <span className="truncate">{option.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }

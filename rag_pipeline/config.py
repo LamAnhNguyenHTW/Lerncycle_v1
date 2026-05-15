@@ -57,6 +57,11 @@ class WorkerConfig:
     graph_retrieval_top_k: int = 8
     graph_context_max_chars: int = 6000
     graph_source_type: str = "knowledge_graph"
+    learning_graph_extraction_enabled: bool = False
+    learning_graph_max_chunks_per_group: int = 8
+    learning_graph_min_confidence: float = 0.5
+    learning_graph_max_topics_per_doc: int = 30
+    learning_graph_min_chunk_coverage: float = 0.35
     web_search_enabled: bool = False
     web_search_provider: str = "tavily"
     web_search_top_k: int = 5
@@ -235,6 +240,34 @@ class WorkerConfig:
                     "Missing Neo4j environment variables: "
                     + ", ".join(missing_graph)
                 )
+        learning_graph_extraction_enabled = _optional_bool(
+            os.getenv("LEARNING_GRAPH_EXTRACTION_ENABLED"),
+            False,
+        )
+        learning_graph_max_chunks_per_group = _int_or_default(
+            "LEARNING_GRAPH_MAX_CHUNKS_PER_GROUP",
+            8,
+        )
+        learning_graph_min_confidence = _float_or_default(
+            "LEARNING_GRAPH_MIN_CONFIDENCE",
+            0.5,
+        )
+        learning_graph_max_topics_per_doc = _int_or_default(
+            "LEARNING_GRAPH_MAX_TOPICS_PER_DOC",
+            30,
+        )
+        learning_graph_min_chunk_coverage = _float_or_default(
+            "LEARNING_GRAPH_MIN_CHUNK_COVERAGE",
+            0.35,
+        )
+        if not 1 <= learning_graph_max_chunks_per_group <= 50:
+            raise ValueError("LEARNING_GRAPH_MAX_CHUNKS_PER_GROUP must be between 1 and 50")
+        if not 0 <= learning_graph_min_confidence <= 1:
+            raise ValueError("LEARNING_GRAPH_MIN_CONFIDENCE must be between 0 and 1")
+        if not 1 <= learning_graph_max_topics_per_doc <= 200:
+            raise ValueError("LEARNING_GRAPH_MAX_TOPICS_PER_DOC must be between 1 and 200")
+        if not 0 <= learning_graph_min_chunk_coverage <= 1:
+            raise ValueError("LEARNING_GRAPH_MIN_CHUNK_COVERAGE must be between 0 and 1")
         web_search_enabled = _optional_bool(os.getenv("WEB_SEARCH_ENABLED"), False)
         web_search_provider = os.getenv("WEB_SEARCH_PROVIDER", "tavily")
         web_search_top_k = _optional_int(os.getenv("WEB_SEARCH_TOP_K")) or 5
@@ -462,6 +495,11 @@ class WorkerConfig:
             graph_retrieval_top_k=graph_retrieval_top_k,
             graph_context_max_chars=graph_context_max_chars,
             graph_source_type=graph_source_type,
+            learning_graph_extraction_enabled=learning_graph_extraction_enabled,
+            learning_graph_max_chunks_per_group=learning_graph_max_chunks_per_group,
+            learning_graph_min_confidence=learning_graph_min_confidence,
+            learning_graph_max_topics_per_doc=learning_graph_max_topics_per_doc,
+            learning_graph_min_chunk_coverage=learning_graph_min_chunk_coverage,
             web_search_enabled=web_search_enabled,
             web_search_provider=web_search_provider,
             web_search_top_k=web_search_top_k,

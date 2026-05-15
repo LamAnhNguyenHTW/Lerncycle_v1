@@ -452,6 +452,7 @@ async function triggerChatMemorySummary({
         user_id: userId,
         source_type: 'chat_memory',
         source_id: sessionId,
+        job_kind: 'index_source',
         status: 'pending',
       })
       .select('id')
