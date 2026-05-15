@@ -16,52 +16,7 @@ type LearningTreeNode = {
   children: LearningTreeNode[];
 };
 
-const TYPE_COLORS: Record<LearningTreeNode['type'], string> = {
-  document: 'border-primary/40 bg-primary/5 text-foreground',
-  topic: 'border-blue-500/30 bg-blue-500/5',
-  subtopic: 'border-emerald-500/30 bg-emerald-500/5',
-  concept: 'border-amber-500/30 bg-amber-500/5',
-  objective: 'border-pink-500/30 bg-pink-500/5',
-};
-
-const TYPE_LABELS: Record<LearningTreeNode['type'], string> = {
-  document: 'Document',
-  topic: 'Topic',
-  subtopic: 'Subtopic',
-  concept: 'Concept',
-  objective: 'Objective',
-};
-
-function TreeNode({node, depth = 0}: {node: LearningTreeNode; depth?: number}) {
-  return (
-    <li className="relative group">
-      <div
-        className={
-          'inline-flex items-center rounded-lg border px-3 py-2 text-sm shadow-sm transition-all hover:shadow-md ' +
-          TYPE_COLORS[node.type]
-        }
-      >
-        <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70 mr-2.5">
-          {TYPE_LABELS[node.type]}
-        </span>
-        <span className="font-medium">{node.label}</span>
-        {(node.pageStart !== null && node.pageStart !== undefined) && (
-          <span className="ml-3 px-1.5 py-0.5 rounded text-[10px] font-medium bg-background/50 text-muted-foreground">
-            p.{node.pageStart}
-            {node.pageEnd && node.pageEnd !== node.pageStart ? `–${node.pageEnd}` : ''}
-          </span>
-        )}
-      </div>
-      {node.children.length > 0 && (
-        <ul className="mt-3 ml-6 space-y-3 border-l-2 border-border/50 pl-5 py-1">
-          {node.children.map((child) => (
-            <TreeNode key={child.id} node={child} depth={depth + 1} />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
-}
+import {MindmapCanvas} from './MindmapCanvas';
 
 interface Props {
   pdfOptions: PdfOption[];
@@ -155,10 +110,8 @@ export function MindmapTab({pdfOptions}: Props) {
         )}
 
         {tree && (
-          <div className="overflow-x-auto rounded-xl border border-border bg-card p-6 shadow-sm">
-            <ul className="space-y-3">
-              <TreeNode node={tree} />
-            </ul>
+          <div className="mt-4">
+            <MindmapCanvas tree={tree} />
           </div>
         )}
       </div>
