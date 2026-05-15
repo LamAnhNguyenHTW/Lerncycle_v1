@@ -396,6 +396,47 @@ def test_rag_answer_passes_context_summary_to_answer_with_rag(client, monkeypatc
     assert calls[0]["context_summary"] == "Earlier summary text"
 
 
+def test_rag_answer_passes_chat_mode_and_active_learning_state(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+
+    def fake_answer_with_rag(**kwargs):
+        calls.append(kwargs)
+        return {
+            "answer": "ok",
+            "sources": [],
+            "updated_active_learning_state": {"mode": "guided_learning", "current_step": "ask_question"},
+        }
+
+    monkeypatch.setattr(api, "answer_with_rag", fake_answer_with_rag)
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(
+            chat_mode="guided_learning",
+            active_learning_state={"mode": "guided_learning"},
+        ),
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["chat_mode"] == "guided_learning"
+    assert calls[0]["active_learning_state"] == {"mode": "guided_learning"}
+    assert response.json()["updated_active_learning_state"]["current_step"] == "ask_question"
+
+
+def test_rag_answer_rejects_invalid_chat_mode(client) -> None:
+    test_client, _ = client
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(chat_mode="unknown_mode"),
+    )
+
+    assert response.status_code == 422
+
+
 def test_rag_answer_normalizes_empty_context_summary(client, monkeypatch) -> None:
     test_client, api = client
     calls = []

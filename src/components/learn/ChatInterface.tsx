@@ -67,6 +67,7 @@ export function ChatInterface({
       ? [initialPdfId] 
       : allPdfs.map(p => p.id),
   );
+  const [activeTopicSuggestions, setActiveTopicSuggestions] = useState<string[]>(topicSuggestions.slice(0, 5));
   const [enableWebSearch, setEnableWebSearch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeConversationKey, setActiveConversationKey] = useState(() => crypto.randomUUID());
@@ -99,6 +100,50 @@ export function ChatInterface({
   useEffect(() => {
     activeConversationKeyRef.current = activeConversationKey;
   }, [activeConversationKey]);
+
+  useEffect(() => {
+    if (!showActiveLearningModes || selectedPdfIds.length === 0) {
+      setActiveTopicSuggestions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadTopicSuggestions() {
+      try {
+        const res = await fetch('/api/active-learning/topics', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            courseId: course.id,
+            pdfIds: selectedPdfIds,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          setActiveTopicSuggestions(topicSuggestions.slice(0, 5));
+          return;
+        }
+
+        const data = await res.json();
+        const topics = Array.isArray(data.topics)
+          ? data.topics
+              .map((topic: {name?: unknown}) => topic.name)
+              .filter((name: unknown): name is string => typeof name === 'string' && name.trim().length > 0)
+              .slice(0, 5)
+          : [];
+        setActiveTopicSuggestions(topics);
+      } catch (caught) {
+        if ((caught as Error).name !== 'AbortError') {
+          setActiveTopicSuggestions(topicSuggestions.slice(0, 5));
+        }
+      }
+    }
+
+    loadTopicSuggestions();
+    return () => controller.abort();
+  }, [course.id, selectedPdfIds, showActiveLearningModes, topicSuggestions]);
 
   useEffect(() => {
     async function loadSessions() {
@@ -315,11 +360,11 @@ export function ChatInterface({
                 />
               </div>
 
-              {topicSuggestions.length > 0 && (
+              {activeTopicSuggestions.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('active.suggestions')}</div>
                   <div className="flex flex-wrap gap-1.5">
-                    {topicSuggestions.slice(0, 5).map((topic) => (
+                    {activeTopicSuggestions.map((topic) => (
                       <button
                         key={topic}
                         type="button"

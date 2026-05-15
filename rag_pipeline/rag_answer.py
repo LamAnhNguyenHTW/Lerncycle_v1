@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import re
 from types import SimpleNamespace
 from typing import Any, Callable
@@ -15,6 +16,9 @@ from rag_pipeline.graph_retrieval import retrieve_graph_context
 from rag_pipeline.intent_classifier import RetrievalIntent, classify_intent
 from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.memory_intent import detect_memory_intent
+from rag_pipeline.pedagogical_prompts import FEYNMAN_SYSTEM_PROMPT
+from rag_pipeline.pedagogical_prompts import GUIDED_LEARNING_SYSTEM_PROMPT
+from rag_pipeline.pedagogical_prompts import extract_al_state_update
 from rag_pipeline.query_understanding import QueryRoute, QueryUnderstanding, understand_query
 from rag_pipeline.retrieval_plan import PlanExecutionOutcome
 from rag_pipeline.retrieval_plan import RetrievalPlan
@@ -213,6 +217,50 @@ def rewrite_query_for_retrieval(
         return query
 
 
+def _is_active_learning_mode(chat_mode: str) -> bool:
+    return chat_mode in {"guided_learning", "feynman"}
+
+
+def _select_system_prompt(
+    chat_mode: str,
+    *,
+    has_recent_messages: bool,
+    has_graph: bool,
+    has_web: bool,
+    no_info_instruction: str,
+) -> str:
+    if chat_mode == "guided_learning":
+        return GUIDED_LEARNING_SYSTEM_PROMPT + no_info_instruction
+    if chat_mode == "feynman":
+        return FEYNMAN_SYSTEM_PROMPT + no_info_instruction
+
+    prompt = CONVERSATION_SYSTEM_PROMPT if has_recent_messages else SYSTEM_PROMPT
+    if has_graph:
+        prompt += GRAPH_SYSTEM_PROMPT_ADDITION
+    if has_web:
+        prompt += WEB_SYSTEM_PROMPT_ADDITION
+    return prompt + no_info_instruction
+
+
+def _append_active_learning_state(user_prompt: str, active_learning_state: dict[str, Any] | None) -> str:
+    state = active_learning_state or {}
+    if not state:
+        return user_prompt
+    try:
+        state_json = json.dumps(state, ensure_ascii=False, separators=(",", ":"))[:400]
+    except TypeError:
+        state_json = "{}"
+    return f"{user_prompt}\n\n[Current learning state]: {state_json}"
+
+
+def _language_instruction(chat_language: str | None) -> str:
+    if chat_language == "de":
+        return " Always respond in German."
+    if chat_language == "en":
+        return " Always respond in English."
+    return ""
+
+
 def answer_with_rag(
     query: str,
     user_id: str,
@@ -260,6 +308,9 @@ def answer_with_rag(
     tool_registry: "RetrievalToolRegistry | None" = None,
     agentic_retriever_enabled: bool = False,
     agentic_retriever_fn: Callable[..., AgenticRetrievalOutcome] | None = None,
+    chat_mode: str = "normal",
+    active_learning_state: dict[str, Any] | None = None,
+    chat_language: str | None = None,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
     active_retrieval = retrieval_fn or search_hybrid_chunks
@@ -541,7 +592,7 @@ def answer_with_rag(
             web_allowed=web_allowed_bool,
         )
         answer = active_llm.complete(
-            system_prompt=CONVERSATION_SYSTEM_PROMPT + no_info_instruction,
+            system_prompt=CONVERSATION_SYSTEM_PROMPT + no_info_instruction + _language_instruction(chat_language),
             user_prompt=user_prompt,
         )
         
@@ -638,15 +689,35 @@ def answer_with_rag(
             f"{resolved_question_block}"
             f"Current question:\n{query}"
         )
-        system_prompt = CONVERSATION_SYSTEM_PROMPT + prompt_addition + no_info_instruction
+        system_prompt = _select_system_prompt(
+            chat_mode,
+            has_recent_messages=True,
+            has_graph=bool(graph_text),
+            has_web=web_text,
+            no_info_instruction=no_info_instruction,
+        ) + _language_instruction(chat_language)
     else:
         user_prompt = (
             "Answer the user's question using only this context.\n\n"
             f"Context:\n{combined_context}\n\n"
             f"Question:\n{query}"
         )
-        system_prompt = SYSTEM_PROMPT + prompt_addition + no_info_instruction
+        system_prompt = _select_system_prompt(
+            chat_mode,
+            has_recent_messages=False,
+            has_graph=bool(graph_text),
+            has_web=web_text,
+            no_info_instruction=no_info_instruction,
+        ) + _language_instruction(chat_language)
+    if _is_active_learning_mode(chat_mode):
+        user_prompt = _append_active_learning_state(user_prompt, active_learning_state)
     answer = active_llm.complete(system_prompt=system_prompt, user_prompt=user_prompt)
+    updated_active_learning_state = None
+    if _is_active_learning_mode(chat_mode):
+        answer, updated_active_learning_state = extract_al_state_update(
+            answer,
+            active_learning_state or {},
+        )
     
     final_sources = context["sources"] + list(graph_context.get("sources") or [])
     if answer.strip().startswith("[NO_INFO]"):
@@ -657,7 +728,7 @@ def answer_with_rag(
         from rag_pipeline.query_understanding import synthetic_general_knowledge_source
         final_sources = [synthetic_general_knowledge_source()]
 
-    return {
+    response = {
         "answer": answer,
         "sources": final_sources,
         "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode),
@@ -666,6 +737,9 @@ def answer_with_rag(
         "retrieval_tools": _retrieval_tools_metadata(_registry_used, _tool_outcomes),
         "agentic_retriever": agentic_metadata,
     }
+    if updated_active_learning_state is not None:
+        response["updated_active_learning_state"] = updated_active_learning_state
+    return response
 
 
 def _should_retrieve_memory(

@@ -29,6 +29,8 @@ SourceType = Literal["pdf", "note", "annotation_comment"]
 MemoryMode = Literal["off", "auto", "on"]
 GraphMode = Literal["off", "auto", "on"]
 WebMode = Literal["off", "on"]
+ChatMode = Literal["normal", "guided_learning", "feynman"]
+ChatLanguage = Literal["de", "en"]
 
 # Fields that must never be provided by the browser or forwarded to the RAG service.
 _BROWSER_FORBIDDEN_FIELDS = frozenset({
@@ -67,6 +69,9 @@ class RagAnswerRequest(BaseModel):
     web_search_query: str | None = Field(default=None, max_length=1000)
     use_intent_classifier: bool | None = None
     use_retrieval_planner: bool | None = None
+    chat_mode: ChatMode = "normal"
+    active_learning_state: dict[str, Any] | None = None
+    chat_language: ChatLanguage | None = None
 
     @model_validator(mode="after")
     def validate_reranking_bounds(self) -> "RagAnswerRequest":
@@ -114,6 +119,7 @@ class RagAnswerRequest(BaseModel):
 class RagAnswerResponse(BaseModel):
     answer: str
     sources: list[dict[str, Any]]
+    updated_active_learning_state: dict[str, Any] | None = None
     web_search: dict[str, Any] | None = None
     intent: dict[str, Any] | None = None
     retrieval_plan: dict[str, Any] | None = None
@@ -246,6 +252,9 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             retrieval_planner_config=config,
             tool_registry=tool_registry,
             agentic_retriever_enabled=config.agentic_retriever_enabled,
+            chat_mode=request.chat_mode,
+            active_learning_state=request.active_learning_state,
+            chat_language=request.chat_language,
         )
     except HTTPException:
         raise
