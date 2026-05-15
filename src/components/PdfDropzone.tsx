@@ -4,6 +4,7 @@ import {useCallback, useState} from 'react';
 import {useDropzone} from 'react-dropzone';
 import {uploadPdf} from '@/actions/pdfs';
 import {cn} from '@/lib/utils';
+import {useLanguage} from '@/lib/i18n';
 
 interface Props {
   targetId: string;
@@ -15,6 +16,7 @@ type UploadState = 'idle' | 'uploading' | 'error';
 
 /** Drag-and-drop PDF upload zone for a specific folder. */
 export function PdfDropzone({targetId, targetType, onUploaded}: Props) {
+  const {t} = useLanguage();
   const [state, setState] = useState<UploadState>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -41,11 +43,11 @@ export function PdfDropzone({targetId, targetType, onUploaded}: Props) {
       } catch (error) {
         setState('error');
         setErrorMsg(
-          error instanceof Error ? error.message : 'Upload failed unexpectedly.',
+          error instanceof Error ? error.message : t('upload.failedUnexpectedly'),
         );
       }
     },
-    [targetId, targetType, onUploaded],
+    [targetId, targetType, onUploaded, t],
   );
 
   const {getRootProps, getInputProps, isDragActive, isDragReject} = useDropzone({
@@ -71,7 +73,7 @@ export function PdfDropzone({targetId, targetType, onUploaded}: Props) {
       {state === 'uploading' ? (
         <>
           <UploadIcon className="size-8 text-muted-foreground animate-pulse" />
-          <p className="text-sm text-muted-foreground">Uploading…</p>
+          <p className="text-sm text-muted-foreground">{t('upload.uploading')}</p>
         </>
       ) : (
         <>
@@ -79,12 +81,12 @@ export function PdfDropzone({targetId, targetType, onUploaded}: Props) {
           <div>
             <p className="text-sm font-medium">
               {isDragReject
-                ? 'Only PDF files are accepted'
+                ? t('upload.onlyPdf')
                 : isDragActive
-                  ? 'Drop to upload'
-                  : 'Drop a PDF here, or click to select'}
+                  ? t('upload.dropToUpload')
+                  : t('upload.dropOrClick')}
             </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">PDF only · max 50 MB</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t('upload.pdfOnly')}</p>
           </div>
         </>
       )}

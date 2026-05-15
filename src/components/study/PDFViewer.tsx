@@ -18,6 +18,8 @@ import {
   type Annotation,
 } from '@/actions/annotations';
 import {NotionIcon} from '@/components/NotionIcon';
+import {useLanguage} from '@/lib/i18n';
+import type {TranslationKey} from '@/lib/i18n';
 
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
@@ -42,6 +44,13 @@ const COLOR_STYLES: Record<AnnotationColor, {bg: string; border: string}> = {
   pink: {bg: 'rgba(244, 114, 182, 0.3)', border: '#ec4899'},
 };
 
+const COLOR_LABEL_KEYS: Record<AnnotationColor, TranslationKey> = {
+  yellow: 'pdf.color.yellow',
+  green: 'pdf.color.green',
+  blue: 'pdf.color.blue',
+  pink: 'pdf.color.pink',
+};
+
 export function PDFViewer({
   storagePath,
   pdfId,
@@ -51,6 +60,7 @@ export function PDFViewer({
   onAnnotationDeleted,
   onAnnotationUpdated,
 }: PDFViewerProps) {
+  const {t} = useLanguage();
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -69,7 +79,7 @@ export function PDFViewer({
     getPdfSignedUrl(storagePath).then(({url, error}) => {
       if (!active) return;
       if (error || !url) {
-        setUrlError(error ?? 'Failed to load PDF');
+        setUrlError(error ?? t('pdf.couldNotLoad'));
       } else {
         setUrlError(null);
         setFileUrl(url);
@@ -79,7 +89,7 @@ export function PDFViewer({
     return () => {
       active = false;
     };
-  }, [storagePath]);
+  }, [storagePath, t]);
 
   const renderHighlightTarget = (props: RenderHighlightTargetProps) => (
     <div
@@ -99,13 +109,13 @@ export function PDFViewer({
               className={`annotation-color-btn ${colorKey === selectedColor ? 'selected' : ''}`}
               style={{background: COLOR_STYLES[colorKey].border}}
               onClick={() => setSelectedColor(colorKey)}
-              title={colorKey}
+              title={t(COLOR_LABEL_KEYS[colorKey])}
             />
           ))}
         </div>
         <textarea
           className="annotation-comment-input"
-          placeholder="Add a comment (optional)..."
+          placeholder={t('pdf.addComment')}
           value={message}
           onChange={(event) => setMessage(event.target.value)}
           rows={2}
@@ -127,10 +137,10 @@ export function PDFViewer({
               props.cancel();
             }}
           >
-            Save highlight
+            {t('pdf.saveHighlight')}
           </button>
           <button className="annotation-btn-cancel" onClick={props.cancel}>
-            Cancel
+            {t('materials.cancel')}
           </button>
         </div>
       </div>
@@ -218,7 +228,7 @@ export function PDFViewer({
   if (urlError) {
     return (
       <div className="pdf-error">
-        <p>Could not load PDF</p>
+        <p>{t('pdf.couldNotLoad')}</p>
         <p className="pdf-error-detail">{urlError}</p>
       </div>
     );
@@ -228,7 +238,7 @@ export function PDFViewer({
     return (
       <div className="pdf-loading">
         <div className="pdf-loading-spinner" />
-        <p>Loading {pdfName}...</p>
+        <p>{t('pdf.loading', {name: pdfName})}</p>
       </div>
     );
   }
@@ -241,13 +251,13 @@ export function PDFViewer({
             <button
               className="pdf-annotations-toggle"
               onClick={() => setIsHighlightsOpen((prev) => !prev)}
-              title={isHighlightsOpen ? 'Collapse highlights' : 'Expand highlights'}
+              title={isHighlightsOpen ? t('pdf.collapseHighlights') : t('pdf.expandHighlights')}
             >
               <NotionIcon
                 name="ni-sidebar-text"
                 className="pdf-annotations-toggle-icon w-[16px] h-[16px]"
               />
-              {isHighlightsOpen && <span className="pdf-annotations-label">Highlights</span>}
+              {isHighlightsOpen && <span className="pdf-annotations-label">{t('pdf.highlights')}</span>}
               <NotionIcon
                 name={isHighlightsOpen ? 'ni-chevron-left' : 'ni-chevron-right'}
                 className="pdf-annotations-toggle-chevron w-[14px] h-[14px]"
@@ -259,11 +269,11 @@ export function PDFViewer({
             <div className="pdf-annotations-list">
             <div className="pdf-annotations-meta">
               <span className="pdf-annotations-meta-count">
-                {annotations.length} {annotations.length === 1 ? 'highlight' : 'highlights'}
+                {annotations.length} {annotations.length === 1 ? t('pdf.highlight') : t('pdf.highlights')}
               </span>
             </div>
             {sortedAnnotations.length === 0 && (
-              <p className="pdf-annotations-empty">No highlights yet.</p>
+              <p className="pdf-annotations-empty">{t('pdf.noHighlights')}</p>
             )}
 
             {sortedAnnotations.map((annotation) => (
@@ -277,11 +287,11 @@ export function PDFViewer({
                 <button
                   className="pdf-annotation-jump"
                   onClick={() => jumpToAnnotation(annotation)}
-                  title="Jump to highlight"
+                  title={t('pdf.jumpToHighlight')}
                 >
-                  <span className="pdf-annotation-page">Page {annotation.page_index + 1}</span>
+                  <span className="pdf-annotation-page">{t('pdf.page')} {annotation.page_index + 1}</span>
                   <span className="pdf-annotation-quote">
-                    {annotation.quote?.trim() || '(No text)'}
+                    {annotation.quote?.trim() || t('pdf.noText')}
                   </span>
                 </button>
 
@@ -303,7 +313,7 @@ export function PDFViewer({
                         }}
                         disabled={savingAnnotationId === annotation.id}
                       >
-                        {savingAnnotationId === annotation.id ? 'Saving...' : 'Save'}
+                        {savingAnnotationId === annotation.id ? t('note.saving') : t('materials.save')}
                       </button>
                       <button
                         className="pdf-annotation-inline-delete"
@@ -313,7 +323,7 @@ export function PDFViewer({
                         }}
                         disabled={deletingAnnotationId === annotation.id}
                       >
-                        {deletingAnnotationId === annotation.id ? 'Deleting...' : 'Delete'}
+                        {deletingAnnotationId === annotation.id ? t('materials.deleting') : t('materials.delete')}
                       </button>
                       <button
                         className="pdf-annotation-inline-edit"
@@ -322,7 +332,7 @@ export function PDFViewer({
                           setExpandedAnnotationId(null);
                         }}
                       >
-                        Collapse
+                        {t('pdf.collapse')}
                       </button>
                     </div>
                   </div>
@@ -335,7 +345,7 @@ export function PDFViewer({
                       setExpandedCommentDraft(annotation.comment ?? '');
                     }}
                   >
-                    Expand
+                    {t('pdf.expand')}
                   </button>
                 )}
               </div>
@@ -351,12 +361,12 @@ export function PDFViewer({
               onClick={() => setIsHighlightMode((prev) => !prev)}
               title={
                 isHighlightMode
-                  ? 'Highlight mode on: select text to create highlight'
-                  : 'Highlight mode off'
+                  ? t('pdf.highlightOnTitle')
+                  : t('pdf.highlightOffTitle')
               }
             >
               <NotionIcon name="ni-pen-line" className="w-[14px] h-[14px]" />
-              <span>{isHighlightMode ? 'Highlight: On' : 'Highlight: Off'}</span>
+              <span>{isHighlightMode ? t('pdf.highlightOn') : t('pdf.highlightOff')}</span>
             </button>
           </div>
           <Worker workerUrl="/pdf.worker.min.js">

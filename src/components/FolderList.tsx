@@ -17,8 +17,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {useLanguage} from '@/lib/i18n';
 
 export function FolderList({ course }: { course: Course }) {
+  const {t} = useLanguage();
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
@@ -35,14 +37,14 @@ export function FolderList({ course }: { course: Course }) {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <div className="w-1 h-5 bg-primary rounded-full"></div>
-          <h2 className="text-lg font-semibold tracking-tight">Materials & Folders</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{t('materials.title')}</h2>
         </div>
         <button
           onClick={() => setIsCreating(true)}
           className="flex items-center gap-1.5 rounded-lg bg-black px-3 py-2 text-sm font-medium text-white hover:bg-black/80 transition-colors"
         >
           <NotionIcon name="ni-plus" className="w-[18px] h-[18px]" />
-          New Folder
+          {t('materials.newFolder')}
         </button>
       </div>
 
@@ -54,16 +56,16 @@ export function FolderList({ course }: { course: Course }) {
           <input
             autoFocus
             type="text"
-            placeholder="Folder name (e.g. Week 1)"
+            placeholder={t('materials.folderPlaceholder')}
             className="flex-1 rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-primary"
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
           />
           <button type="submit" className="text-sm font-medium bg-black text-white px-4 py-2 rounded-md">
-            Save
+            {t('materials.save')}
           </button>
           <button type="button" onClick={() => setIsCreating(false)} className="text-sm font-medium px-4 py-2 hover:bg-black/5 rounded-md">
-            Cancel
+            {t('materials.cancel')}
           </button>
         </form>
       )}
@@ -72,8 +74,8 @@ export function FolderList({ course }: { course: Course }) {
       {course.folders.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground flex flex-col items-center justify-center">
           <NotionIcon name="ni-folders" className="w-[48px] h-[48px] mb-4 opacity-20" />
-          <p className="text-lg">No folders yet.</p>
-          <p className="text-base mt-2">Create a folder to organize your PDFs.</p>
+          <p className="text-lg">{t('materials.noFolders')}</p>
+          <p className="text-base mt-2">{t('materials.noFoldersHint')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
@@ -89,15 +91,16 @@ export function FolderList({ course }: { course: Course }) {
 // ─── Direct uploads section ───────────────────────────────────────────────────
 
 function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[] }) {
+  const {t} = useLanguage();
   const [isUploading, setIsUploading] = useState(false);
 
   return (
     <div className="mb-6 rounded-xl border border-border bg-white shadow-sm overflow-hidden">
       <div className="flex items-center gap-2.5 border-b border-border bg-gray-50/50 px-5 py-3 font-medium text-sm">
         <NotionIcon name="ni-file-text" className="w-[20px] h-[20px] text-muted-foreground" />
-        <span>Direct Uploads</span>
+        <span>{t('materials.directUploads')}</span>
         <span className="ml-auto text-xs text-muted-foreground font-normal">
-          Unfiled documents
+          {t('materials.unfiledDocuments')}
         </span>
       </div>
 
@@ -116,7 +119,7 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
               onClick={() => setIsUploading(false)}
               className="absolute -top-2 right-2 text-xs text-muted-foreground hover:text-foreground z-10 p-2"
             >
-              ✕ Close
+              × {t('materials.close')}
             </button>
             <PdfDropzone
               targetId={courseId}
@@ -129,7 +132,7 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
             onClick={() => setIsUploading(true)}
             className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-4 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
           >
-            Upload PDF directly
+            {t('materials.uploadDirect')}
           </button>
         )}
       </div>
@@ -140,6 +143,7 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
 // ─── Folder view ──────────────────────────────────────────────────────────────
 
 function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) {
+  const {t} = useLanguage();
   const [isUploading, setIsUploading] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -164,28 +168,28 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
           <button
             onClick={() => setDeleteOpen(true)}
             className="text-muted-foreground hover:text-red-500 transition-colors"
-            title="Delete folder"
+            title={t('materials.deleteFolder')}
           >
             <NotionIcon name="ni-x" className="w-[18px] h-[18px]" />
           </button>
           <AlertDialogContent size="default">
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete folder &quot;{folder.name}&quot;?</AlertDialogTitle>
+              <AlertDialogTitle>{t('materials.deleteFolderTitle', {name: folder.name})}</AlertDialogTitle>
               <AlertDialogDescription>
                 {hasPdfs
-                  ? `This folder contains ${folder.pdfs.length} PDF${folder.pdfs.length === 1 ? '' : 's'}. What should happen to the files?`
-                  : 'This empty folder will be permanently deleted.'}
+                  ? t('materials.deleteFolderWithFiles', {count: String(folder.pdfs.length), plural: folder.pdfs.length === 1 ? '' : 's'})
+                  : t('materials.deleteEmptyFolder')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={deleting}>{t('materials.cancel')}</AlertDialogCancel>
               {hasPdfs && (
                 <AlertDialogAction
                   variant="outline"
                   disabled={deleting}
                   onClick={() => handleDelete(true)}
                 >
-                  Keep files
+                  {t('materials.keepFiles')}
                 </AlertDialogAction>
               )}
               <AlertDialogAction
@@ -193,7 +197,7 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
                 disabled={deleting}
                 onClick={() => handleDelete(false)}
               >
-                {deleting ? 'Deleting...' : hasPdfs ? 'Delete everything' : 'Delete'}
+                {deleting ? t('materials.deleting') : hasPdfs ? t('materials.deleteEverything') : t('materials.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -215,7 +219,7 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
               onClick={() => setIsUploading(false)}
               className="absolute -top-2 right-2 text-xs text-muted-foreground hover:text-foreground z-10 p-2"
             >
-              ✕ Close
+              × {t('materials.close')}
             </button>
             <PdfDropzone
               targetId={folder.id}
@@ -228,7 +232,7 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
             onClick={() => setIsUploading(true)}
             className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-4 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
           >
-            Upload PDF
+            {t('materials.uploadPdf')}
           </button>
         )}
       </div>
@@ -240,6 +244,7 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
 
 function PdfRow({ pdf, courseId }: { pdf: PdfFile; courseId: string }) {
   const router = useRouter();
+  const {t} = useLanguage();
 
   return (
     <div
@@ -262,7 +267,7 @@ function PdfRow({ pdf, courseId }: { pdf: PdfFile; courseId: string }) {
           }}
           className="opacity-0 group-hover:opacity-100 hover:text-foreground transition-all text-sm"
         >
-          Chat
+          {t('materials.chat')}
         </button>
         <button
           onClick={(e) => {

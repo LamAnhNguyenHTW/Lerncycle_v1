@@ -8,6 +8,8 @@ import {NotionIcon} from '../NotionIcon';
 import {useRouter} from 'next/navigation';
 import {cn} from '@/lib/utils';
 import Link from 'next/link';
+import {Globe} from 'lucide-react';
+import {useLanguage} from '@/lib/i18n';
 
 interface Props {
   courses: Course[];
@@ -23,6 +25,7 @@ interface Props {
 
 export function LeftSidebar({courses, activeCourseId, activeTab = 'home', activePdfId, profile}: Props) {
   const router = useRouter();
+  const {language, setLanguage, t} = useLanguage();
   const [collapsed, setCollapsed] = useState(activeTab === 'notetaking' || activeTab === 'learn');
 
   useEffect(() => {
@@ -51,8 +54,8 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
           <button
             onClick={() => setCollapsed((prev) => !prev)}
             className="rounded-lg p-2 text-muted-foreground hover:bg-black/5 hover:text-foreground"
-            title={collapsed ? 'Open sidebar' : 'Collapse sidebar'}
-            aria-label={collapsed ? 'Open sidebar' : 'Collapse sidebar'}
+            title={collapsed ? t('nav.openSidebar') : t('nav.collapseSidebar')}
+            aria-label={collapsed ? t('nav.openSidebar') : t('nav.collapseSidebar')}
           >
             <NotionIcon
               name={collapsed ? 'ni-chevron-right-circle' : 'ni-chevron-left-circle'}
@@ -66,35 +69,35 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
         <nav className="flex flex-col gap-2 mt-8">
           <NavItem
             icon={<NotionIcon name="ni-browser" className="w-[24px] h-[24px]" />}
-            label="Home"
+            label={t('nav.home')}
             active={activeTab === 'home'}
             href={`/?courseId=${activeCourseId}&tab=home`}
             collapsed={collapsed}
           />
           <NavItem
             icon={<NotionIcon name="ni-pen-line" className="w-[24px] h-[24px]" />}
-            label="Notetaking"
+            label={t('nav.notetaking')}
             active={activeTab === 'notetaking'}
             href={`/?courseId=${activeCourseId}&tab=notetaking${activePdfId ? `&pdfId=${activePdfId}` : ''}`}
             collapsed={collapsed}
           />
           <NavItem
             icon={<NotionIcon name="ni-award" className="w-[24px] h-[24px]" />}
-            label="Learn & Research"
+            label={t('nav.learn')}
             active={activeTab === 'learn'}
             href={`/?courseId=${activeCourseId}&tab=learn${activePdfId ? `&pdfId=${activePdfId}` : ''}`}
             collapsed={collapsed}
           />
           <NavItem
             icon={<NotionIcon name="ni-rocket" className="w-[24px] h-[24px]" />}
-            label="Feynman Technique"
+            label={t('nav.activeLearning')}
             active={activeTab === 'feynman'}
             href={`/?courseId=${activeCourseId}&tab=feynman`}
             collapsed={collapsed}
           />
           <NavItem
             icon={<NotionIcon name="ni-recycle" className="w-[24px] h-[24px]" />}
-            label="Revision"
+            label={t('nav.revision')}
             active={activeTab === 'revision'}
             href={`/?courseId=${activeCourseId}&tab=revision`}
             collapsed={collapsed}
@@ -103,6 +106,20 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
       </div>
 
       <div className={cn(collapsed && 'space-y-2')}>
+        <div className={cn('mb-2 flex items-center rounded-xl px-3 py-2', collapsed ? 'justify-center' : 'justify-between')}>
+          {!collapsed && <span className="text-xs font-medium text-muted-foreground">{t('language.label')}</span>}
+          <button
+            type="button"
+            onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-muted-foreground hover:bg-black/5 hover:text-foreground"
+            title={language === 'de' ? t('language.en') : t('language.de')}
+            aria-label={t('language.label')}
+          >
+            <Globe className="h-4 w-4" />
+            {!collapsed && <span>{language.toUpperCase()}</span>}
+          </button>
+        </div>
+
         <div
           onClick={() => {
             const params = new URLSearchParams(window.location.search);
@@ -134,7 +151,7 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
                 type="submit"
                 onClick={(e) => e.stopPropagation()}
                 className="flex items-center justify-center text-muted-foreground hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                title="Log out"
+                title={t('nav.logout')}
               >
                 <NotionIcon name="ni-power-off" className="w-[20px] h-[20px]" />
               </button>
@@ -147,8 +164,8 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
             <button
               type="submit"
               className="flex items-center justify-center text-muted-foreground hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors"
-              title="Log out"
-              aria-label="Log out"
+              title={t('nav.logout')}
+              aria-label={t('nav.logout')}
             >
               <NotionIcon name="ni-power-off" className="w-[20px] h-[20px]" />
             </button>

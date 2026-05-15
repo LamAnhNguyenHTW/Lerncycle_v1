@@ -30,6 +30,7 @@ import {upsertNote} from '@/actions/notes';
 import {createSlashExtension} from './slash-command';
 import type {SlashCallbacks, SlashMenuState, SlashItem} from './slash-command';
 import {SlashMenu} from './SlashMenu';
+import {useLanguage} from '@/lib/i18n';
 
 interface NoteEditorProps {
   pdfId: string;
@@ -69,6 +70,7 @@ function ToolbarButton({onClick, active, title, children, wide}: ToolbarButtonPr
 
 /** Notion-style rich text editor with bubble menu, highlight, and slash commands. */
 export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
+  const {t} = useLanguage();
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [bubblePos, setBubblePos] = useState<BubblePos | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
@@ -155,7 +157,7 @@ export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
     immediatelyRender: false,
     extensions: [
       StarterKit,
-      Placeholder.configure({placeholder: "Start writing, or type '/' for commands…"}),
+      Placeholder.configure({placeholder: t('note.placeholder')}),
       Highlight.configure({multicolor: false}),
       TaskList,
       TaskItem.configure({nested: true}),
@@ -198,11 +200,11 @@ export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
 
   const saveLabel =
     saveState === 'saving'
-      ? 'Saving…'
+      ? t('note.saving')
       : saveState === 'saved'
-        ? 'Saved'
+        ? t('note.saved')
         : saveState === 'error'
-          ? 'Save failed'
+          ? t('note.saveFailed')
           : '';
 
   const handleSlashSelect = useCallback(
@@ -235,7 +237,7 @@ export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
           <button
             onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleBold().run(); }}
             className={`note-bubble-btn${editor.isActive('bold') ? ' active' : ''}`}
-            title="Bold"
+            title={t('note.bold')}
             type="button"
           >
             <Bold size={13} />
@@ -243,7 +245,7 @@ export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
           <button
             onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); }}
             className={`note-bubble-btn${editor.isActive('italic') ? ' active' : ''}`}
-            title="Italic"
+            title={t('note.italic')}
             type="button"
           >
             <Italic size={13} />
@@ -251,7 +253,7 @@ export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
           <button
             onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleStrike().run(); }}
             className={`note-bubble-btn${editor.isActive('strike') ? ' active' : ''}`}
-            title="Strikethrough"
+            title={t('note.strikethrough')}
             type="button"
           >
             <Strikethrough size={13} />
@@ -259,7 +261,7 @@ export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
           <button
             onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleCode().run(); }}
             className={`note-bubble-btn${editor.isActive('code') ? ' active' : ''}`}
-            title="Inline code"
+            title={t('note.inlineCode')}
             type="button"
           >
             <Code size={13} />
@@ -268,7 +270,7 @@ export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
           <button
             onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleHighlight().run(); }}
             className={`note-bubble-btn highlight${editor.isActive('highlight') ? ' active' : ''}`}
-            title="Highlight"
+            title={t('note.highlight')}
             type="button"
           >
             <Highlighter size={13} />
@@ -282,14 +284,14 @@ export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleHeading({level: 2}).run()}
             active={editor?.isActive('heading', {level: 2})}
-            title="Heading 2"
+            title={t('note.heading2')}
           >
             <Heading2 size={15} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleHeading({level: 3}).run()}
             active={editor?.isActive('heading', {level: 3})}
-            title="Heading 3"
+            title={t('note.heading3')}
           >
             <Heading3 size={15} />
           </ToolbarButton>
@@ -299,35 +301,35 @@ export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleBold().run()}
             active={editor?.isActive('bold')}
-            title="Bold"
+            title={t('note.bold')}
           >
             <Bold size={14} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleItalic().run()}
             active={editor?.isActive('italic')}
-            title="Italic"
+            title={t('note.italic')}
           >
             <Italic size={14} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleStrike().run()}
             active={editor?.isActive('strike')}
-            title="Strikethrough"
+            title={t('note.strikethrough')}
           >
             <Strikethrough size={14} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleCode().run()}
             active={editor?.isActive('code')}
-            title="Inline code"
+            title={t('note.inlineCode')}
           >
             <Code size={14} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleHighlight().run()}
             active={editor?.isActive('highlight')}
-            title="Highlight"
+            title={t('note.highlight')}
           >
             <Highlighter size={14} />
           </ToolbarButton>
@@ -337,51 +339,51 @@ export function NoteEditor({pdfId, initialContent}: NoteEditorProps) {
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
             active={editor?.isActive('bulletList')}
-            title="Bullet list"
+            title={t('note.bulletList')}
           >
             <List size={15} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleOrderedList().run()}
             active={editor?.isActive('orderedList')}
-            title="Numbered list"
+            title={t('note.numberedList')}
           >
             <ListOrdered size={15} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleTaskList().run()}
             active={editor?.isActive('taskList')}
-            title="Task list"
+            title={t('note.taskList')}
           >
             <CheckSquare size={14} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleBlockquote().run()}
             active={editor?.isActive('blockquote')}
-            title="Blockquote"
+            title={t('note.blockquote')}
           >
             <Quote size={14} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
             active={editor?.isActive('codeBlock')}
-            title="Code block"
+            title={t('note.codeBlock')}
           >
             <Code2 size={14} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor?.chain().focus().setHorizontalRule().run()}
-            title="Divider"
+            title={t('note.divider')}
           >
             <Minus size={14} />
           </ToolbarButton>
 
           <div className="note-toolbar-divider" />
 
-          <ToolbarButton onClick={() => editor?.chain().focus().undo().run()} title="Undo">
+          <ToolbarButton onClick={() => editor?.chain().focus().undo().run()} title={t('note.undo')}>
             <Undo2 size={14} />
           </ToolbarButton>
-          <ToolbarButton onClick={() => editor?.chain().focus().redo().run()} title="Redo">
+          <ToolbarButton onClick={() => editor?.chain().focus().redo().run()} title={t('note.redo')}>
             <Redo2 size={14} />
           </ToolbarButton>
         </div>

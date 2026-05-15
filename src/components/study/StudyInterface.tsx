@@ -10,18 +10,25 @@ import {getAnnotations} from '@/actions/annotations';
 import {getNote} from '@/actions/notes';
 import {NotionIcon} from '@/components/NotionIcon';
 import {PdfPicker} from './PdfPicker';
+import {useLanguage} from '@/lib/i18n';
+import type {TranslationKey} from '@/lib/i18n';
+
+function StudyLoadingFallback({labelKey, spinner = false}: {labelKey: TranslationKey; spinner?: boolean}) {
+  const {t} = useLanguage();
+  return (
+    <div className="pdf-loading">
+      {spinner && <div className="pdf-loading-spinner" />}
+      <p>{t(labelKey)}</p>
+    </div>
+  );
+}
 
 // Lazy-load heavy components (PDF worker & TipTap) only on the client
 const PDFViewer = dynamic(
   () => import('./PDFViewer').then((m) => m.PDFViewer),
   {
     ssr: false,
-    loading: () => (
-      <div className="pdf-loading">
-        <div className="pdf-loading-spinner" />
-        <p>Loading viewer…</p>
-      </div>
-    ),
+    loading: () => <StudyLoadingFallback labelKey="study.loadingViewer" spinner />,
   },
 );
 
@@ -29,11 +36,7 @@ const NoteEditor = dynamic(
   () => import('./NoteEditor').then((m) => m.NoteEditor),
   {
     ssr: false,
-    loading: () => (
-      <div className="pdf-loading">
-        <p>Loading editor…</p>
-      </div>
-    ),
+    loading: () => <StudyLoadingFallback labelKey="study.loadingEditor" />,
   },
 );
 
@@ -43,6 +46,7 @@ interface StudyInterfaceProps {
 }
 
 export function StudyInterface({course, initialPdfId}: StudyInterfaceProps) {
+  const {t} = useLanguage();
   const initialPdf = useMemo(() => {
     if (!initialPdfId) return null;
     const allPdfs = [
@@ -125,13 +129,13 @@ export function StudyInterface({course, initialPdfId}: StudyInterfaceProps) {
         <button
           className="study-back-btn"
           onClick={handleBackToAllPdfs}
-          title="Choose a different PDF"
+          title={t('study.chooseDifferentPdf')}
         >
           <NotionIcon name="ni-arrow-left" className="w-[18px] h-[18px]" />
-          <span>All PDFs</span>
+          <span>{t('study.allPdfs')}</span>
         </button>
         <span className="study-pdf-name">{activePdf.name}</span>
-        {loading && <span className="study-loading-badge">Loading…</span>}
+        {loading && <span className="study-loading-badge">{t('study.loading')}</span>}
       </div>
 
       {/* Resizable panels */}

@@ -7,9 +7,10 @@ import {ChevronDown, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash
 import {Button} from '@/components/ui/button';
 import {SourceCard} from '@/components/learn/SourceCard';
 import type {Course} from '@/lib/data';
-import type {ChatResponse, ChatSource, StoredChatSession} from '@/types/chat';
+import type {ChatMode, ChatResponse, ChatSource, StoredChatMessage, StoredChatSession} from '@/types/chat';
 import {NotionIcon} from '@/components/NotionIcon';
 import {deleteChatSession, renameChatSession} from '@/actions/chat';
+import {useLanguage} from '@/lib/i18n';
 
 type ChatMessage = {
   id: string;
@@ -21,16 +22,35 @@ type ChatMessage = {
 export function ChatInterface({
   course,
   initialPdfId,
+  initialSessionId,
+  chatMode = 'normal',
+  showActiveLearningModes = false,
+  onChatModeChange,
+  activeLearningTopic = '',
+  activeLearningDifficulty = '',
+  topicSuggestions = [],
+  onActiveLearningTopicChange,
+  onActiveLearningDifficultyChange,
   profile,
 }: {
   course: Course;
   initialPdfId?: string;
+  initialSessionId?: string;
+  chatMode?: ChatMode;
+  showActiveLearningModes?: boolean;
+  onChatModeChange?: (mode: Extract<ChatMode, 'guided_learning' | 'feynman'>) => void;
+  activeLearningTopic?: string;
+  activeLearningDifficulty?: '' | 'beginner' | 'intermediate' | 'advanced';
+  topicSuggestions?: string[];
+  onActiveLearningTopicChange?: (topic: string) => void;
+  onActiveLearningDifficultyChange?: (difficulty: '' | 'beginner' | 'intermediate' | 'advanced') => void;
   profile?: {
     display_name: string | null;
     avatar_name: string | null;
     avatar_url: string | null;
   } | null;
 }) {
+  const {language, t} = useLanguage();
   const displayName = profile?.display_name || 'You';
   const avatarName = profile?.avatar_name || 'ni-avatar-male-2';
   const avatarUrl = profile?.avatar_url ?? null;
@@ -53,6 +73,23 @@ export function ChatInterface({
   const [pendingConversationKeys, setPendingConversationKeys] = useState<string[]>([]);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const isActiveLearning = chatMode === 'guided_learning' || chatMode === 'feynman';
+  const activeModeLabel = chatMode === 'guided_learning' ? t('active.guided') : chatMode === 'feynman' ? t('active.feynman') : t('nav.learn');
+  const emptyTitle = chatMode === 'guided_learning'
+    ? t('active.guidedEmptyTitle')
+    : chatMode === 'feynman'
+      ? t('active.feynmanEmptyTitle')
+      : t('chat.learnEmptyTitle');
+  const emptyDescription = chatMode === 'guided_learning'
+    ? t('active.guidedEmptyDescription')
+    : chatMode === 'feynman'
+      ? t('active.feynmanEmptyDescription')
+      : t('chat.learnEmptyDescription');
+  const inputPlaceholder = chatMode === 'guided_learning'
+    ? t('active.guidedPlaceholder')
+    : chatMode === 'feynman'
+      ? t('active.feynmanPlaceholder')
+      : t('chat.learnPlaceholder');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -65,15 +102,34 @@ export function ChatInterface({
 
   useEffect(() => {
     async function loadSessions() {
-      const res = await fetch(`/api/chat?courseId=${course.id}`);
+      const params = new URLSearchParams({courseId: course.id, mode: chatMode});
+      const res = await fetch(`/api/chat?${params.toString()}`);
       if (!res.ok) {
         return;
       }
       const data = await res.json();
-      setSessions(data.sessions ?? []);
+      const loadedSessions = data.sessions ?? [];
+      setSessions(loadedSessions.filter((session: StoredChatSession) => session.mode === chatMode));
+      if (initialSessionId) {
+        const initialSession = loadedSessions.find((session: StoredChatSession) => session.id === initialSessionId);
+        if (initialSession) {
+          setSessionId(initialSession.id);
+          setActiveConversationKey(initialSession.id);
+          setMessages(initialSession.messages.map((stored: StoredChatMessage) => ({
+            id: stored.id,
+            role: stored.role,
+            content: stored.content,
+            sources: stored.sources,
+          })));
+        }
+      }
     }
+    setSessionId(undefined);
+    setActiveConversationKey(crypto.randomUUID());
+    setMessages([]);
+    setError(null);
     loadSessions();
-  }, [course.id]);
+  }, [course.id, initialSessionId, chatMode]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -130,6 +186,10 @@ export function ChatInterface({
           top_k: 8,
           course_id: course.id,
           session_id: requestSessionId,
+          mode: chatMode,
+          topic: activeLearningTopic.trim() || undefined,
+          difficulty: activeLearningDifficulty || undefined,
+          language,
           pdf_ids: selectedPdfIds.length === allPdfs.length ? [] : selectedPdfIds,
           enableWebSearch,
         }),
@@ -161,6 +221,8 @@ export function ChatInterface({
             title: existingSession?.title ?? trimmed.slice(0, 80),
             course_id: course.id,
             updated_at: new Date().toISOString(),
+            mode: existingSession?.mode ?? chatMode,
+            active_learning_state: existingSession?.active_learning_state ?? {},
             messages: [
               ...(existingSession?.messages ?? []),
               {
@@ -207,18 +269,92 @@ export function ChatInterface({
       <div className="hidden md:flex w-[280px] shrink-0 border-r border-border bg-gray-50/30 flex-col h-full">
         <div className="p-5 flex items-center justify-between border-b border-border/50">
           <div className="font-semibold text-sm flex items-center gap-2">
-            <NotionIcon name="ni-award" className="w-[20px] h-[20px]" />
-            Learn & Research
+            <NotionIcon name={isActiveLearning ? 'ni-rocket' : 'ni-award'} className="w-[20px] h-[20px]" />
+            {showActiveLearningModes ? 'Active Learning' : 'Learn & Research'}
           </div>
-          <button onClick={startNewChat} className="text-muted-foreground hover:text-foreground transition-colors" title="New Chat">
+          <button onClick={startNewChat} className="text-muted-foreground hover:text-foreground transition-colors" title={t('chat.newChat')}>
             <Plus className="w-4 h-4" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-8 scrollbar-thin">
+          {showActiveLearningModes && (
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => onChatModeChange?.('guided_learning')}
+                className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-medium transition-colors ${
+                  chatMode === 'guided_learning' ? 'bg-black/5 text-foreground' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'
+                }`}
+              >
+                <span>{t('active.guided')}</span>
+                {chatMode === 'guided_learning' && <span className="h-1.5 w-1.5 rounded-full bg-foreground" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => onChatModeChange?.('feynman')}
+                className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-medium transition-colors ${
+                  chatMode === 'feynman' ? 'bg-black/5 text-foreground' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'
+                }`}
+              >
+                <span>{t('active.feynman')}</span>
+                {chatMode === 'feynman' && <span className="h-1.5 w-1.5 rounded-full bg-foreground" />}
+              </button>
+            </div>
+          )}
+
+          {showActiveLearningModes && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('active.settings')}</div>
+                <input
+                  value={activeLearningTopic}
+                  onChange={(event) => onActiveLearningTopicChange?.(event.target.value)}
+                  placeholder={t('active.topicPlaceholder')}
+                  className="h-8 w-full rounded-md border border-border bg-white px-2 text-sm outline-none focus:border-foreground/30"
+                />
+              </div>
+
+              {topicSuggestions.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('active.suggestions')}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {topicSuggestions.slice(0, 5).map((topic) => (
+                      <button
+                        key={topic}
+                        type="button"
+                        onClick={() => onActiveLearningTopicChange?.(topic)}
+                        className="max-w-full truncate rounded-md border border-border bg-white px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                        title={topic}
+                      >
+                        {topic}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-2">
+                <label className="space-y-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('active.difficulty')}</span>
+                  <select
+                    value={activeLearningDifficulty}
+                    onChange={(event) => onActiveLearningDifficultyChange?.(event.target.value as '' | 'beginner' | 'intermediate' | 'advanced')}
+                    className="h-8 w-full rounded-md border border-border bg-white px-2 text-xs outline-none focus:border-foreground/30"
+                  >
+                    <option value="">{t('active.auto')}</option>
+                    <option value="beginner">{t('active.beginner')}</option>
+                    <option value="intermediate">{t('active.intermediate')}</option>
+                    <option value="advanced">{t('active.advanced')}</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          )}
+
           {/* Retrieval Files */}
           <div>
-             <div className="mb-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Course Materials</div>
+             <div className="mb-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t('chat.courseMaterials')}</div>
              <div className="space-y-1">
                <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/80 transition-colors">
                   <input
@@ -227,7 +363,7 @@ export function ChatInterface({
                     checked={selectedPdfIds.length === allPdfs.length && allPdfs.length > 0}
                     onChange={(e) => setSelectedPdfIds(e.target.checked ? allPdfs.map(p => p.id) : [])}
                   />
-                  <span className="min-w-0 truncate text-muted-foreground font-medium">Use all materials</span>
+                  <span className="min-w-0 truncate text-muted-foreground font-medium">{t('chat.useAllMaterials')}</span>
                </label>
                {allPdfs.map((pdf) => (
                  <label
@@ -250,7 +386,9 @@ export function ChatInterface({
           {/* Chats */}
           {sessions.length > 0 && (
             <div>
-               <div className="mb-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Recent Chats</div>
+               <div className="mb-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                 {showActiveLearningModes ? activeModeLabel : t('chat.recentChats')}
+               </div>
                <div className="space-y-1">
                  {sessions.map((session) => (
                    <div
@@ -302,6 +440,11 @@ export function ChatInterface({
                          >
                            <MessageSquare className="h-[14px] w-[14px] shrink-0" />
                            <span className="truncate">{session.title ?? 'Untitled chat'}</span>
+                           {session.mode !== 'normal' && (
+                             <span className="shrink-0 rounded bg-black/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                               {session.mode === 'guided_learning' ? 'Guided' : 'Feynman'}
+                             </span>
+                           )}
                          </button>
                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                            <button 
@@ -349,9 +492,9 @@ export function ChatInterface({
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4 animate-in fade-in duration-700">
                 <Sparkles className="w-8 h-8 text-muted-foreground/40 mb-2" />
-                <h2 className="text-xl font-medium tracking-tight">How can I help you learn?</h2>
+                <h2 className="text-xl font-medium tracking-tight">{emptyTitle}</h2>
                 <p className="text-muted-foreground max-w-sm mx-auto text-sm">
-                  Ask questions across all your course materials, or select specific files to narrow the search.
+                  {emptyDescription}
                 </p>
               </div>
             ) : (
@@ -406,7 +549,7 @@ export function ChatInterface({
                     <div className="flex-1 space-y-1.5">
                       <div className="font-semibold text-sm text-black/50">Learncycle</div>
                       <div className="text-muted-foreground text-sm flex gap-1 items-center">
-                        Thinking <span className="flex gap-0.5"><span className="animate-bounce">.</span><span className="animate-bounce delay-75">.</span><span className="animate-bounce delay-150">.</span></span>
+                        {t('chat.thinking')} <span className="flex gap-0.5"><span className="animate-bounce">.</span><span className="animate-bounce delay-75">.</span><span className="animate-bounce delay-150">.</span></span>
                       </div>
                     </div>
                   </div>
@@ -446,7 +589,7 @@ export function ChatInterface({
                 maxLength={2000}
                 rows={1}
                 className="max-h-[200px] flex-1 resize-none bg-transparent py-1.5 px-1 text-sm outline-none placeholder:text-muted-foreground/70"
-                placeholder="Ask about your materials..."
+                placeholder={inputPlaceholder}
                 style={{ minHeight: '32px' }}
               />
               <button 
@@ -459,7 +602,7 @@ export function ChatInterface({
               </button>
             </form>
             <div className="text-center mt-2 text-[11px] text-muted-foreground/60">
-              AI can make mistakes. Always check course materials for accuracy.
+              {t('chat.disclaimer')}
             </div>
           </div>
         </div>
@@ -469,6 +612,7 @@ export function ChatInterface({
 }
 
 function SourceReferences({sources}: {sources: ChatSource[]}) {
+  const {t} = useLanguage();
   const [open, setOpen] = useState(false);
   const visibleSources = sources.slice(0, 3);
   const hiddenCount = Math.max(0, sources.length - visibleSources.length);
@@ -485,7 +629,7 @@ function SourceReferences({sources}: {sources: ChatSource[]}) {
             onClick={() => setOpen((value) => !value)}
             className="flex h-7 items-center gap-1 rounded-md bg-muted/40 px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
           >
-            {open ? 'Show less' : `+${hiddenCount} more`}
+            {open ? t('chat.showLess') : `+${hiddenCount} ${t('chat.more')}`}
             <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
           </button>
         )}
@@ -495,7 +639,7 @@ function SourceReferences({sources}: {sources: ChatSource[]}) {
             onClick={() => setOpen((value) => !value)}
             className="flex h-7 items-center gap-1 rounded-md bg-muted/40 px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
           >
-            {open ? 'Hide details' : 'Source details'}
+            {open ? t('chat.hideDetails') : t('chat.sourceDetails')}
             <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
           </button>
         )}

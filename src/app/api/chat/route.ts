@@ -1,10 +1,11 @@
 import {NextResponse} from 'next/server';
 import {createClient} from '@/lib/supabase/server';
 import type {SupabaseClient} from '@supabase/supabase-js';
-import type {ChatRequest, ChatResponse, ChatRole, ChatSourceType, RecentChatMessage} from '@/types/chat';
+import type {ActiveLearningState, ChatMode, ChatRequest, ChatResponse, ChatRole, ChatSourceType, RecentChatMessage} from '@/types/chat';
 
 const MATERIAL_SOURCE_TYPES: ChatSourceType[] = ['pdf', 'note', 'annotation_comment'];
 const SOURCE_TYPES: ChatSourceType[] = [...MATERIAL_SOURCE_TYPES, 'chat_memory', 'web'];
+const CHAT_MODES: ChatMode[] = ['normal', 'guided_learning', 'feynman'];
 const RECENT_MESSAGE_LIMIT = 10;
 const RECENT_MESSAGE_CONTENT_LIMIT = 2000;
 const CHAT_MEMORY_DEFAULT_THRESHOLD = 8;
@@ -35,6 +36,13 @@ const FORBIDDEN_RAG_TOOL_FIELDS = [
 ] as const;
 
 class SessionNotFoundError extends Error {}
+class MissingActiveLearningMigrationError extends Error {}
+
+type ChatSessionContext = {
+  id: string;
+  mode: ChatMode;
+  activeLearningState: ActiveLearningState;
+};
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({error: message}, {status});
@@ -59,7 +67,50 @@ function validateBody(body: Partial<ChatRequest>) {
   if (body.pdf_ids !== undefined && (!Array.isArray(body.pdf_ids) || body.pdf_ids.some((pdfId) => typeof pdfId !== 'string'))) {
     return 'pdf_ids must be an array of strings.';
   }
+  if (body.mode !== undefined && !CHAT_MODES.includes(body.mode)) {
+    return 'mode must be normal, guided_learning, or feynman.';
+  }
+  if (body.topic !== undefined && typeof body.topic !== 'string') {
+    return 'topic must be a string.';
+  }
+  if (
+    body.difficulty !== undefined &&
+    !['beginner', 'intermediate', 'advanced'].includes(body.difficulty)
+  ) {
+    return 'difficulty must be beginner, intermediate, or advanced.';
+  }
+  if (body.language !== undefined && !['de', 'en'].includes(body.language)) {
+    return 'language must be de or en.';
+  }
   return null;
+}
+
+function normalizeChatMode(value: unknown): ChatMode {
+  return CHAT_MODES.includes(value as ChatMode) ? (value as ChatMode) : 'normal';
+}
+
+function normalizeActiveLearningState(value: unknown): ActiveLearningState {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as ActiveLearningState;
+  }
+  return {};
+}
+
+function isMissingActiveLearningColumnError(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const maybeError = error as {code?: string; message?: string; details?: string};
+  const text = `${maybeError.message ?? ''} ${maybeError.details ?? ''}`.toLowerCase();
+  return (
+    maybeError.code === 'PGRST204' ||
+    maybeError.code === '42703' ||
+    text.includes('active_learning_state') ||
+    text.includes('chat_sessions.mode') ||
+    text.includes("column 'mode'") ||
+    text.includes('column mode') ||
+    text.includes('schema cache')
+  );
 }
 
 async function getOrCreateSession(
@@ -68,31 +119,89 @@ async function getOrCreateSession(
   body: Partial<ChatRequest>,
 ) {
   if (body.session_id) {
-    const {data} = await supabase
+    const {data, error} = await supabase
       .from('chat_sessions')
-      .select('id')
+      .select('id, mode, active_learning_state')
       .eq('id', body.session_id)
       .eq('user_id', userId)
       .maybeSingle();
+    if (error && isMissingActiveLearningColumnError(error)) {
+      const fallback = await supabase
+        .from('chat_sessions')
+        .select('id')
+        .eq('id', body.session_id)
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (fallback.data?.id) {
+        return {
+          id: fallback.data.id as string,
+          mode: 'normal',
+          activeLearningState: {},
+        };
+      }
+    }
     if (data?.id) {
-      return data.id as string;
+      return {
+        id: data.id as string,
+        mode: normalizeChatMode(data.mode),
+        activeLearningState: normalizeActiveLearningState(data.active_learning_state),
+      };
     }
     throw new SessionNotFoundError('Session not found.');
   }
 
+  const initialActiveLearningState = body.mode && body.mode !== 'normal'
+    ? {
+      mode: body.mode,
+      ...(body.topic ? {topic: body.topic.trim()} : {}),
+      ...(body.difficulty ? {difficulty: body.difficulty} : {}),
+      ...(body.language ? {language: body.language} : {}),
+    }
+    : {};
+  const insertPayload = {
+    user_id: userId,
+    course_id: body.course_id ?? null,
+    title: body.message?.trim().slice(0, 80) ?? null,
+    mode: body.mode ?? 'normal',
+    active_learning_state: initialActiveLearningState,
+  };
   const {data, error} = await supabase
     .from('chat_sessions')
-    .insert({
-      user_id: userId,
-      course_id: body.course_id ?? null,
-      title: body.message?.trim().slice(0, 80) ?? null,
-    })
-    .select('id')
+    .insert(insertPayload)
+    .select('id, mode, active_learning_state')
     .single();
+  if (error && isMissingActiveLearningColumnError(error)) {
+    if (body.mode && body.mode !== 'normal') {
+      throw new MissingActiveLearningMigrationError('Active learning database migration has not been applied.');
+    }
+    const fallback = await supabase
+      .from('chat_sessions')
+      .insert({
+        user_id: userId,
+        course_id: body.course_id ?? null,
+        title: body.message?.trim().slice(0, 80) ?? null,
+      })
+      .select('id')
+      .single();
+    if (fallback.error || !fallback.data?.id) {
+      console.error('Failed to create chat session', fallback.error ?? error);
+      throw new Error('Failed to create chat session.');
+    }
+    return {
+      id: fallback.data.id as string,
+      mode: 'normal',
+      activeLearningState: {},
+    };
+  }
   if (error || !data?.id) {
+    console.error('Failed to create chat session', error);
     throw new Error('Failed to create chat session.');
   }
-  return data.id as string;
+  return {
+    id: data.id as string,
+    mode: normalizeChatMode(data.mode),
+    activeLearningState: normalizeActiveLearningState(data.active_learning_state),
+  };
 }
 
 async function loadSessionPromptContext(
@@ -100,17 +209,36 @@ async function loadSessionPromptContext(
   sessionId: string,
   userId: string,
 ) {
-  const {data} = await supabase
+  const {data, error} = await supabase
     .from('chat_sessions')
-    .select('course_id, context_summary, context_summary_cursor')
+    .select('course_id, context_summary, context_summary_cursor, mode, active_learning_state')
     .eq('id', sessionId)
     .eq('user_id', userId)
     .maybeSingle();
+  if (error && isMissingActiveLearningColumnError(error)) {
+    const fallback = await supabase
+      .from('chat_sessions')
+      .select('course_id, context_summary, context_summary_cursor')
+      .eq('id', sessionId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    const fallbackData = fallback.data;
+    return {
+      courseId: typeof fallbackData?.course_id === 'string' ? fallbackData.course_id : null,
+      contextSummary: typeof fallbackData?.context_summary === 'string' && fallbackData.context_summary.trim().length > 0
+        ? fallbackData.context_summary.trim()
+        : null,
+      mode: 'normal' as ChatMode,
+      activeLearningState: {},
+    };
+  }
   return {
     courseId: typeof data?.course_id === 'string' ? data.course_id : null,
     contextSummary: typeof data?.context_summary === 'string' && data.context_summary.trim().length > 0
       ? data.context_summary.trim()
       : null,
+    mode: normalizeChatMode(data?.mode),
+    activeLearningState: normalizeActiveLearningState(data?.active_learning_state),
   };
 }
 
@@ -531,15 +659,28 @@ export async function POST(request: Request) {
   const topK = body.top_k ?? 8;
   const sourceTypes = stripNonMaterialSourceTypes(body.source_types);
   const pdfIds = body.pdf_ids?.filter(Boolean) ?? [];
-  const webMode = parseBool(process.env.WEB_SEARCH_ENABLED, false) && body.enableWebSearch === true ? 'on' : 'off';
+  const webMode = body.enableWebSearch === true ? 'on' : 'off';
   const useIntentClassifier = parseBool(process.env.INTENT_CLASSIFIER_ENABLED, false);
   const useRetrievalPlanner = parseBool(process.env.RETRIEVAL_PLANNER_ENABLED, false);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
 
   try {
-    const sessionId = await getOrCreateSession(supabase, user.id, body);
+    const session = await getOrCreateSession(supabase, user.id, body);
+    const sessionId = session.id;
     const promptContext = await loadSessionPromptContext(supabase, sessionId, user.id);
+    const sessionMode = session.mode ?? promptContext.mode;
+    const activeLearningState = Object.keys(session.activeLearningState).length > 0
+      ? session.activeLearningState
+      : promptContext.activeLearningState;
+    const requestActiveLearningState = sessionMode === 'normal'
+      ? activeLearningState
+      : {
+        ...activeLearningState,
+        ...(body.topic ? {topic: body.topic.trim()} : {}),
+        ...(body.difficulty ? {difficulty: body.difficulty} : {}),
+        ...(body.language ? {language: body.language} : {}),
+      };
     const courseId = body.course_id ?? promptContext.courseId;
     const compactionConfig = promptCompactionConfig();
     const recentMessageLimit = compactionConfig.enabled && promptContext.contextSummary
@@ -582,6 +723,9 @@ export async function POST(request: Request) {
         web_mode: webMode,
         use_intent_classifier: useIntentClassifier,
         use_retrieval_planner: useRetrievalPlanner,
+        chat_mode: sessionMode,
+        active_learning_state: requestActiveLearningState,
+        chat_language: body.language,
       }),
       signal: controller.signal,
     });
@@ -592,6 +736,20 @@ export async function POST(request: Request) {
     }
 
     const ragResponse = await response.json();
+    if (
+      ragResponse.updated_active_learning_state &&
+      typeof ragResponse.updated_active_learning_state === 'object' &&
+      !Array.isArray(ragResponse.updated_active_learning_state)
+    ) {
+      const {error: stateError} = await supabase
+        .from('chat_sessions')
+        .update({active_learning_state: ragResponse.updated_active_learning_state})
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
+      if (stateError) {
+        console.error('Failed to persist active learning state', stateError);
+      }
+    }
     await supabase.from('chat_messages').insert({
       session_id: sessionId,
       user_id: user.id,
@@ -627,11 +785,18 @@ export async function POST(request: Request) {
       answer: ragResponse.answer,
       sources: ragResponse.sources ?? [],
       retrieval: {mode: 'hybrid', top_k: topK},
+      active_learning_state: normalizeActiveLearningState(ragResponse.updated_active_learning_state ?? activeLearningState),
     };
     return NextResponse.json(chatResponse);
   } catch (error) {
     if (error instanceof SessionNotFoundError) {
       return errorResponse('Session not found.', 404);
+    }
+    if (error instanceof MissingActiveLearningMigrationError) {
+      return errorResponse(
+        'Active Learning database migration is missing. Apply supabase/migrations/20260514000001_active_learning_chat_sessions.sql and restart the app.',
+        500,
+      );
     }
     console.error('RAG service request failed', error);
     return errorResponse('RAG service failed to answer.', 500);
@@ -649,23 +814,59 @@ export async function GET(request: Request) {
 
   const {searchParams} = new URL(request.url);
   const courseId = searchParams.get('courseId');
+  const requestedMode = searchParams.get('mode');
+  if (requestedMode && !CHAT_MODES.includes(requestedMode as ChatMode)) {
+    return errorResponse('mode must be normal, guided_learning, or feynman.', 400);
+  }
+  const modeFilter = requestedMode as ChatMode | null;
   let sessionQuery = supabase
     .from('chat_sessions')
-    .select('id, title, course_id, updated_at')
+    .select('id, title, course_id, updated_at, mode, active_learning_state')
     .eq('user_id', user.id)
     .order('updated_at', {ascending: false})
     .limit(20);
   if (courseId) {
     sessionQuery = sessionQuery.eq('course_id', courseId);
   }
+  if (modeFilter) {
+    sessionQuery = sessionQuery.eq('mode', modeFilter);
+  }
 
   const {data: sessions, error: sessionsError} = await sessionQuery;
-  if (sessionsError) {
+  let normalizedSessions = (sessions ?? []).map((session) => ({
+    ...session,
+    mode: normalizeChatMode(session.mode),
+    active_learning_state: normalizeActiveLearningState(session.active_learning_state),
+  }));
+  if (sessionsError && isMissingActiveLearningColumnError(sessionsError)) {
+    let fallbackSessionQuery = supabase
+      .from('chat_sessions')
+      .select('id, title, course_id, updated_at')
+      .eq('user_id', user.id)
+      .order('updated_at', {ascending: false})
+      .limit(20);
+    if (courseId) {
+      fallbackSessionQuery = fallbackSessionQuery.eq('course_id', courseId);
+    }
+    if (modeFilter && modeFilter !== 'normal') {
+      return NextResponse.json({sessions: []});
+    }
+    const fallback = await fallbackSessionQuery;
+    if (fallback.error) {
+      console.error('Failed to load chat sessions', fallback.error);
+      return errorResponse('Failed to load chat sessions.', 500);
+    }
+    normalizedSessions = (fallback.data ?? []).map((session) => ({
+      ...session,
+      mode: 'normal' as ChatMode,
+      active_learning_state: {},
+    }));
+  } else if (sessionsError) {
     console.error('Failed to load chat sessions', sessionsError);
     return errorResponse('Failed to load chat sessions.', 500);
   }
 
-  const sessionIds = (sessions ?? []).map((session) => session.id);
+  const sessionIds = normalizedSessions.map((session) => session.id);
   if (sessionIds.length === 0) {
     return NextResponse.json({sessions: []});
   }
@@ -682,8 +883,10 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({
-    sessions: (sessions ?? []).map((session) => ({
+    sessions: normalizedSessions.map((session) => ({
       ...session,
+      mode: normalizeChatMode(session.mode),
+      active_learning_state: normalizeActiveLearningState(session.active_learning_state),
       messages: (messages ?? []).filter((message) => message.session_id === session.id),
     })),
   });

@@ -7,13 +7,14 @@ import {ResponsiveLayout} from '@/components/ResponsiveLayout';
 import {ProfileView} from '@/components/ProfileView';
 import {StudyInterface} from '@/components/study/StudyInterface';
 import {ChatInterface} from '@/components/learn/ChatInterface';
+import {ActiveLearningSection} from '@/components/active-learning/ActiveLearningSection';
 
 interface Props {
-  searchParams: Promise<{courseId?: string; tab?: string; pdfId?: string}>;
+  searchParams: Promise<{courseId?: string; tab?: string; pdfId?: string; sessionId?: string}>;
 }
 
 export default async function Page({searchParams}: Props) {
-  const {courseId, tab = 'home', pdfId} = await searchParams;
+  const {courseId, tab = 'home', pdfId, sessionId} = await searchParams;
   const courses = await getCourses();
   const profile = await getProfile();
 
@@ -33,7 +34,7 @@ export default async function Page({searchParams}: Props) {
         />
       }
     >
-      <main className={`flex flex-1 flex-col w-full position-relative ${(tab === 'notetaking' || tab === 'learn') ? 'overflow-hidden p-0' : 'overflow-y-auto px-4 sm:px-6 md:px-8'}`}>
+      <main className={`flex flex-1 flex-col w-full position-relative ${(tab === 'notetaking' || tab === 'learn' || tab === 'feynman') ? 'overflow-hidden p-0' : 'overflow-y-auto px-4 sm:px-6 md:px-8'}`}>
         <header className="hidden md:flex h-14 shrink-0 items-center justify-end border-b border-transparent px-4">
            {/* Top nav empty for now, maybe profile later */}
         </header>
@@ -54,10 +55,10 @@ export default async function Page({searchParams}: Props) {
             {tab === 'learn' && (
               <>
                 {/* RAG chat: src/app/api/chat/route.ts -> RAG service: rag_pipeline/api.py */}
-                <ChatInterface course={activeCourse} initialPdfId={pdfId} profile={profile} />
+                <ChatInterface course={activeCourse} initialPdfId={pdfId} initialSessionId={sessionId} profile={profile} />
               </>
             )}
-            {tab === 'feynman' && <div className="py-8"><h1 className="text-2xl font-bold">Feynman Technique</h1><p className="text-muted-foreground mt-2">Lehre es einem 5-Jährigen.</p></div>}
+            {tab === 'feynman' && <ActiveLearningSection course={activeCourse} initialPdfId={pdfId} initialSessionId={sessionId} profile={profile} />}
             {tab === 'revision' && <div className="py-8"><h1 className="text-2xl font-bold">Revision</h1><p className="text-muted-foreground mt-2">Active Recall und Karteikarten.</p></div>}
           </>
         ) : (

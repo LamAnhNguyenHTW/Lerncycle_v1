@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { SlashItem } from './slash-command';
+import {useLanguage} from '@/lib/i18n';
 
 interface SlashMenuProps {
   items: SlashItem[];
@@ -13,6 +14,7 @@ interface SlashMenuProps {
 
 /** Keyboard-navigable slash command dropdown, rendered into document.body. */
 export function SlashMenu({ items, selectedIndex, position, onSelect }: SlashMenuProps) {
+  const {t} = useLanguage();
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Scroll selected item into view
@@ -27,7 +29,7 @@ export function SlashMenu({ items, selectedIndex, position, onSelect }: SlashMen
       className="slash-menu"
       style={{ top: position.top, left: position.left }}
       role="listbox"
-      aria-label="Insert block"
+      aria-label={t('note.insertBlock')}
     >
       {items.map((item, i) => (
         <button
@@ -44,8 +46,8 @@ export function SlashMenu({ items, selectedIndex, position, onSelect }: SlashMen
         >
           <span className="slash-menu-icon">{item.icon}</span>
           <span className="slash-menu-text">
-            <span className="slash-menu-title">{item.title}</span>
-            <span className="slash-menu-desc">{item.description}</span>
+            <span className="slash-menu-title">{t(item.titleKey)}</span>
+            <span className="slash-menu-desc">{t(item.descriptionKey)}</span>
           </span>
         </button>
       ))}

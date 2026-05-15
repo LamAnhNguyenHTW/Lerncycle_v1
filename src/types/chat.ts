@@ -1,5 +1,26 @@
 export type ChatSourceType = 'pdf' | 'note' | 'annotation_comment' | 'chat_memory' | 'knowledge_graph' | 'web' | 'general_knowledge';
 export type ChatRole = 'user' | 'assistant';
+export type ChatMode = 'normal' | 'guided_learning' | 'feynman';
+export type ActiveLearningMode = 'guided_learning' | 'feynman';
+export type LearningLanguage = 'de' | 'en';
+export type ActiveLearningStep =
+  | 'diagnose_prior_knowledge'
+  | 'ask_question'
+  | 'evaluate_answer'
+  | 'give_hint'
+  | 'summarize';
+
+export interface ActiveLearningState {
+  mode?: ActiveLearningMode;
+  topic?: string;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  language?: LearningLanguage;
+  current_step?: ActiveLearningStep;
+  covered_concepts?: string[];
+  misconceptions?: string[];
+  user_understanding_score?: number;
+  next_goal?: string;
+}
 
 export interface RecentChatMessage {
   role: ChatRole;
@@ -8,6 +29,10 @@ export interface RecentChatMessage {
 
 export interface ChatRequest {
   message: string;
+  mode?: ChatMode;
+  topic?: string;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  language?: LearningLanguage;
   source_types?: ChatSourceType[];
   use_rag?: boolean;
   top_k?: number;
@@ -52,6 +77,7 @@ export interface ChatResponse {
   answer: string;
   sources: ChatSource[];
   retrieval: ChatRetrievalMeta;
+  active_learning_state?: ActiveLearningState;
   intent?: {
     classifier_used?: boolean;
     fallback_used?: boolean;
@@ -110,5 +136,7 @@ export interface StoredChatSession {
   title: string | null;
   course_id: string | null;
   updated_at: string;
+  mode: ChatMode;
+  active_learning_state: ActiveLearningState;
   messages: StoredChatMessage[];
 }

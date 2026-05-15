@@ -3,18 +3,20 @@
 import {useState} from 'react';
 import {PdfDropzone} from '@/components/PdfDropzone';
 import {NotionIcon} from './NotionIcon';
+import {useLanguage} from '@/lib/i18n';
 
 export function DashboardPlaceholder({courseId, courseName, displayName}: {courseId: string; courseName: string; displayName: string}) {
   const [showCourseUpload, setShowCourseUpload] = useState(false);
+  const {t} = useLanguage();
 
   return (
     <div className="flex flex-col items-center max-w-4xl mx-auto pt-6 md:pt-12 w-full gap-6 md:gap-10">
       <div className="text-center space-y-2 md:space-y-3">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-          Hello {displayName}, what do you want to master in {courseName}?
+          {t('dashboard.headline', {name: displayName, course: courseName})}
         </h1>
         <p className="text-muted-foreground text-sm">
-          Upload everything and get interactive notes, flashcards, quizzes, and more
+          {t('dashboard.subtitle')}
         </p>
       </div>
 
@@ -24,20 +26,20 @@ export function DashboardPlaceholder({courseId, courseName, displayName}: {cours
           className={`flex flex-col items-start p-5 md:p-6 rounded-xl border transition-all text-left shadow-sm hover:shadow-md hover:border-black/20 ${showCourseUpload ? 'border-primary ring-1 ring-primary' : 'border-border bg-white'}`}
         >
           <div className="mb-3 text-foreground"><NotionIcon name="ni-file-upload" className="w-[24px] h-[24px]" /></div>
-          <h3 className="font-medium text-sm mb-1">Upload</h3>
-          <p className="text-xs text-muted-foreground">Add materials directly to the course</p>
+          <h3 className="font-medium text-sm mb-1">{t('dashboard.upload')}</h3>
+          <p className="text-xs text-muted-foreground">{t('dashboard.uploadSubtitle')}</p>
         </button>
 
         <ActionCard
           icon={<NotionIcon name="ni-link" className="w-[24px] h-[24px]" />}
-          title="Insert"
-          subtitle="YouTube, Website, Text"
+          title={t('dashboard.insert')}
+          subtitle={t('dashboard.insertSubtitle')}
           comingSoon
         />
         <ActionCard
           icon={<NotionIcon name="ni-microphone" className="w-[24px] h-[24px]" />}
-          title="Record"
-          subtitle="Record live lecture"
+          title={t('dashboard.record')}
+          subtitle={t('dashboard.recordSubtitle')}
           comingSoon
         />
       </div>

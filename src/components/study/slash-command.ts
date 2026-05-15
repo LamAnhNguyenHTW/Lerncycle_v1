@@ -1,10 +1,13 @@
 import { Extension } from '@tiptap/core';
 import type { Range, Editor } from '@tiptap/core';
 import { Suggestion } from '@tiptap/suggestion';
+import type {TranslationKey} from '@/lib/i18n';
 
 export interface SlashItem {
   title: string;
   description: string;
+  titleKey: TranslationKey;
+  descriptionKey: TranslationKey;
   icon: string;
   execute: (editor: Editor, range: Range) => void;
 }
@@ -13,6 +16,8 @@ const ALL_ITEMS: SlashItem[] = [
   {
     title: 'Text',
     description: 'Plain paragraph',
+    titleKey: 'note.text',
+    descriptionKey: 'note.plainParagraph',
     icon: '¶',
     execute: (editor, range) =>
       editor.chain().focus().deleteRange(range).setParagraph().run(),
@@ -20,6 +25,8 @@ const ALL_ITEMS: SlashItem[] = [
   {
     title: 'Heading 1',
     description: 'Large section heading',
+    titleKey: 'note.heading1',
+    descriptionKey: 'note.largeHeading',
     icon: 'H1',
     execute: (editor, range) =>
       editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run(),
@@ -27,6 +34,8 @@ const ALL_ITEMS: SlashItem[] = [
   {
     title: 'Heading 2',
     description: 'Medium section heading',
+    titleKey: 'note.heading2',
+    descriptionKey: 'note.mediumHeading',
     icon: 'H2',
     execute: (editor, range) =>
       editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run(),
@@ -34,6 +43,8 @@ const ALL_ITEMS: SlashItem[] = [
   {
     title: 'Heading 3',
     description: 'Small section heading',
+    titleKey: 'note.heading3',
+    descriptionKey: 'note.smallHeading',
     icon: 'H3',
     execute: (editor, range) =>
       editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run(),
@@ -41,6 +52,8 @@ const ALL_ITEMS: SlashItem[] = [
   {
     title: 'Bullet List',
     description: 'Unordered list',
+    titleKey: 'note.bulletList',
+    descriptionKey: 'note.unorderedList',
     icon: '•',
     execute: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleBulletList().run(),
@@ -48,6 +61,8 @@ const ALL_ITEMS: SlashItem[] = [
   {
     title: 'Numbered List',
     description: 'Ordered numbered list',
+    titleKey: 'note.numberedList',
+    descriptionKey: 'note.orderedList',
     icon: '1.',
     execute: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
@@ -55,6 +70,8 @@ const ALL_ITEMS: SlashItem[] = [
   {
     title: 'Task List',
     description: 'Checklist with checkboxes',
+    titleKey: 'note.taskList',
+    descriptionKey: 'note.checklist',
     icon: '☑',
     execute: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleTaskList().run(),
@@ -62,6 +79,8 @@ const ALL_ITEMS: SlashItem[] = [
   {
     title: 'Code Block',
     description: 'Multi-line code snippet',
+    titleKey: 'note.codeBlock',
+    descriptionKey: 'note.multiLineCode',
     icon: '</>',
     execute: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
@@ -69,6 +88,8 @@ const ALL_ITEMS: SlashItem[] = [
   {
     title: 'Quote',
     description: 'Blockquote callout',
+    titleKey: 'note.blockquote',
+    descriptionKey: 'note.blockquoteCallout',
     icon: '"',
     execute: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
@@ -76,6 +97,8 @@ const ALL_ITEMS: SlashItem[] = [
   {
     title: 'Divider',
     description: 'Horizontal separator',
+    titleKey: 'note.divider',
+    descriptionKey: 'note.horizontalSeparator',
     icon: '—',
     execute: (editor, range) =>
       editor.chain().focus().deleteRange(range).setHorizontalRule().run(),

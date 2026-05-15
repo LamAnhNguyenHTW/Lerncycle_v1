@@ -2,6 +2,7 @@
 
 import { type Course, type PdfFile, type Folder } from '@/lib/data';
 import { NotionIcon } from '@/components/NotionIcon';
+import {useLanguage} from '@/lib/i18n';
 
 interface PdfPickerProps {
   course: Course;
@@ -9,6 +10,7 @@ interface PdfPickerProps {
 }
 
 export function PdfPicker({ course, onSelect }: PdfPickerProps) {
+  const {t} = useLanguage();
   const totalPdfs =
     course.loose_pdfs.length +
     course.folders.reduce((acc, f) => acc + f.pdfs.length, 0);
@@ -17,11 +19,11 @@ export function PdfPicker({ course, onSelect }: PdfPickerProps) {
     <div className="pdf-picker">
       <div className="pdf-picker-header">
         <NotionIcon name="ni-book-open" className="w-[32px] h-[32px] mb-3 opacity-50" />
-        <h2 className="pdf-picker-title">Choose a PDF to study</h2>
+        <h2 className="pdf-picker-title">{t('study.choosePdf')}</h2>
         <p className="pdf-picker-subtitle">
           {totalPdfs === 0
-            ? 'No PDFs uploaded yet. Go to the Home tab to upload your first file.'
-            : `${totalPdfs} PDF${totalPdfs === 1 ? '' : 's'} available in ${course.name}`}
+            ? t('study.noPdfs')
+            : t('study.available', {count: String(totalPdfs), plural: totalPdfs === 1 ? '' : 's', course: course.name})}
         </p>
       </div>
 
@@ -29,7 +31,7 @@ export function PdfPicker({ course, onSelect }: PdfPickerProps) {
         <div className="pdf-picker-list">
           {/* Direct uploads */}
           {course.loose_pdfs.length > 0 && (
-            <PdfGroup label="Unfiled" pdfs={course.loose_pdfs} onSelect={onSelect} />
+            <PdfGroup label={t('study.unfiled')} pdfs={course.loose_pdfs} onSelect={onSelect} />
           )}
 
           {/* Folders */}
