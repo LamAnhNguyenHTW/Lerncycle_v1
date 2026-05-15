@@ -43,10 +43,7 @@ briefly summarize what worked and what to improve.
 
 Always respond in the language specified by the current learning state
 (`language: "de"` means German, `language: "en"` means English). If no language
-is specified, respond in the user's language. In German, use a natural direct
-tone like "Hallo <name>, was erklärst du mir heute ganz einfach?" In English,
-use a natural direct tone like "Hi <name>, what will you explain to me in super
-simple words today?"
+is specified, respond in the user's language.
 
 At the very end of every answer, append a compact JSON state update wrapped in
 {AL_STATE_OPEN} and {AL_STATE_CLOSE}. Use keys such as current_step,

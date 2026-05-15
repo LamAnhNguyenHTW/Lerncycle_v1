@@ -1,16 +1,16 @@
 'use client';
 
-import {useEffect, useState, useRef} from 'react';
+import { useEffect, useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import {ChevronDown, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2} from 'lucide-react';
-import {Button} from '@/components/ui/button';
-import {SourceCard} from '@/components/learn/SourceCard';
-import type {Course} from '@/lib/data';
-import type {ChatMode, ChatResponse, ChatSource, StoredChatMessage, StoredChatSession} from '@/types/chat';
-import {NotionIcon} from '@/components/NotionIcon';
-import {deleteChatSession, renameChatSession} from '@/actions/chat';
-import {useLanguage} from '@/lib/i18n';
+import { ChevronDown, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { SourceCard } from '@/components/learn/SourceCard';
+import type { Course } from '@/lib/data';
+import type { ChatMode, ChatResponse, ChatSource, StoredChatMessage, StoredChatSession } from '@/types/chat';
+import { NotionIcon } from '@/components/NotionIcon';
+import { deleteChatSession, renameChatSession } from '@/actions/chat';
+import { useLanguage } from '@/lib/i18n';
 
 type ChatMessage = {
   id: string;
@@ -50,7 +50,7 @@ export function ChatInterface({
     avatar_url: string | null;
   } | null;
 }) {
-  const {language, t} = useLanguage();
+  const { language, t } = useLanguage();
   const displayName = profile?.display_name || 'You';
   const avatarName = profile?.avatar_name || 'ni-avatar-male-2';
   const avatarUrl = profile?.avatar_url ?? null;
@@ -63,8 +63,8 @@ export function ChatInterface({
   const [sessions, setSessions] = useState<StoredChatSession[]>([]);
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [selectedPdfIds, setSelectedPdfIds] = useState<string[]>(
-    initialPdfId && allPdfs.some((pdf) => pdf.id === initialPdfId) 
-      ? [initialPdfId] 
+    initialPdfId && allPdfs.some((pdf) => pdf.id === initialPdfId)
+      ? [initialPdfId]
       : allPdfs.map(p => p.id),
   );
   const [activeTopicSuggestions, setActiveTopicSuggestions] = useState<string[]>(topicSuggestions.slice(0, 5));
@@ -91,7 +91,7 @@ export function ChatInterface({
     : chatMode === 'feynman'
       ? t('active.feynmanPlaceholder')
       : t('chat.learnPlaceholder');
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeConversationKeyRef = useRef(activeConversationKey);
@@ -112,8 +112,8 @@ export function ChatInterface({
     }
 
     const greeting = language === 'de'
-      ? `Hallo ${displayName}, ich bin heute wie ein neugieriges 5-jähriges Kind. Was erklärst du mir heute ganz einfach?`
-      : `Hi ${displayName}, today I am like a curious 5-year-old. What will you explain to me in super simple words?`;
+      ? `Hallo ${displayName}, was erklärst du mir heute?`
+      : `Hi ${displayName}, what will you explain to me today?`;
     setMessages([{
       id: crypto.randomUUID(),
       role: 'assistant',
@@ -135,7 +135,7 @@ export function ChatInterface({
       try {
         const res = await fetch('/api/active-learning/topics', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             courseId: course.id,
             pdfIds: selectedPdfIds,
@@ -151,9 +151,9 @@ export function ChatInterface({
         const data = await res.json();
         const topics = Array.isArray(data.topics)
           ? data.topics
-              .map((topic: {name?: unknown}) => topic.name)
-              .filter((name: unknown): name is string => typeof name === 'string' && name.trim().length > 0)
-              .slice(0, 5)
+            .map((topic: { name?: unknown }) => topic.name)
+            .filter((name: unknown): name is string => typeof name === 'string' && name.trim().length > 0)
+            .slice(0, 5)
           : [];
         setActiveTopicSuggestions(topics);
       } catch (caught) {
@@ -170,7 +170,7 @@ export function ChatInterface({
 
   useEffect(() => {
     async function loadSessions() {
-      const params = new URLSearchParams({courseId: course.id, mode: chatMode});
+      const params = new URLSearchParams({ courseId: course.id, mode: chatMode });
       const res = await fetch(`/api/chat?${params.toString()}`);
       if (!res.ok) {
         return;
@@ -246,7 +246,7 @@ export function ChatInterface({
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmed,
           use_rag: true,
@@ -352,9 +352,8 @@ export function ChatInterface({
               <button
                 type="button"
                 onClick={() => onChatModeChange?.('guided_learning')}
-                className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-medium transition-colors ${
-                  chatMode === 'guided_learning' ? 'bg-black/5 text-foreground' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'
-                }`}
+                className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-medium transition-colors ${chatMode === 'guided_learning' ? 'bg-black/5 text-foreground' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'
+                  }`}
               >
                 <span>{t('active.guided')}</span>
                 {chatMode === 'guided_learning' && <span className="h-1.5 w-1.5 rounded-full bg-foreground" />}
@@ -362,9 +361,8 @@ export function ChatInterface({
               <button
                 type="button"
                 onClick={() => onChatModeChange?.('feynman')}
-                className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-medium transition-colors ${
-                  chatMode === 'feynman' ? 'bg-black/5 text-foreground' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'
-                }`}
+                className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-medium transition-colors ${chatMode === 'feynman' ? 'bg-black/5 text-foreground' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'
+                  }`}
               >
                 <span>{t('active.feynman')}</span>
                 {chatMode === 'feynman' && <span className="h-1.5 w-1.5 rounded-full bg-foreground" />}
@@ -410,10 +408,10 @@ export function ChatInterface({
                     value={activeLearningDifficulty}
                     onChange={(value) => onActiveLearningDifficultyChange?.(value)}
                     options={[
-                      {value: '', label: t('active.auto')},
-                      {value: 'beginner', label: t('active.beginner')},
-                      {value: 'intermediate', label: t('active.intermediate')},
-                      {value: 'advanced', label: t('active.advanced')},
+                      { value: '', label: t('active.auto') },
+                      { value: 'beginner', label: t('active.beginner') },
+                      { value: 'intermediate', label: t('active.intermediate') },
+                      { value: 'advanced', label: t('active.advanced') },
                     ]}
                   />
                 </div>
@@ -423,132 +421,132 @@ export function ChatInterface({
 
           {/* Retrieval Files */}
           <div>
-             <div className="mb-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t('chat.courseMaterials')}</div>
-             <div className="space-y-1">
-               <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/80 transition-colors">
+            <div className="mb-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t('chat.courseMaterials')}</div>
+            <div className="space-y-1">
+              <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/80 transition-colors">
+                <input
+                  type="checkbox"
+                  className="rounded border-border text-foreground focus:ring-foreground accent-foreground"
+                  checked={selectedPdfIds.length === allPdfs.length && allPdfs.length > 0}
+                  onChange={(e) => setSelectedPdfIds(e.target.checked ? allPdfs.map(p => p.id) : [])}
+                />
+                <span className="min-w-0 truncate text-muted-foreground font-medium">{t('chat.useAllMaterials')}</span>
+              </label>
+              {allPdfs.map((pdf) => (
+                <label
+                  key={pdf.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/80 transition-colors"
+                >
                   <input
                     type="checkbox"
                     className="rounded border-border text-foreground focus:ring-foreground accent-foreground"
-                    checked={selectedPdfIds.length === allPdfs.length && allPdfs.length > 0}
-                    onChange={(e) => setSelectedPdfIds(e.target.checked ? allPdfs.map(p => p.id) : [])}
+                    checked={selectedPdfIds.includes(pdf.id)}
+                    onChange={() => togglePdf(pdf.id)}
                   />
-                  <span className="min-w-0 truncate text-muted-foreground font-medium">{t('chat.useAllMaterials')}</span>
-               </label>
-               {allPdfs.map((pdf) => (
-                 <label
-                   key={pdf.id}
-                   className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/80 transition-colors"
-                 >
-                   <input
-                     type="checkbox"
-                     className="rounded border-border text-foreground focus:ring-foreground accent-foreground"
-                     checked={selectedPdfIds.includes(pdf.id)}
-                     onChange={() => togglePdf(pdf.id)}
-                   />
-                   <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                   <span className="min-w-0 truncate">{pdf.name}</span>
-                 </label>
-               ))}
-             </div>
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 truncate">{pdf.name}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Chats */}
           {sessions.length > 0 && (
             <div>
-               <div className="mb-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                 {showActiveLearningModes ? activeModeLabel : t('chat.recentChats')}
-               </div>
-               <div className="space-y-1">
-                 {sessions.map((session) => (
-                   <div
-                     key={session.id}
-                     className={`group w-full flex items-center justify-between gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${sessionId === session.id ? 'bg-black/5 text-foreground font-medium' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'}`}
-                   >
-                     {editingSessionId === session.id ? (
-                       <form 
-                         className="flex flex-1 items-center gap-2"
-                         onSubmit={async (e) => {
-                           e.preventDefault();
-                           try {
-                             await renameChatSession(session.id, editingTitle);
-                             setSessions((current) => current.map(s => s.id === session.id ? { ...s, title: editingTitle || 'Untitled chat' } : s));
-                             setEditingSessionId(null);
-                           } catch (err) {
-                             console.error('Failed to rename', err);
-                           }
-                         }}
-                       >
-                         <input 
-                           autoFocus
-                           className="flex-1 bg-white border border-border rounded px-1.5 py-0.5 text-xs text-foreground outline-none w-full"
-                           value={editingTitle}
-                           onChange={(e) => setEditingTitle(e.target.value)}
-                           onBlur={() => {
-                             // small timeout to allow form submission to happen first if it was a button click
-                             setTimeout(() => {
-                               if (editingSessionId === session.id) setEditingSessionId(null);
-                             }, 100);
-                           }}
-                         />
-                       </form>
-                     ) : (
-                       <>
-                         <button
-                           type="button"
-                           onClick={() => {
-                             setSessionId(session.id);
-                             setActiveConversationKey(session.id);
-                             setMessages(session.messages.map((stored) => ({
-                               id: stored.id,
-                               role: stored.role,
-                               content: stored.content,
-                               sources: stored.sources,
-                             })));
-                           }}
-                           className="flex flex-1 items-center gap-2.5 overflow-hidden"
-                         >
-                           <MessageSquare className="h-[14px] w-[14px] shrink-0" />
-                           <span className="truncate">{session.title ?? 'Untitled chat'}</span>
-                           {session.mode !== 'normal' && (
-                             <span className="shrink-0 rounded bg-black/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
-                               {session.mode === 'guided_learning' ? 'Guided' : 'Feynman'}
-                             </span>
-                           )}
-                         </button>
-                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                           <button 
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               setEditingSessionId(session.id);
-                               setEditingTitle(session.title ?? 'Untitled chat');
-                             }}
-                             className="p-1 hover:bg-black/10 rounded text-muted-foreground hover:text-foreground"
-                           >
-                             <Edit2 className="h-3 w-3" />
-                           </button>
-                           <button 
-                             onClick={async (e) => {
-                               e.stopPropagation();
-                               if (confirm('Delete this chat?')) {
-                                 try {
-                                   await deleteChatSession(session.id);
-                                   setSessions((current) => current.filter(s => s.id !== session.id));
-                                   if (sessionId === session.id) startNewChat();
-                                 } catch (err) {
-                                   console.error('Failed to delete', err);
-                                 }
-                               }
-                             }}
-                             className="p-1 hover:bg-red-500/10 rounded text-muted-foreground hover:text-red-500"
-                           >
-                             <Trash2 className="h-3 w-3" />
-                           </button>
-                         </div>
-                       </>
-                     )}
-                   </div>
-                 ))}
-               </div>
+              <div className="mb-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                {showActiveLearningModes ? activeModeLabel : t('chat.recentChats')}
+              </div>
+              <div className="space-y-1">
+                {sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className={`group w-full flex items-center justify-between gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${sessionId === session.id ? 'bg-black/5 text-foreground font-medium' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'}`}
+                  >
+                    {editingSessionId === session.id ? (
+                      <form
+                        className="flex flex-1 items-center gap-2"
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          try {
+                            await renameChatSession(session.id, editingTitle);
+                            setSessions((current) => current.map(s => s.id === session.id ? { ...s, title: editingTitle || 'Untitled chat' } : s));
+                            setEditingSessionId(null);
+                          } catch (err) {
+                            console.error('Failed to rename', err);
+                          }
+                        }}
+                      >
+                        <input
+                          autoFocus
+                          className="flex-1 bg-white border border-border rounded px-1.5 py-0.5 text-xs text-foreground outline-none w-full"
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onBlur={() => {
+                            // small timeout to allow form submission to happen first if it was a button click
+                            setTimeout(() => {
+                              if (editingSessionId === session.id) setEditingSessionId(null);
+                            }, 100);
+                          }}
+                        />
+                      </form>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSessionId(session.id);
+                            setActiveConversationKey(session.id);
+                            setMessages(session.messages.map((stored) => ({
+                              id: stored.id,
+                              role: stored.role,
+                              content: stored.content,
+                              sources: stored.sources,
+                            })));
+                          }}
+                          className="flex flex-1 items-center gap-2.5 overflow-hidden"
+                        >
+                          <MessageSquare className="h-[14px] w-[14px] shrink-0" />
+                          <span className="truncate">{session.title ?? 'Untitled chat'}</span>
+                          {session.mode !== 'normal' && (
+                            <span className="shrink-0 rounded bg-black/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                              {session.mode === 'guided_learning' ? 'Guided' : 'Feynman'}
+                            </span>
+                          )}
+                        </button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingSessionId(session.id);
+                              setEditingTitle(session.title ?? 'Untitled chat');
+                            }}
+                            className="p-1 hover:bg-black/10 rounded text-muted-foreground hover:text-foreground"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (confirm('Delete this chat?')) {
+                                try {
+                                  await deleteChatSession(session.id);
+                                  setSessions((current) => current.filter(s => s.id !== session.id));
+                                  if (sessionId === session.id) startNewChat();
+                                } catch (err) {
+                                  console.error('Failed to delete', err);
+                                }
+                              }
+                            }}
+                            className="p-1 hover:bg-red-500/10 rounded text-muted-foreground hover:text-red-500"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -609,7 +607,7 @@ export function ChatInterface({
                     </div>
                   </div>
                 ))}
-                
+
                 {isCurrentConversationPending && (
                   <div className="flex gap-4 p-5 rounded-2xl bg-[#F7F7F5] border border-transparent animate-pulse">
                     <div className="mt-1 shrink-0 flex items-center justify-center">
@@ -626,11 +624,11 @@ export function ChatInterface({
                 <div ref={messagesEndRef} className="h-4" />
               </div>
             )}
-            
+
             {error && (
               <div className="mt-6 rounded-lg border border-red-200 bg-red-50/50 px-4 py-3 text-sm text-red-700 flex items-start gap-3">
-                 <div className="shrink-0 mt-0.5">⚠️</div>
-                 <div>{error}</div>
+                <div className="shrink-0 mt-0.5">⚠️</div>
+                <div>{error}</div>
               </div>
             )}
           </div>
@@ -643,9 +641,8 @@ export function ChatInterface({
               <button
                 type="button"
                 onClick={() => setEnableWebSearch((value) => !value)}
-                className={`mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
-                  enableWebSearch ? 'border-black bg-black text-white' : 'border-border bg-white text-muted-foreground hover:text-foreground'
-                }`}
+                className={`mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${enableWebSearch ? 'border-black bg-black text-white' : 'border-border bg-white text-muted-foreground hover:text-foreground'
+                  }`}
                 title="Use web search"
               >
                 <Globe className="h-3.5 w-3.5" />
@@ -661,10 +658,10 @@ export function ChatInterface({
                 placeholder={inputPlaceholder}
                 style={{ minHeight: '32px' }}
               />
-              <button 
-                type="submit" 
-                disabled={isCurrentConversationPending || !message.trim() || selectedPdfIds.length === 0} 
-                className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-black hover:bg-black/80 transition-all mb-0.5 disabled:opacity-30 disabled:hover:bg-black" 
+              <button
+                type="submit"
+                disabled={isCurrentConversationPending || !message.trim() || selectedPdfIds.length === 0}
+                className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-black hover:bg-black/80 transition-all mb-0.5 disabled:opacity-30 disabled:hover:bg-black"
                 title="Send"
               >
                 <Send className="h-3.5 w-3.5 text-white" />
@@ -680,8 +677,8 @@ export function ChatInterface({
   );
 }
 
-function SourceReferences({sources}: {sources: ChatSource[]}) {
-  const {t} = useLanguage();
+function SourceReferences({ sources }: { sources: ChatSource[] }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const visibleSources = sources.slice(0, 3);
   const hiddenCount = Math.max(0, sources.length - visibleSources.length);
@@ -724,20 +721,20 @@ function SourceReferences({sources}: {sources: ChatSource[]}) {
   );
 }
 
-function SourceChip({source}: {source: ChatSource}) {
+function SourceChip({ source }: { source: ChatSource }) {
   const title = source.title
     ?? source.metadata.filename
     ?? (source.source_type === 'pdf'
       ? 'PDF'
       : source.source_type === 'chat_memory'
         ? 'Chat Memory'
-      : source.source_type === 'knowledge_graph'
-        ? 'Knowledge Graph'
-      : source.source_type === 'annotation_comment'
-        ? 'Annotation'
-        : source.source_type === 'note'
-          ? 'Note'
-          : 'Source');
+        : source.source_type === 'knowledge_graph'
+          ? 'Knowledge Graph'
+          : source.source_type === 'annotation_comment'
+            ? 'Annotation'
+            : source.source_type === 'note'
+              ? 'Note'
+              : 'Source');
   const page = source.page !== null ? `p. ${source.page}` : null;
   const sourceType = source.source_type === 'chat_memory'
     ? 'memory'
@@ -745,9 +742,9 @@ function SourceChip({source}: {source: ChatSource}) {
       ? 'graph'
       : source.source_type === 'web'
         ? 'web'
-      : source.source_type === 'general_knowledge'
-        ? 'modell'
-      : source.source_type.replace('_', ' ');
+        : source.source_type === 'general_knowledge'
+          ? 'modell'
+          : source.source_type.replace('_', ' ');
 
   return (
     <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-white px-2 text-xs text-muted-foreground shadow-sm">
@@ -770,7 +767,7 @@ function DifficultySelect({
 }: {
   value: DifficultyValue;
   onChange: (value: DifficultyValue) => void;
-  options: {value: DifficultyValue; label: string}[];
+  options: { value: DifficultyValue; label: string }[];
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
