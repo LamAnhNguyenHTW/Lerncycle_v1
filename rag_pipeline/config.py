@@ -62,6 +62,7 @@ class WorkerConfig:
     learning_graph_min_confidence: float = 0.5
     learning_graph_max_topics_per_doc: int = 30
     learning_graph_min_chunk_coverage: float = 0.35
+    learning_graph_min_topic_chars: int = 200
     web_search_enabled: bool = False
     web_search_provider: str = "tavily"
     web_search_top_k: int = 5
@@ -264,6 +265,10 @@ class WorkerConfig:
             "LEARNING_GRAPH_MIN_CHUNK_COVERAGE",
             0.35,
         )
+        learning_graph_min_topic_chars = _int_or_default(
+            "LEARNING_GRAPH_MIN_TOPIC_CHARS",
+            200,
+        )
         if not 1 <= learning_graph_max_chunks_per_group <= 50:
             raise ValueError("LEARNING_GRAPH_MAX_CHUNKS_PER_GROUP must be between 1 and 50")
         if not 0 <= learning_graph_min_confidence <= 1:
@@ -272,6 +277,8 @@ class WorkerConfig:
             raise ValueError("LEARNING_GRAPH_MAX_TOPICS_PER_DOC must be between 1 and 200")
         if not 0 <= learning_graph_min_chunk_coverage <= 1:
             raise ValueError("LEARNING_GRAPH_MIN_CHUNK_COVERAGE must be between 0 and 1")
+        if not 1 <= learning_graph_min_topic_chars <= 10000:
+            raise ValueError("LEARNING_GRAPH_MIN_TOPIC_CHARS must be between 1 and 10000")
         web_search_enabled = _optional_bool(os.getenv("WEB_SEARCH_ENABLED"), False)
         web_search_provider = os.getenv("WEB_SEARCH_PROVIDER", "tavily")
         web_search_top_k = _optional_int(os.getenv("WEB_SEARCH_TOP_K")) or 5
@@ -515,6 +522,7 @@ class WorkerConfig:
             learning_graph_min_confidence=learning_graph_min_confidence,
             learning_graph_max_topics_per_doc=learning_graph_max_topics_per_doc,
             learning_graph_min_chunk_coverage=learning_graph_min_chunk_coverage,
+            learning_graph_min_topic_chars=learning_graph_min_topic_chars,
             web_search_enabled=web_search_enabled,
             web_search_provider=web_search_provider,
             web_search_top_k=web_search_top_k,

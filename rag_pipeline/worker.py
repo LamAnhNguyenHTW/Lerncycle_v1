@@ -22,6 +22,10 @@ from rag_pipeline.learning_structure.hierarchy_builder import build_hierarchy
 from rag_pipeline.learning_structure.models import ChunkForExtraction, ExtractionReport
 from rag_pipeline.learning_structure.neo4j_store import write_learning_graph
 from rag_pipeline.learning_structure.normalizer import merge_duplicates
+from rag_pipeline.learning_structure.topic_consolidator import TopicConsolidator
+from rag_pipeline.learning_structure.topic_dedup import dedupe_topics, reattach_orphans
+from rag_pipeline.learning_structure.topic_filter import filter_candidates
+from rag_pipeline.learning_structure.topic_validator import validate_tree
 from rag_pipeline.learning_structure.validator import validate_extraction
 from rag_pipeline.models import RagChunk, SourceRef
 from rag_pipeline.qdrant_store import QdrantStore
@@ -86,6 +90,7 @@ class RagWorker:
             )
             self._graph_store = self._graph_store or create_graph_store(config)
         self._learning_extractor = LearningExtractor()
+        self._topic_consolidator = TopicConsolidator()
 
     def _get_embedder(self) -> Embedder:
         if self._embedder is None:
@@ -703,7 +708,7 @@ class RagWorker:
         successful_groups = 0
         for group in groups:
             try:
-                extraction = self._learning_extractor.extract_from_group(group)
+                extraction = self._learning_extractor.extract_from_group(group, source_id=source_id)
                 accepted, rejected = validate_extraction(extraction, group, self._config)
                 accepted_topics.extend(accepted.topics)
                 accepted_concepts.extend(accepted.concepts)
@@ -718,9 +723,37 @@ class RagWorker:
             self._mark_job_failed(str(job["id"]), "Learning graph extraction failed for all groups.")
             return
 
-        accepted_topics = merge_duplicates(accepted_topics)
+        chunk_text_by_id = {chunk.chunk_id: chunk.text for chunk in chunks}
+        document_page_count = _document_page_count(chunks)
+        accepted_topics, accepted_concepts, accepted_objectives, filter_rejections = filter_candidates(
+            accepted_topics,
+            accepted_concepts,
+            accepted_objectives,
+            {
+                "document_page_count": document_page_count,
+                "learning_graph_min_topic_chars": getattr(self._config, "learning_graph_min_topic_chars", 200),
+            },
+            chunk_text_by_id,
+        )
+        rejected_samples.extend(filter_rejections)
+        accepted_topics, merged_map = dedupe_topics(accepted_topics)
+        if merged_map:
+            rejected_samples.extend(
+                {"topic_id": merged_id, "merged_into": kept_id, "reason": "dedup_merged"}
+                for merged_id, kept_id in merged_map.items()
+            )
+        accepted_concepts, accepted_objectives = reattach_orphans(
+            accepted_concepts,
+            accepted_objectives,
+            {topic.topic_id for topic in accepted_topics},
+            merged_map,
+        )
         accepted_concepts = merge_duplicates(accepted_concepts)
         accepted_objectives = merge_duplicates(accepted_objectives)
+        consolidated_hierarchy = self._topic_consolidator.consolidate(accepted_topics)
+        consolidator_diagnostics = getattr(self._topic_consolidator, "last_diagnostics", {})
+        if consolidator_diagnostics:
+            rejected_samples.append(consolidator_diagnostics)
         tree = build_hierarchy(
             user_id,
             source_id,
@@ -728,6 +761,13 @@ class RagWorker:
             accepted_concepts,
             accepted_objectives,
             self._config,
+            consolidated_hierarchy=consolidated_hierarchy,
+        )
+        validation = validate_tree(tree, self._config)
+        tree = validation.tree
+        rejected_samples.extend(
+            {"reason": "validation_rejected", **sample}
+            for sample in validation.rejection_samples
         )
         coverage = compute_coverage(
             chunks,
@@ -1179,6 +1219,11 @@ def _qdrant_chunk_payload(
     if sparse_embedding is not None:
         payload["sparse_embedding"] = sparse_embedding
     return payload
+
+
+def _document_page_count(chunks: list[ChunkForExtraction]) -> int | None:
+    pages = [chunk.page_index for chunk in chunks if chunk.page_index is not None]
+    return (max(pages) + 1) if pages else None
 
 
 def main() -> None:

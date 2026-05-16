@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from rag_pipeline.learning_structure.ids import make_extracted_topic_id
 from rag_pipeline.learning_structure.models import (
     ChunkGroup,
     ExtractedConcept,
@@ -18,12 +19,19 @@ from rag_pipeline.llm_client import OpenAILlmClient
 
 
 LEARNING_EXTRACTION_SYSTEM_PROMPT = (
-    "Extract a hierarchical learning structure from the provided chunks. Return strict "
-    "JSON only with keys topics, concepts, and objectives. Use no outside knowledge. "
-    "Every item must cite chunk_ids from the provided group. Topics require title, "
-    "level, chunk_ids, and confidence. Concepts require name, topic_title, chunk_ids, "
-    "difficulty, and confidence. Objectives require objective, topic_title, bloom_level, "
-    "chunk_ids, and confidence. Do not include markdown."
+    "Extract a hierarchical learning structure from the provided chunks. A learning "
+    "topic is a teachable concept or theme of the material, not a slide-deck heading "
+    "or presentation artifact. Return strict JSON only with keys topics, concepts, "
+    "and objectives. Use no outside knowledge. Every item must cite chunk_ids from "
+    "the provided group. Topics require title, summary, level, chunk_ids, and "
+    "confidence, and local_topic_ref such as t1 or t2. Every concept and objective "
+    "must include the local_topic_ref of its topic. The summary must be 2-4 "
+    "sentences explaining what the topic teaches, not a restatement of the title. "
+    "Collapse multiple slides about the same concept into one topic. Exclude slide-deck meta such as Agenda, Themen, "
+    "Gliederung, Inhaltsverzeichnis, Outline, Recap, Vielen Dank, Danke, Fragen, "
+    "Q&A, Kontakt, Ueber mich, and Disclaimer. Concepts require name, topic_title, "
+    "chunk_ids, difficulty, and confidence. Objectives require objective, topic_title, "
+    "bloom_level, chunk_ids, and confidence. Do not include markdown."
 )
 
 
@@ -45,7 +53,7 @@ class _LlmTopic(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     title: str
-    summary: str = ""
+    summary: str = Field(min_length=40)
     level: int = Field(ge=1)
     parent_title: str | None = None
     chunk_ids: list[str] = Field(min_length=1)
@@ -73,6 +81,7 @@ class LearningExtractor:
         group: ChunkGroup,
         *,
         llm_client: Any = None,
+        source_id: str = "unknown-source",
     ) -> LearningExtraction:
         """Extract learning topics, concepts, and objectives from one group."""
         if not group.chunks:
@@ -85,16 +94,17 @@ class LearningExtractor:
                 user_prompt=_build_prompt(group),
             )
             payload = json.loads(_strip_json_fence(raw))
-            llm_extraction = _LlmExtraction.model_validate(_coerce_payload(payload, group))
+            llm_extraction = _LlmExtraction.model_validate(_coerce_payload(payload, group, source_id))
             return LearningExtraction(
                 topics=[
                     ExtractedTopic(
                         **topic.model_dump(),
+                        topic_id=make_extracted_topic_id(source_id, group.group_id, index),
                         group_id=group.group_id,
                         heading_path=group.heading_path,
                         order_hint=group.order_hint,
                     )
-                    for topic in llm_extraction.topics
+                    for index, topic in enumerate(llm_extraction.topics)
                 ],
                 concepts=llm_extraction.concepts,
                 objectives=llm_extraction.objectives,
@@ -130,27 +140,34 @@ def _build_prompt(group: ChunkGroup) -> str:
     )
 
 
-def _coerce_payload(payload: Any, group: ChunkGroup) -> dict[str, Any]:
+def _coerce_payload(payload: Any, group: ChunkGroup, source_id: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
 
     chunk_ids = [chunk.chunk_id for chunk in group.chunks]
     default_topic = _default_topic_title(payload, group)
+    topics: list[dict[str, Any]] = []
+    local_topic_refs: dict[str, str] = {}
+    for item in _as_list(payload.get("topics")):
+        topic = _coerce_topic(item, group, chunk_ids)
+        if topic is None:
+            continue
+        if isinstance(item, dict):
+            local_ref = _first_text(item, "local_topic_ref")
+            if local_ref:
+                local_topic_refs[local_ref] = make_extracted_topic_id(source_id, group.group_id, len(topics))
+        topics.append(topic)
     return {
-        "topics": [
-            topic
-            for item in _as_list(payload.get("topics"))
-            if (topic := _coerce_topic(item, group, chunk_ids)) is not None
-        ],
+        "topics": topics,
         "concepts": [
             concept
             for item in _as_list(payload.get("concepts"))
-            if (concept := _coerce_concept(item, default_topic, chunk_ids)) is not None
+            if (concept := _coerce_concept(item, default_topic, chunk_ids, local_topic_refs)) is not None
         ],
         "objectives": [
             objective
             for item in _as_list(payload.get("objectives"))
-            if (objective := _coerce_objective(item, default_topic, chunk_ids)) is not None
+            if (objective := _coerce_objective(item, default_topic, chunk_ids, local_topic_refs)) is not None
         ],
     }
 
@@ -175,9 +192,13 @@ def _coerce_topic(
     if not isinstance(level, int) or level < 1:
         level = max(1, len(group.heading_path))
 
+    summary = _first_text(data, "summary", "description", "explanation")
+    if summary is None or len(summary) < 40:
+        return None
+
     return {
         "title": title,
-        "summary": _first_text(data, "summary", "description", "explanation") or "",
+        "summary": summary,
         "level": level,
         "parent_title": _first_text(data, "parent_title", "parent"),
         "chunk_ids": _coerce_chunk_ids(data, group_chunk_ids),
@@ -191,6 +212,7 @@ def _coerce_concept(
     item: Any,
     default_topic: str,
     group_chunk_ids: list[str],
+    local_topic_refs: dict[str, str],
 ) -> dict[str, Any] | None:
     if isinstance(item, str):
         data: dict[str, Any] = {"name": item}
@@ -207,10 +229,14 @@ def _coerce_concept(
     if difficulty not in {"easy", "medium", "hard"}:
         difficulty = "medium"
     definition = _first_text(data, "definition", "description") or ""
+    topic_id = _topic_id_from_local_ref(data, local_topic_refs)
+    if "local_topic_ref" in data and topic_id is None:
+        return None
     return {
         "name": name,
         "definition": definition,
         "explanation": _first_text(data, "explanation", "description") or definition,
+        "topic_id": topic_id,
         "topic_title": _first_text(data, "topic_title", "topic", "parent_title") or default_topic,
         "chunk_ids": _coerce_chunk_ids(data, group_chunk_ids),
         "difficulty": difficulty,
@@ -222,6 +248,7 @@ def _coerce_objective(
     item: Any,
     default_topic: str,
     group_chunk_ids: list[str],
+    local_topic_refs: dict[str, str],
 ) -> dict[str, Any] | None:
     if isinstance(item, str):
         data: dict[str, Any] = {"objective": item}
@@ -237,8 +264,12 @@ def _coerce_objective(
     bloom_level = data.get("bloom_level")
     if bloom_level not in {"remember", "understand", "apply", "analyze", "evaluate", "create"}:
         bloom_level = "understand"
+    topic_id = _topic_id_from_local_ref(data, local_topic_refs)
+    if "local_topic_ref" in data and topic_id is None:
+        return None
     return {
         "objective": objective,
+        "topic_id": topic_id,
         "topic_title": _first_text(data, "topic_title", "topic", "parent_title") or default_topic,
         "bloom_level": bloom_level,
         "chunk_ids": _coerce_chunk_ids(data, group_chunk_ids),
@@ -257,6 +288,13 @@ def _default_topic_title(payload: dict[str, Any], group: ChunkGroup) -> str:
     if group.heading_path:
         return group.heading_path[-1]
     return "Learning Topic"
+
+
+def _topic_id_from_local_ref(data: dict[str, Any], local_topic_refs: dict[str, str]) -> str | None:
+    local_ref = _first_text(data, "local_topic_ref")
+    if not local_ref:
+        return None
+    return local_topic_refs.get(local_ref)
 
 
 def _as_list(value: Any) -> list[Any]:

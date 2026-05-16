@@ -35,8 +35,9 @@ class ChunkGroup(_StrictModel):
 class ExtractedTopic(_StrictModel):
     """One validated topic extracted from a chunk group."""
 
+    topic_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
-    summary: str = ""
+    summary: str = Field(min_length=40)
     level: int = Field(ge=1)
     parent_title: str | None = None
     chunk_ids: list[str] = Field(min_length=1)
@@ -46,6 +47,7 @@ class ExtractedTopic(_StrictModel):
     group_id: str = Field(min_length=1)
     heading_path: list[str] = Field(default_factory=list)
     order_hint: int | None = None
+    merged_from: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _page_range_is_ordered(self) -> "ExtractedTopic":
@@ -60,6 +62,7 @@ class ExtractedConcept(_StrictModel):
     name: str = Field(min_length=1)
     definition: str = ""
     explanation: str = ""
+    topic_id: str | None = None
     topic_title: str = Field(min_length=1)
     chunk_ids: list[str] = Field(min_length=1)
     difficulty: Literal["easy", "medium", "hard"]
@@ -70,6 +73,7 @@ class ExtractedLearningObjective(_StrictModel):
     """One learning objective attached to an extracted topic."""
 
     objective: str = Field(min_length=1)
+    topic_id: str | None = None
     topic_title: str = Field(min_length=1)
     bloom_level: Literal["remember", "understand", "apply", "analyze", "evaluate", "create"]
     chunk_ids: list[str] = Field(min_length=1)
@@ -103,6 +107,29 @@ class ExtractionReport(_StrictModel):
                 sample = {"truncated": text[:470]}
             capped.append(sample if isinstance(sample, dict) else {"value": str(sample)[:500]})
         return capped
+
+
+class ConsolidatedSubtopic(_StrictModel):
+    """One document-level subtopic produced by consolidation."""
+
+    title: str = Field(min_length=1)
+    summary: str = Field(min_length=40)
+    source_topic_ids: list[str] = Field(min_length=1)
+
+
+class ConsolidatedMainTopic(_StrictModel):
+    """One document-level main topic produced by consolidation."""
+
+    title: str = Field(min_length=1)
+    summary: str = Field(min_length=40)
+    source_topic_ids: list[str] = Field(default_factory=list)
+    subtopics: list[ConsolidatedSubtopic] = Field(default_factory=list)
+
+
+class ConsolidatedHierarchy(_StrictModel):
+    """Document-level main-topic to subtopic hierarchy."""
+
+    main_topics: list[ConsolidatedMainTopic] = Field(default_factory=list)
 
 
 class LearningTreeNode(_StrictModel):

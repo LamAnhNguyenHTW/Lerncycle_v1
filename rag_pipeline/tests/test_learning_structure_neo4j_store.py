@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from rag_pipeline.learning_structure.models import ChunkForExtraction, LearningTreeNode
-from rag_pipeline.learning_structure.neo4j_store import ensure_constraints, write_learning_graph
+import pytest
+
+from rag_pipeline.learning_structure.neo4j_store import LearningGraphValidationError, ensure_constraints, write_learning_graph
 
 
 class FakeSession:
@@ -50,7 +52,7 @@ def _tree() -> LearningTreeNode:
         id="topic-1",
         label="Process Mining",
         type="topic",
-        summary="Summary",
+        summary="Process mining teaches how event data supports discovery and improvement of process behavior.",
         page_start=1,
         page_end=1,
         confidence=0.9,
@@ -128,6 +130,50 @@ def test_write_learning_graph_tags_relationships_and_requires_evidence() -> None
     assert "graph_scope: 'learning_structure'" in joined
     node_payloads = [params.get("node") for _, params in driver.calls if params.get("node")]
     assert all(payload["chunk_ids"] for payload in node_payloads)
+    topic_payloads = [payload for payload in node_payloads if payload["title"]]
+    assert topic_payloads[0]["level"] == "topic"
+
+
+def test_write_learning_graph_sets_subtopic_level() -> None:
+    driver = FakeDriver()
+    tree = _tree()
+    subtopic = LearningTreeNode(
+        id="subtopic-1",
+        label="Event Logs",
+        type="subtopic",
+        summary="Event logs teach how recorded process events become evidence for process mining analysis.",
+        confidence=0.8,
+        chunk_ids=["chunk-1"],
+        children=[],
+    )
+    tree.children[0].children.insert(0, subtopic)
+
+    write_learning_graph("user-1", {"source_id": "source-1", "source_type": "pdf", "title": "Doc"}, tree, _chunks(), driver=driver)
+
+    topic_payloads = [params["node"] for _, params in driver.calls if params.get("node", {}).get("title")]
+    assert [payload["level"] for payload in topic_payloads] == ["topic", "subtopic"]
+
+
+def test_write_learning_graph_rejects_invalid_tree_before_mutation() -> None:
+    driver = FakeDriver()
+    tree = _tree()
+    tree.children[0] = tree.children[0].model_copy(update={"chunk_ids": []})
+
+    with pytest.raises(LearningGraphValidationError):
+        write_learning_graph("user-1", {"source_id": "source-1", "source_type": "pdf", "title": "Doc"}, tree, _chunks(), driver=driver)
+
+    assert driver.calls == []
+
+
+def test_write_learning_graph_rejects_shape_level_mismatch_before_mutation() -> None:
+    driver = FakeDriver()
+    tree = _tree()
+    tree.children[0] = tree.children[0].model_copy(update={"type": "subtopic"})
+
+    with pytest.raises(LearningGraphValidationError):
+        write_learning_graph("user-1", {"source_id": "source-1", "source_type": "pdf", "title": "Doc"}, tree, _chunks(), driver=driver)
+
+    assert driver.calls == []
 
 
 def test_write_learning_graph_is_statement_idempotent_for_same_input() -> None:
@@ -138,4 +184,17 @@ def test_write_learning_graph_is_statement_idempotent_for_same_input() -> None:
     write_learning_graph(*args, driver=first)
     write_learning_graph(*args, driver=second)
 
-    assert first.calls == second.calls
+    assert _without_updated_at(first.calls) == _without_updated_at(second.calls)
+
+
+def _without_updated_at(calls):
+    normalized = []
+    for statement, params in calls:
+        params = dict(params)
+        params.pop("updated_at", None)
+        if isinstance(params.get("node"), dict):
+            node = dict(params["node"])
+            node.pop("updated_at", None)
+            params["node"] = node
+        normalized.append((statement, params))
+    return normalized

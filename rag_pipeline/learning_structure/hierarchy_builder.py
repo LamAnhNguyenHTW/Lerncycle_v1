@@ -11,6 +11,9 @@ from rag_pipeline.learning_structure.ids import (
     make_topic_id,
 )
 from rag_pipeline.learning_structure.models import (
+    ConsolidatedHierarchy,
+    ConsolidatedMainTopic,
+    ConsolidatedSubtopic,
     ExtractedConcept,
     ExtractedLearningObjective,
     ExtractedTopic,
@@ -38,8 +41,12 @@ def build_hierarchy(
     concepts: list[ExtractedConcept],
     objectives: list[ExtractedLearningObjective],
     config: Any,
+    consolidated_hierarchy: ConsolidatedHierarchy | None = None,
 ) -> LearningTreeNode:
     """Build a document-rooted hierarchy from validated learning items."""
+    if consolidated_hierarchy is not None:
+        return _build_consolidated_hierarchy(user_id, source_id, topics, consolidated_hierarchy)
+
     topic_nodes = [_make_topic_node(user_id, source_id, topic) for topic in topics]
     by_title = {node.normalized_title: node for node in topic_nodes}
 
@@ -69,6 +76,109 @@ def build_hierarchy(
         chunk_ids=[],
         children=[_to_tree_node(user_id, source_id, root, is_root=True) for root in roots],
     )
+
+
+def _build_consolidated_hierarchy(
+    user_id: str,
+    source_id: str,
+    topics: list[ExtractedTopic],
+    hierarchy: ConsolidatedHierarchy,
+) -> LearningTreeNode:
+    by_id = {topic.topic_id: topic for topic in topics}
+    children = [
+        _consolidated_main_node(user_id, source_id, main_topic, by_id, index)
+        for index, main_topic in enumerate(hierarchy.main_topics)
+    ]
+    return LearningTreeNode(
+        id=f"document:{source_id}",
+        label="Document",
+        type="document",
+        chunk_ids=[],
+        children=children,
+    )
+
+
+def _consolidated_main_node(
+    user_id: str,
+    source_id: str,
+    main_topic: ConsolidatedMainTopic,
+    by_id: dict[str, ExtractedTopic],
+    order_index: int,
+) -> LearningTreeNode:
+    subtopics = [
+        _consolidated_subtopic_node(user_id, source_id, subtopic, by_id, index)
+        for index, subtopic in enumerate(main_topic.subtopics)
+    ]
+    own_topics = _topics_for_ids(main_topic.source_topic_ids, by_id)
+    descendant_topics = [
+        topic
+        for subtopic in main_topic.subtopics
+        for topic in _topics_for_ids(subtopic.source_topic_ids, by_id)
+    ]
+    evidence_topics = [*own_topics, *descendant_topics]
+    return LearningTreeNode(
+        id=make_topic_id(user_id, source_id, normalize_title(main_topic.title), 1, _min_page(topic.page_start for topic in evidence_topics)),
+        label=main_topic.title,
+        type="topic",
+        summary=main_topic.summary,
+        page_start=_min_page(topic.page_start for topic in evidence_topics),
+        page_end=_max_page(topic.page_end for topic in evidence_topics),
+        confidence=_max_confidence(evidence_topics),
+        order_index=order_index,
+        chunk_ids=_union_chunks(topic.chunk_ids for topic in evidence_topics),
+        children=subtopics,
+    )
+
+
+def _consolidated_subtopic_node(
+    user_id: str,
+    source_id: str,
+    subtopic: ConsolidatedSubtopic,
+    by_id: dict[str, ExtractedTopic],
+    order_index: int,
+) -> LearningTreeNode:
+    evidence_topics = _topics_for_ids(subtopic.source_topic_ids, by_id)
+    return LearningTreeNode(
+        id=make_topic_id(user_id, source_id, normalize_title(subtopic.title), 2, _min_page(topic.page_start for topic in evidence_topics)),
+        label=subtopic.title,
+        type="subtopic",
+        summary=subtopic.summary,
+        page_start=_min_page(topic.page_start for topic in evidence_topics),
+        page_end=_max_page(topic.page_end for topic in evidence_topics),
+        confidence=_max_confidence(evidence_topics),
+        order_index=order_index,
+        chunk_ids=_union_chunks(topic.chunk_ids for topic in evidence_topics),
+        children=[],
+    )
+
+
+def _topics_for_ids(topic_ids: list[str], by_id: dict[str, ExtractedTopic]) -> list[ExtractedTopic]:
+    return [by_id[topic_id] for topic_id in topic_ids if topic_id in by_id]
+
+
+def _union_chunks(chunks: object) -> list[str]:
+    seen: set[str] = set()
+    union: list[str] = []
+    for chunk_ids in chunks:
+        for chunk_id in chunk_ids:
+            if chunk_id not in seen:
+                seen.add(chunk_id)
+                union.append(chunk_id)
+    return union
+
+
+def _min_page(pages: object) -> int | None:
+    values = [page for page in pages if page is not None]
+    return min(values) if values else None
+
+
+def _max_page(pages: object) -> int | None:
+    values = [page for page in pages if page is not None]
+    return max(values) if values else None
+
+
+def _max_confidence(topics: list[ExtractedTopic]) -> float | None:
+    return max((topic.confidence for topic in topics), default=None)
 
 
 def _make_topic_node(user_id: str, source_id: str, topic: ExtractedTopic) -> _TopicNode:

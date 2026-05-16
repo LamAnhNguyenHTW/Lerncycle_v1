@@ -17,6 +17,8 @@ type LearningTreeNode = {
 };
 
 import {MindmapCanvas} from './MindmapCanvas';
+import {MindmapOutline} from './MindmapOutline';
+import {LayoutGrid, ListTree} from 'lucide-react';
 
 interface Props {
   pdfOptions: PdfOption[];
@@ -28,6 +30,8 @@ export function MindmapTab({pdfOptions}: Props) {
   const [tree, setTree] = useState<LearningTreeNode | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [viewMode, setViewMode] = useState<'canvas' | 'outline'>('outline');
 
   useEffect(() => {
     if (!selectedPdfId) {
@@ -69,20 +73,41 @@ export function MindmapTab({pdfOptions}: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <label className="text-sm font-medium text-muted-foreground shrink-0">{t('revision.mindmap.selectPdf')}</label>
-        <select
-          value={selectedPdfId ?? ''}
-          onChange={(e) => setSelectedPdfId(e.target.value || null)}
-          className="w-full max-w-md h-10 rounded-md border border-input bg-background px-3 text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-colors shadow-sm cursor-pointer"
-        >
-          <option value="">—</option>
-          {pdfOptions.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.folderName ? `${opt.folderName} / ` : ''}{opt.name}
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <label className="text-sm font-medium text-muted-foreground shrink-0">{t('revision.mindmap.selectPdf')}</label>
+          <select
+            value={selectedPdfId ?? ''}
+            onChange={(e) => setSelectedPdfId(e.target.value || null)}
+            className="w-full sm:w-64 h-10 rounded-md border border-input bg-background px-3 text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-colors shadow-sm cursor-pointer"
+          >
+            <option value="">—</option>
+            {pdfOptions.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.folderName ? `${opt.folderName} / ` : ''}{opt.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {tree && (
+          <div className="flex items-center bg-muted/50 p-1 rounded-lg border border-border shrink-0 self-start sm:self-auto">
+            <button
+              onClick={() => setViewMode('canvas')}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'canvas' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Canvas
+            </button>
+            <button
+              onClick={() => setViewMode('outline')}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'outline' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <ListTree className="w-4 h-4" />
+              Outline
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="pt-2">
@@ -111,7 +136,11 @@ export function MindmapTab({pdfOptions}: Props) {
 
         {tree && (
           <div className="mt-4">
-            <MindmapCanvas tree={tree} />
+            {viewMode === 'canvas' ? (
+              <MindmapCanvas tree={tree} />
+            ) : (
+              <MindmapOutline tree={tree} />
+            )}
           </div>
         )}
       </div>

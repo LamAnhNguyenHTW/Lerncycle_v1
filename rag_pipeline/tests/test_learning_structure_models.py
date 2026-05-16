@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from rag_pipeline.learning_structure.ids import (
     make_concept_id,
     make_objective_id,
+    make_extracted_topic_id,
     make_topic_id,
 )
 from rag_pipeline.learning_structure.models import (
@@ -15,6 +16,9 @@ from rag_pipeline.learning_structure.models import (
     ExtractedLearningObjective,
     ExtractedTopic,
     ExtractionReport,
+    ConsolidatedHierarchy,
+    ConsolidatedMainTopic,
+    ConsolidatedSubtopic,
     LearningTreeNode,
 )
 
@@ -29,6 +33,54 @@ def test_learning_structure_ids_are_deterministic_and_sensitive() -> None:
     objective = make_objective_id("user", "source", first, "explain event logs")
     assert concept == make_concept_id("user", "source", first, "event log")
     assert concept != objective
+
+
+def test_extracted_topic_id_is_deterministic_and_sensitive() -> None:
+    first = make_extracted_topic_id("source", "group-1", 0)
+
+    assert first == make_extracted_topic_id("source", "group-1", 0)
+    assert first != make_extracted_topic_id("source", "group-1", 1)
+    assert first != make_extracted_topic_id("source", "group-2", 0)
+    assert len(first) == 40
+
+
+def test_extracted_topic_requires_topic_id() -> None:
+    with pytest.raises(ValidationError):
+        ExtractedTopic(
+            title="Process Mining",
+            summary="A field for analyzing event data.",
+            level=1,
+            parent_title=None,
+            chunk_ids=["chunk-1"],
+            page_start=2,
+            page_end=2,
+            confidence=0.9,
+            group_id="group-1",
+            heading_path=["Process Mining"],
+            order_hint=1,
+        )
+
+
+def test_extracted_topic_requires_non_trivial_summary() -> None:
+    base = {
+        "topic_id": make_extracted_topic_id("source", "group-1", 0),
+        "title": "Process Mining",
+        "level": 1,
+        "parent_title": None,
+        "chunk_ids": ["chunk-1"],
+        "page_start": 2,
+        "page_end": 2,
+        "confidence": 0.9,
+        "group_id": "group-1",
+        "heading_path": ["Process Mining"],
+        "order_hint": 1,
+    }
+
+    with pytest.raises(ValidationError):
+        ExtractedTopic(summary="", **base)
+
+    with pytest.raises(ValidationError):
+        ExtractedTopic(summary="Too short.", **base)
 
 
 def test_learning_structure_models_accept_valid_payloads() -> None:
@@ -48,8 +100,9 @@ def test_learning_structure_models_accept_valid_payloads() -> None:
         order_hint=1,
     )
     topic = ExtractedTopic(
+        topic_id=make_extracted_topic_id("source", group.group_id, 0),
         title="Process Mining",
-        summary="A field for analyzing event data.",
+        summary="Process mining teaches how event data can be analyzed to discover and improve processes.",
         level=1,
         parent_title=None,
         chunk_ids=["chunk-1"],
@@ -97,8 +150,9 @@ def test_learning_structure_models_accept_valid_payloads() -> None:
 def test_models_validate_confidence_and_enum_values() -> None:
     with pytest.raises(ValidationError):
         ExtractedTopic(
+            topic_id=make_extracted_topic_id("source", "group", 0),
             title="X",
-            summary="Y",
+            summary="Too short.",
             level=1,
             parent_title=None,
             chunk_ids=["chunk-1"],
@@ -108,6 +162,43 @@ def test_models_validate_confidence_and_enum_values() -> None:
             group_id="group",
             heading_path=[],
             order_hint=None,
+        )
+
+
+def test_consolidated_hierarchy_models_are_id_based() -> None:
+    subtopic = ConsolidatedSubtopic(
+        title="Event Logs",
+        summary="Event logs teach how process executions are captured as evidence for later analysis.",
+        source_topic_ids=["topic-2"],
+    )
+    main = ConsolidatedMainTopic(
+        title="Process Mining Foundations",
+        summary="Process mining foundations teach the core inputs and goals needed to analyze process behavior.",
+        source_topic_ids=["topic-1"],
+        subtopics=[subtopic],
+    )
+    hierarchy = ConsolidatedHierarchy(main_topics=[main])
+
+    assert hierarchy.main_topics[0].subtopics[0].source_topic_ids == ["topic-2"]
+    with pytest.raises(ValidationError):
+        ConsolidatedSubtopic(
+            title="Invalid",
+            summary="This summary is long enough but lacks any source topic identifier.",
+            source_topic_ids=[],
+        )
+    with pytest.raises(ValidationError):
+        ConsolidatedMainTopic(
+            title="Invalid",
+            summary="Too short.",
+            source_topic_ids=["topic-1"],
+            subtopics=[],
+        )
+    with pytest.raises(ValidationError):
+        ConsolidatedSubtopic(
+            title="Invalid",
+            summary="This summary is long enough for validation and should reject source titles.",
+            source_topic_ids=["topic-1"],
+            source_titles=["Process Mining"],
         )
     with pytest.raises(ValidationError):
         ExtractedConcept(

@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rag_pipeline.learning_structure.hierarchy_builder import build_hierarchy
+from rag_pipeline.learning_structure.ids import make_extracted_topic_id
 from rag_pipeline.learning_structure.models import (
+    ConsolidatedHierarchy,
+    ConsolidatedMainTopic,
+    ConsolidatedSubtopic,
     ExtractedConcept,
     ExtractedLearningObjective,
     ExtractedTopic,
@@ -17,8 +21,9 @@ class HierarchyConfig:
 
 def _topic(title: str, **overrides) -> ExtractedTopic:
     data = {
+        "topic_id": make_extracted_topic_id("source", "group", sum(ord(char) for char in title)),
         "title": title,
-        "summary": f"Summary {title}",
+        "summary": f"{title} teaches the learner a substantive concept from the document with concrete evidence.",
         "level": 1,
         "parent_title": None,
         "chunk_ids": [f"chunk-{title.lower().replace(' ', '-')}"],
@@ -146,3 +151,57 @@ def test_max_topics_per_doc_drops_lowest_ranked_top_level_subtree() -> None:
 
     assert [node.label for node in tree.children] == ["Keep"]
     assert "Only Dropped" not in str(tree.model_dump())
+
+
+def test_consolidated_hierarchy_main_topic_inherits_descendant_evidence() -> None:
+    own = _topic("Own", chunk_ids=["c1"], page_start=3, page_end=3)
+    child = _topic("Child", chunk_ids=["c2"], page_start=5, page_end=6)
+    hierarchy = ConsolidatedHierarchy(
+        main_topics=[
+            ConsolidatedMainTopic(
+                title="Main",
+                summary="Main teaches a consolidated area that includes its own evidence and child evidence.",
+                source_topic_ids=[own.topic_id],
+                subtopics=[
+                    ConsolidatedSubtopic(
+                        title="Sub",
+                        summary="Sub teaches a narrower area backed only by its selected source topic.",
+                        source_topic_ids=[child.topic_id],
+                    )
+                ],
+            )
+        ]
+    )
+
+    tree = build_hierarchy("user", "source", [own, child], [], [], HierarchyConfig(), consolidated_hierarchy=hierarchy)
+
+    main = tree.children[0]
+    sub = main.children[0]
+    assert main.chunk_ids == ["c1", "c2"]
+    assert main.page_start == 3
+    assert main.page_end == 6
+    assert sub.chunk_ids == ["c2"]
+
+
+def test_consolidated_container_main_topic_inherits_subtopic_evidence() -> None:
+    child = _topic("Child", chunk_ids=["c2"], page_start=5, page_end=6)
+    hierarchy = ConsolidatedHierarchy(
+        main_topics=[
+            ConsolidatedMainTopic(
+                title="Main",
+                summary="Main teaches a consolidated area whose evidence comes from surviving subtopics.",
+                source_topic_ids=[],
+                subtopics=[
+                    ConsolidatedSubtopic(
+                        title="Sub",
+                        summary="Sub teaches a narrower area backed by its selected source topic.",
+                        source_topic_ids=[child.topic_id],
+                    )
+                ],
+            )
+        ]
+    )
+
+    tree = build_hierarchy("user", "source", [child], [], [], HierarchyConfig(), consolidated_hierarchy=hierarchy)
+
+    assert tree.children[0].chunk_ids == ["c2"]

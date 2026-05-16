@@ -10,6 +10,28 @@ from rag_pipeline.learning_structure.normalizer import normalize_title
 
 
 GRAPH_SCOPE = "learning_structure"
+_HARD_ARTIFACT_TITLES = {
+    "agenda",
+    "themen",
+    "gliederung",
+    "inhaltsverzeichnis",
+    "outline",
+    "recap",
+    "vielen dank",
+    "danke",
+    "fragen",
+    "q a",
+    "kontakt",
+    "ueber mich",
+    "uber mich",
+    "über mich",
+    "about",
+    "disclaimer",
+}
+
+
+class LearningGraphValidationError(ValueError):
+    """Raised when invalid final learning-tree data reaches the Neo4j sink."""
 
 
 def ensure_constraints(driver: Any, database: str | None = None) -> None:
@@ -38,6 +60,7 @@ def write_learning_graph(
     source_id = str(document_meta["source_id"])
     source_type = str(document_meta.get("source_type") or "pdf")
     base = {"user_id": user_id, "source_id": source_id, "source_type": source_type}
+    _validate_tree_for_write(tree)
     _delete_existing_learning_layer(driver, base, database)
     _merge_document(driver, document_meta, base, database)
     _merge_chunks(driver, chunks, base, database)
@@ -231,6 +254,7 @@ def _node_payload(node: LearningTreeNode, base: dict[str, str]) -> dict[str, Any
         "objective": node.label if node.type == "objective" else None,
         "normalized_objective": normalize_title(node.label) if node.type == "objective" else None,
         "summary": node.summary,
+        "level": _topic_level(node) if node.type in {"topic", "subtopic"} else None,
         "page_start": node.page_start,
         "page_end": node.page_end,
         "confidence": node.confidence,
@@ -242,6 +266,40 @@ def _node_payload(node: LearningTreeNode, base: dict[str, str]) -> dict[str, Any
         "graph_scope": GRAPH_SCOPE,
         "updated_at": _utc_now(),
     }
+
+
+def _validate_tree_for_write(tree: LearningTreeNode) -> None:
+    if tree.type != "document":
+        raise LearningGraphValidationError("Learning graph root must be a document node")
+    for child in tree.children:
+        _validate_node_for_write(child, parent=None)
+
+
+def _validate_node_for_write(node: LearningTreeNode, parent: LearningTreeNode | None) -> None:
+    if node.type in {"topic", "subtopic"}:
+        expected_type = "topic" if parent is None or parent.type == "document" else "subtopic"
+        if node.type != expected_type:
+            raise LearningGraphValidationError(f"Learning topic level mismatch for node {node.id}")
+        if not node.chunk_ids:
+            raise LearningGraphValidationError(f"Learning topic lacks chunk evidence: {node.id}")
+        if not node.summary or len(node.summary.strip()) < 40:
+            raise LearningGraphValidationError(f"Learning topic lacks non-trivial summary: {node.id}")
+        if normalize_title(node.label) in _HARD_ARTIFACT_TITLES:
+            raise LearningGraphValidationError(f"Learning topic title is denied: {node.label}")
+    elif node.type in {"concept", "objective"}:
+        if not node.chunk_ids:
+            raise LearningGraphValidationError(f"Learning leaf lacks chunk evidence: {node.id}")
+        if parent is None or parent.type not in {"topic", "subtopic"}:
+            raise LearningGraphValidationError(f"Learning leaf lacks topic parent: {node.id}")
+    elif node.type != "document":
+        raise LearningGraphValidationError(f"Unsupported learning node type: {node.type}")
+
+    for child in node.children:
+        _validate_node_for_write(child, parent=node)
+
+
+def _topic_level(node: LearningTreeNode) -> str:
+    return "topic" if node.type == "topic" else "subtopic"
 
 
 def _run(

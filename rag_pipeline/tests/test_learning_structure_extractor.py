@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from rag_pipeline.learning_structure.extractor import LearningExtractionError, LearningExtractor
+from rag_pipeline.learning_structure.extractor import (
+    LEARNING_EXTRACTION_SYSTEM_PROMPT,
+    LearningExtractionError,
+    LearningExtractor,
+)
 from rag_pipeline.learning_structure.models import ChunkForExtraction, ChunkGroup
 
 
@@ -39,7 +43,7 @@ def _group(chunks: list[ChunkForExtraction] | None = None) -> ChunkGroup:
 
 def _payload(chunk_id: str = "chunk-1") -> str:
     return (
-        '{"topics":[{"title":"Process Mining","summary":"Analyzes process data",'
+        '{"topics":[{"title":"Process Mining","summary":"Process mining teaches how event data is used to discover and analyze real process behavior.",'
         '"level":1,"parent_title":null,"chunk_ids":["'
         + chunk_id
         + '"],"page_start":1,"page_end":1,"confidence":0.9}],'
@@ -61,6 +65,8 @@ def test_learning_extractor_extracts_and_enriches_topics() -> None:
     extraction = LearningExtractor().extract_from_group(_group(), llm_client=llm)
 
     assert extraction.topics[0].title == "Process Mining"
+    assert extraction.topics[0].topic_id
+    assert extraction.topics[0].topic_id == LearningExtractor().extract_from_group(_group(), llm_client=FakeLlm(_payload())).topics[0].topic_id
     assert extraction.topics[0].group_id == "group-1"
     assert extraction.topics[0].heading_path == ["Process Mining"]
     assert extraction.topics[0].order_hint == 7
@@ -68,6 +74,19 @@ def test_learning_extractor_extracts_and_enriches_topics() -> None:
     assert extraction.objectives[0].objective == "Explain event logs"
     assert "chunk-1" in llm.calls[0]["user_prompt"]
     assert "no outside knowledge" in llm.calls[0]["system_prompt"].lower()
+
+
+def test_learning_extraction_prompt_defines_topics_and_excludes_slide_meta() -> None:
+    prompt = LEARNING_EXTRACTION_SYSTEM_PROMPT.lower()
+
+    assert "learning topic" in prompt
+    assert "teachable concept" in prompt
+    for keyword in ("agenda", "themen", "vielen dank", "fragen", "kontakt"):
+        assert keyword in prompt
+    assert "2-4 sentences" in prompt
+    assert "what the topic teaches" in prompt
+    assert "quellen" not in prompt
+    assert "literatur" not in prompt
 
 
 def test_learning_extractor_strips_json_fences() -> None:
@@ -105,12 +124,35 @@ def test_learning_extractor_coerces_common_llm_schema_variants() -> None:
         llm_client=FakeLlm(response),
     )
 
-    assert extraction.topics[0].title == "Process Mining"
-    assert extraction.topics[0].chunk_ids == ["chunk-1"]
+    assert extraction.topics == []
     assert extraction.concepts[0].topic_title == "Process Mining"
     assert extraction.concepts[0].chunk_ids == ["chunk-1"]
     assert extraction.objectives[0].objective == "Explain event logs"
     assert extraction.objectives[0].chunk_ids == ["chunk-1"]
+
+
+def test_learning_extractor_attaches_items_by_local_topic_ref_and_drops_dangling_refs() -> None:
+    response = (
+        '{"topics":[{"local_topic_ref":"t1","title":"Process Mining",'
+        '"summary":"Process mining teaches how event data is used to discover and analyze real process behavior.",'
+        '"level":1,"chunk_ids":["chunk-1"],"confidence":0.9}],'
+        '"concepts":['
+        '{"local_topic_ref":"t1","name":"Event Log","chunk_ids":["chunk-1"],"difficulty":"medium","confidence":0.8},'
+        '{"local_topic_ref":"t9","name":"Dangling","chunk_ids":["chunk-1"],"difficulty":"medium","confidence":0.8}'
+        '],'
+        '"objectives":['
+        '{"local_topic_ref":"t1","objective":"Explain event logs","bloom_level":"understand","chunk_ids":["chunk-1"],"confidence":0.8},'
+        '{"local_topic_ref":"t9","objective":"Ignore dangling","bloom_level":"understand","chunk_ids":["chunk-1"],"confidence":0.8}'
+        ']}'
+    )
+
+    extraction = LearningExtractor().extract_from_group(_group(), llm_client=FakeLlm(response), source_id="source-1")
+
+    assert len(extraction.topics) == 1
+    assert [concept.name for concept in extraction.concepts] == ["Event Log"]
+    assert extraction.concepts[0].topic_id == extraction.topics[0].topic_id
+    assert [objective.objective for objective in extraction.objectives] == ["Explain event logs"]
+    assert extraction.objectives[0].topic_id == extraction.topics[0].topic_id
 
 
 def test_learning_extractor_empty_group_skips_llm() -> None:

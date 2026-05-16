@@ -9,6 +9,8 @@ import {
   useEdgesState,
   ConnectionLineType,
   Panel,
+  type Node,
+  type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
@@ -74,8 +76,8 @@ const getLayoutedElements = (nodes: any[], edges: any[], direction = 'LR') => {
 
 export function MindmapCanvas({ tree }: Props) {
   const { resolvedTheme } = useTheme();
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   useEffect(() => {
     // Flatten the tree into nodes and edges

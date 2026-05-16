@@ -16,6 +16,11 @@ def make_topic_id(
     return _sha1_parts(user_id, source_id, normalized_title, str(level), str(page_start or 0))
 
 
+def make_extracted_topic_id(source_id: str, group_id: str, candidate_index: int) -> str:
+    """Return a stable SHA1 ID for a raw extracted topic candidate."""
+    return _sha1_parts(source_id, group_id, str(candidate_index))
+
+
 def make_concept_id(
     user_id: str,
     source_id: str,

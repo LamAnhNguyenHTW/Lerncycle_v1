@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rag_pipeline.learning_structure.extractor import LearningExtraction
+from rag_pipeline.learning_structure.ids import make_extracted_topic_id
 from rag_pipeline.learning_structure.models import (
     ChunkForExtraction,
     ChunkGroup,
@@ -34,8 +35,9 @@ def _group() -> ChunkGroup:
 
 def _topic(**overrides) -> ExtractedTopic:
     data = {
+        "topic_id": make_extracted_topic_id("source", "group", 0),
         "title": "Process Mining",
-        "summary": "Analyzes process data",
+        "summary": "Process mining teaches how event data is analyzed to understand and improve processes.",
         "level": 1,
         "parent_title": None,
         "chunk_ids": ["c1"],
