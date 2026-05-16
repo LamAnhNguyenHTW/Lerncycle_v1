@@ -156,7 +156,7 @@ async function getOrCreateSession(
   const initialActiveLearningState = body.mode && body.mode !== 'normal'
     ? {
       mode: body.mode,
-      ...(body.topic ? {topic: body.topic.trim()} : {}),
+      ...(body.topic ? {topic: body.topic.trim(), target_concept: body.topic.trim()} : {}),
       ...(body.difficulty ? {difficulty: body.difficulty} : {}),
       ...(body.language ? {language: body.language} : {}),
       ...(body.learner_name ? {learner_name: body.learner_name.trim().slice(0, 80)} : {}),
@@ -682,7 +682,7 @@ export async function POST(request: Request) {
       ? activeLearningState
       : {
         ...activeLearningState,
-        ...(body.topic ? {topic: body.topic.trim()} : {}),
+        ...(body.topic ? {topic: body.topic.trim(), target_concept: body.topic.trim()} : {}),
         ...(body.difficulty ? {difficulty: body.difficulty} : {}),
         ...(body.language ? {language: body.language} : {}),
         ...(body.learner_name ? {learner_name: body.learner_name.trim().slice(0, 80)} : {}),

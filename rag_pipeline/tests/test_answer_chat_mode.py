@@ -60,6 +60,30 @@ def test_feynman_mode_uses_feynman_prompt() -> None:
     assert '"learner_name":"Mira"' in llm.calls[-1]["user_prompt"]
 
 
+def test_feynman_prompt_tells_model_to_respond_to_existing_explanation() -> None:
+    llm = FakeLlmClient("Follow-up")
+
+    answer_with_rag(
+        "use data to analyze processes and find out inefficiencies",
+        "user-1",
+        chat_mode="feynman",
+        active_learning_state={"mode": "feynman", "current_step": "awaiting_explanation", "learner_name": "Lam Anh"},
+        recent_messages=[
+            {"role": "assistant", "content": "Hi Lam Anh, what will you explain to me today?"},
+            {"role": "user", "content": "Im gonna explain process mining to you today"},
+            {"role": "assistant", "content": "Can you explain what Process Mining is in very simple words?"},
+        ],
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    prompt = llm.calls[-1]["system_prompt"].lower()
+    assert "do not repeat the initial invitation" in prompt
+    assert "respond to the learner's latest" in prompt
+    assert "explanation directly" in prompt
+    assert "what will you explain" not in prompt
+
+
 def test_guided_learning_forwards_pdf_ids_unchanged() -> None:
     calls = []
 

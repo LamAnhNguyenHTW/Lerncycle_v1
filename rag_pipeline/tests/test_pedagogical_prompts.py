@@ -10,17 +10,25 @@ from rag_pipeline.pedagogical_prompts import (
 def test_guided_learning_prompt_mentions_question_and_tutor():
     assert isinstance(GUIDED_LEARNING_SYSTEM_PROMPT, str)
     assert GUIDED_LEARNING_SYSTEM_PROMPT.strip()
-    assert "question" in GUIDED_LEARNING_SYSTEM_PROMPT.lower()
-    assert "tutor" in GUIDED_LEARNING_SYSTEM_PROMPT.lower()
+    prompt = GUIDED_LEARNING_SYSTEM_PROMPT.lower()
+    assert "question" in prompt
+    assert "tutor" in prompt
+    assert "ask one focused question at a time" in prompt
+    assert "give a small hint, not the full solution" in prompt
+    assert "do not dump a full lesson" in prompt
+    assert "do not ask multiple questions at once" in prompt
 
 
-def test_feynman_prompt_mentions_child_explanation():
+def test_feynman_prompt_mentions_beginner_explanation():
     assert isinstance(FEYNMAN_SYSTEM_PROMPT, str)
     assert FEYNMAN_SYSTEM_PROMPT.strip()
     prompt = FEYNMAN_SYSTEM_PROMPT.lower()
-    assert "5-year-old" in prompt or "5 jahre" in prompt
+    assert "curious beginner" in prompt
     assert "learner_name" in prompt
-    assert "hallo <name>" in prompt
+    assert "not pretend to literally be a child" in prompt
+    assert "ask only one main question at a time" in prompt
+    assert "do not respond with only a question" in prompt
+    assert "do not validate like a teacher" in prompt
 
 
 def test_extract_al_state_update_strips_sentinel_and_merges_state():
@@ -41,6 +49,72 @@ def test_extract_al_state_update_strips_sentinel_and_merges_state():
         "current_step": "ask_question",
         "covered_concepts": ["photosynthesis"],
     }
+
+
+def test_extract_al_state_update_whitelists_keys_and_clamps_score():
+    answer = (
+        "Keep going.\n"
+        f"{AL_STATE_OPEN}"
+        '{"current_step":"ask_question","user_understanding_score":1.7,'
+        '"unexpected_key":"ignored","mode":"feynman"}'
+        f"{AL_STATE_CLOSE}"
+    )
+    current_state = {"mode": "guided_learning", "topic": "Plants"}
+
+    _, merged_state = extract_al_state_update(answer, current_state)
+
+    assert merged_state["mode"] == "guided_learning"
+    assert merged_state["topic"] == "Plants"
+    assert merged_state["current_step"] == "ask_question"
+    assert merged_state["user_understanding_score"] == 1.0
+    assert "unexpected_key" not in merged_state
+
+
+def test_extract_al_state_update_sanitizes_state_values():
+    answer = (
+        "Keep going.\n"
+        f"{AL_STATE_OPEN}"
+        '{"current_step":"  ask_question  ","language":"fr",'
+        '"target_concept":"  Process Mining  ",'
+        '"user_understanding_score":true,'
+        '"covered_concepts":[" Event Logs ","Event Logs",42,""],'
+        '"asked_questions":["Q1","Q2"],'
+        '"last_question":"  What does that mean here?  "}'
+        f"{AL_STATE_CLOSE}"
+    )
+    current_state = {
+        "mode": "feynman",
+        "language": "de",
+        "user_understanding_score": 0.25,
+    }
+
+    _, merged_state = extract_al_state_update(answer, current_state)
+
+    assert merged_state["mode"] == "feynman"
+    assert merged_state["language"] == "de"
+    assert merged_state["user_understanding_score"] == 0.25
+    assert merged_state["current_step"] == "ask_question"
+    assert merged_state["target_concept"] == "Process Mining"
+    assert merged_state["covered_concepts"] == ["Event Logs"]
+    assert merged_state["asked_questions"] == ["Q1", "Q2"]
+    assert merged_state["last_question"] == "What does that mean here?"
+
+
+def test_extract_al_state_update_limits_list_values():
+    concepts = [f"concept-{index}" for index in range(25)]
+    answer = (
+        "Keep going.\n"
+        f"{AL_STATE_OPEN}"
+        + '{"covered_concepts":'
+        + str(concepts).replace("'", '"')
+        + "}"
+        + f"{AL_STATE_CLOSE}"
+    )
+
+    _, merged_state = extract_al_state_update(answer, {})
+
+    assert len(merged_state["covered_concepts"]) == 20
+    assert merged_state["covered_concepts"][-1] == "concept-19"
 
 
 def test_extract_al_state_update_without_sentinel_returns_unchanged_values():

@@ -13,8 +13,10 @@ export type ActiveLearningStep =
 export interface ActiveLearningState {
   mode?: ActiveLearningMode;
   topic?: string;
+  target_concept?: string;
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
   language?: LearningLanguage;
+  learner_name?: string;
   current_step?: ActiveLearningStep;
   covered_concepts?: string[];
   misconceptions?: string[];

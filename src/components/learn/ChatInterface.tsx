@@ -22,10 +22,35 @@ type ChatMessage = {
 function buildFeynmanGreeting(
   language: 'de' | 'en',
   displayName: string,
+  topic?: string,
 ): ChatMessage {
+  const normalizedTopic = topic?.trim();
+  if (normalizedTopic) {
+    const content = language === 'de'
+      ? `${displayName}, erklär mir ${normalizedTopic} mal ganz einfach. Was passiert da?`
+      : `Hi ${displayName}, explain ${normalizedTopic} to me in very simple words. What happens there?`;
+    return { id: crypto.randomUUID(), role: 'assistant', content };
+  }
+
   const content = language === 'de'
     ? `Hallo ${displayName}, was erklärst du mir heute?`
     : `Hi ${displayName}, what will you explain to me today?`;
+  return { id: crypto.randomUUID(), role: 'assistant', content };
+}
+
+function buildGuidedLearningGreeting(
+  language: 'de' | 'en',
+  displayName: string,
+  topic?: string,
+): ChatMessage | null {
+  const normalizedTopic = topic?.trim();
+  if (!normalizedTopic) {
+    return null;
+  }
+
+  const content = language === 'de'
+    ? `Hallo ${displayName}, lass uns ${normalizedTopic} Schritt für Schritt verstehen. Was weißt du darüber schon?`
+    : `Hi ${displayName}, let's understand ${normalizedTopic} step by step. What do you already know about it?`;
   return { id: crypto.randomUUID(), role: 'assistant', content };
 }
 
@@ -34,9 +59,14 @@ function initialMessagesFor(
   language: 'de' | 'en',
   displayName: string,
   initialSessionId: string | undefined,
+  topic?: string,
 ): ChatMessage[] {
   if (chatMode === 'feynman' && !initialSessionId) {
-    return [buildFeynmanGreeting(language, displayName)];
+    return [buildFeynmanGreeting(language, displayName, topic)];
+  }
+  if (chatMode === 'guided_learning' && !initialSessionId) {
+    const greeting = buildGuidedLearningGreeting(language, displayName, topic);
+    return greeting ? [greeting] : [];
   }
   return [];
 }
@@ -205,7 +235,7 @@ export function ChatInterface({
     }
     setSessionId(undefined);
     setActiveConversationKey(crypto.randomUUID());
-    setMessages(initialMessagesFor(chatMode, language, displayName, initialSessionId));
+    setMessages(initialMessagesFor(chatMode, language, displayName, initialSessionId, activeLearningTopic));
     setError(null);
     loadSessions();
     // language/displayName intentionally NOT in deps: switching language must
@@ -213,6 +243,25 @@ export function ChatInterface({
     // language was active at the time the mode/session was entered.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course.id, initialSessionId, chatMode]);
+
+  useEffect(() => {
+    if (!isActiveLearning || sessionId || initialSessionId) {
+      return;
+    }
+    setMessages((current) => {
+      const nextMessages = initialMessagesFor(chatMode, language, displayName, undefined, activeLearningTopic);
+      if (current.length === 0) {
+        return nextMessages;
+      }
+      if (current.length !== 1 || current[0]?.role !== 'assistant') {
+        return current;
+      }
+      if (nextMessages.length === 0) {
+        return [];
+      }
+      return [{ ...current[0], content: nextMessages[0].content }];
+    });
+  }, [activeLearningTopic, chatMode, displayName, initialSessionId, isActiveLearning, language, sessionId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -236,7 +285,7 @@ export function ChatInterface({
   function startNewChat() {
     setSessionId(undefined);
     setActiveConversationKey(crypto.randomUUID());
-    setMessages(initialMessagesFor(chatMode, language, displayName, undefined));
+    setMessages(initialMessagesFor(chatMode, language, displayName, undefined, activeLearningTopic));
     setError(null);
   }
 
@@ -306,7 +355,7 @@ export function ChatInterface({
             course_id: course.id,
             updated_at: new Date().toISOString(),
             mode: existingSession?.mode ?? chatMode,
-            active_learning_state: existingSession?.active_learning_state ?? {},
+            active_learning_state: chatResponse.active_learning_state ?? existingSession?.active_learning_state ?? {},
             messages: [
               ...(existingSession?.messages ?? []),
               {
