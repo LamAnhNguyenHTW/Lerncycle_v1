@@ -29,11 +29,22 @@ class WorkerConfig:
     hybrid_fusion: str = "rrf"
     hybrid_prefetch_limit: int = 30
     hybrid_top_k: int = 10
+    qdrant_native_hybrid_enabled: bool = True
+    query_embedding_cache_enabled: bool = True
+    query_embedding_cache_max_entries: int = 512
+    retrieval_result_cache_enabled: bool = True
+    retrieval_result_cache_max_entries: int = 512
+    retrieval_result_cache_ttl_s: int = 300
     reranking_enabled: bool = False
     reranking_provider: str = "fastembed"
     reranking_model: str = "jinaai/jina-reranker-v2-base-multilingual"
     reranking_candidate_k: int = 30
     reranking_top_k: int = 8
+    rerank_timeout_s: float = 1.5
+    reranker_normal_mode_default: str = "noop"
+    reranker_cache_enabled: bool = True
+    reranker_cache_max_entries: int = 512
+    reranker_cache_ttl_s: int = 300
     chat_memory_enabled: bool = False
     chat_memory_summary_threshold: int = 8
     chat_memory_summary_interval: int = 4
@@ -111,6 +122,11 @@ class WorkerConfig:
     revision_retrieval_top_k: int = 8
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
+    rag_debug_timing_enabled: bool = False
+    vector_retrieve_timeout_s: float = 4.0
+    graph_retrieve_timeout_s: float = 2.0
+    memory_retrieve_timeout_s: float = 1.5
+    web_retrieve_timeout_s: float = 4.0
 
     @classmethod
     def from_env(cls) -> "WorkerConfig":
@@ -139,6 +155,7 @@ class WorkerConfig:
             )
 
         valid_reranking_providers = {"fastembed", "llm", "noop"}
+        valid_normal_defaults = {"fastembed", "noop"}
         reranking_provider = os.getenv("RERANKING_PROVIDER", "fastembed")
         if reranking_provider not in valid_reranking_providers:
             raise ValueError(
@@ -146,6 +163,9 @@ class WorkerConfig:
             )
         reranking_candidate_k = _optional_int(os.getenv("RERANKING_CANDIDATE_K")) or 30
         reranking_top_k = _optional_int(os.getenv("RERANKING_TOP_K")) or 8
+        reranker_normal_mode_default = os.getenv("RERANKER_NORMAL_MODE_DEFAULT", "noop")
+        if reranker_normal_mode_default not in valid_normal_defaults:
+            raise ValueError("RERANKER_NORMAL_MODE_DEFAULT must be one of: fastembed, noop")
         if not 1 <= reranking_candidate_k <= 50:
             raise ValueError("RERANKING_CANDIDATE_K must be between 1 and 50")
         if reranking_provider == "llm" and reranking_candidate_k > 30:
@@ -477,6 +497,30 @@ class WorkerConfig:
             )
             or 30,
             hybrid_top_k=_optional_int(os.getenv("HYBRID_TOP_K")) or 10,
+            qdrant_native_hybrid_enabled=_optional_bool(
+                os.getenv("QDRANT_NATIVE_HYBRID_ENABLED"),
+                True,
+            ),
+            query_embedding_cache_enabled=_optional_bool(
+                os.getenv("QUERY_EMBEDDING_CACHE_ENABLED"),
+                True,
+            ),
+            query_embedding_cache_max_entries=_int_or_default(
+                "QUERY_EMBEDDING_CACHE_MAX_ENTRIES",
+                512,
+            ),
+            retrieval_result_cache_enabled=_optional_bool(
+                os.getenv("RETRIEVAL_RESULT_CACHE_ENABLED"),
+                True,
+            ),
+            retrieval_result_cache_max_entries=_int_or_default(
+                "RETRIEVAL_RESULT_CACHE_MAX_ENTRIES",
+                512,
+            ),
+            retrieval_result_cache_ttl_s=_int_or_default(
+                "RETRIEVAL_RESULT_CACHE_TTL_S",
+                300,
+            ),
             reranking_enabled=_optional_bool(os.getenv("RERANKING_ENABLED"), False),
             reranking_provider=reranking_provider,
             reranking_model=os.getenv(
@@ -485,6 +529,14 @@ class WorkerConfig:
             ),
             reranking_candidate_k=reranking_candidate_k,
             reranking_top_k=reranking_top_k,
+            rerank_timeout_s=_float_or_default("RERANK_TIMEOUT_S", 1.5),
+            reranker_normal_mode_default=reranker_normal_mode_default,
+            reranker_cache_enabled=_optional_bool(
+                os.getenv("RERANKER_CACHE_ENABLED"),
+                True,
+            ),
+            reranker_cache_max_entries=_int_or_default("RERANKER_CACHE_MAX_ENTRIES", 512),
+            reranker_cache_ttl_s=_int_or_default("RERANKER_CACHE_TTL_S", 300),
             chat_memory_enabled=_optional_bool(
                 os.getenv("CHAT_MEMORY_ENABLED"),
                 False,
@@ -586,6 +638,14 @@ class WorkerConfig:
                 "docling_hybrid_semantic_refinement",
             ),
             chunking_version=os.getenv("RAG_CHUNKING_VERSION", "v1"),
+            rag_debug_timing_enabled=_optional_bool(
+                os.getenv("RAG_DEBUG_TIMING_ENABLED"),
+                False,
+            ),
+            vector_retrieve_timeout_s=_float_or_default("VECTOR_RETRIEVE_TIMEOUT_S", 4.0),
+            graph_retrieve_timeout_s=_float_or_default("GRAPH_RETRIEVE_TIMEOUT_S", 2.0),
+            memory_retrieve_timeout_s=_float_or_default("MEMORY_RETRIEVE_TIMEOUT_S", 1.5),
+            web_retrieve_timeout_s=_float_or_default("WEB_RETRIEVE_TIMEOUT_S", 4.0),
         )
 
 

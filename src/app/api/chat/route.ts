@@ -46,6 +46,13 @@ type ChatSessionContext = {
   activeLearningState: ActiveLearningState;
 };
 
+type RagStreamEvent =
+  | {event_type: 'status'; status: string; stage?: string}
+  | {event_type: 'sources'; sources: unknown[]}
+  | {event_type: 'token'; content: string}
+  | {event_type: 'done'; timing?: unknown; session_id?: string}
+  | {event_type: 'error'; message: string};
+
 function errorResponse(message: string, status: number) {
   return NextResponse.json({error: message}, {status});
 }
@@ -122,7 +129,7 @@ async function getOrCreateSession(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   body: Partial<ChatRequest>,
-) {
+): Promise<ChatSessionContext> {
   if (body.session_id) {
     const {data, error} = await supabase
       .from('chat_sessions')
@@ -338,6 +345,51 @@ function stripNonMaterialSourceTypes(sourceTypes: ChatSourceType[] | undefined) 
     sourceType !== 'chat_memory' && sourceType !== 'web'
   );
   return stripped.length > 0 ? stripped : MATERIAL_SOURCE_TYPES;
+}
+
+export function shouldRequestRagDebugTiming(env: NodeJS.ProcessEnv = process.env) {
+  if (env.NODE_ENV === 'production') {
+    return parseBool(env.RAG_DEBUG_TIMING_ENABLED, false);
+  }
+  return true;
+}
+
+export function ragAnswerEndpoint(ragApiUrl: string, env: NodeJS.ProcessEnv = process.env) {
+  const baseUrl = `${ragApiUrl.replace(/\/$/, '')}/rag/answer`;
+  return shouldRequestRagDebugTiming(env) ? `${baseUrl}?debug_timing=1` : baseUrl;
+}
+
+export function ragStreamEndpoint(ragApiUrl: string, env: NodeJS.ProcessEnv = process.env) {
+  const baseUrl = `${ragApiUrl.replace(/\/$/, '')}/rag/answer/stream`;
+  return shouldRequestRagDebugTiming(env) ? `${baseUrl}?debug_timing=1` : baseUrl;
+}
+
+export function wantsStreaming(request: Request, rawBody: Record<string, unknown>) {
+  return request.headers.get('accept')?.includes('text/event-stream') === true || rawBody.stream === true;
+}
+
+export function encodeSse(event: RagStreamEvent) {
+  return `event: ${event.event_type}\ndata: ${JSON.stringify(event)}\n\n`;
+}
+
+export function parseSseEvents(buffer: string) {
+  const events: RagStreamEvent[] = [];
+  let remainder = buffer;
+  let separatorIndex = remainder.indexOf('\n\n');
+  while (separatorIndex !== -1) {
+    const block = remainder.slice(0, separatorIndex);
+    remainder = remainder.slice(separatorIndex + 2);
+    const data = block
+      .split('\n')
+      .filter((line) => line.startsWith('data: '))
+      .map((line) => line.slice(6))
+      .join('\n');
+    if (data) {
+      events.push(JSON.parse(data) as RagStreamEvent);
+    }
+    separatorIndex = remainder.indexOf('\n\n');
+  }
+  return {events, remainder};
 }
 
 async function triggerChatMemorySummary({
@@ -627,6 +679,289 @@ async function loadRelatedMemorySourceIds(
   return Array.from(ids);
 }
 
+function buildRagRequestBody({
+  trimmedMessage,
+  userId,
+  sourceTypes,
+  topK,
+  pdfIds,
+  recentMessages,
+  sessionId,
+  memorySourceIds,
+  promptContext,
+  webMode,
+  useIntentClassifier,
+  useRetrievalPlanner,
+  sessionMode,
+  requestActiveLearningState,
+  activeLearningControl,
+  language,
+}: {
+  trimmedMessage: string;
+  userId: string;
+  sourceTypes: ChatSourceType[];
+  topK: number;
+  pdfIds: string[];
+  recentMessages: RecentChatMessage[];
+  sessionId: string;
+  memorySourceIds: string[];
+  promptContext: Awaited<ReturnType<typeof loadSessionPromptContext>>;
+  webMode: 'on' | 'off';
+  useIntentClassifier: boolean;
+  useRetrievalPlanner: boolean;
+  sessionMode: ChatMode;
+  requestActiveLearningState: ActiveLearningState;
+  activeLearningControl: ActiveLearningControl | undefined;
+  language: 'de' | 'en' | undefined;
+}) {
+  return {
+    query: trimmedMessage,
+    user_id: userId,
+    source_types: sourceTypes,
+    top_k: topK,
+    pdf_ids: pdfIds.length > 0 ? pdfIds : undefined,
+    recent_messages: recentMessages,
+    session_id: sessionId,
+    memory_source_ids: memorySourceIds,
+    memory_mode: 'auto',
+    graph_mode: parseBool(process.env.GRAPH_RETRIEVAL_ENABLED, false) ? 'auto' : 'off',
+    context_summary: promptContext.contextSummary ?? undefined,
+    web_mode: webMode,
+    use_intent_classifier: useIntentClassifier,
+    use_retrieval_planner: useRetrievalPlanner,
+    chat_mode: sessionMode,
+    active_learning_state: requestActiveLearningState,
+    active_learning_control: activeLearningControl,
+    chat_language: language,
+  };
+}
+
+async function persistAssistantMessageOnce({
+  supabase,
+  idempotencyKey,
+  persistedKeys,
+  sessionId,
+  userId,
+  content,
+  sources,
+  pdfIds,
+}: {
+  supabase: SupabaseClient;
+  idempotencyKey: string;
+  persistedKeys: Set<string>;
+  sessionId: string;
+  userId: string;
+  content: string;
+  sources: unknown[];
+  pdfIds: string[];
+}) {
+  if (persistedKeys.has(idempotencyKey) || content.length === 0) {
+    return;
+  }
+  persistedKeys.add(idempotencyKey);
+  await supabase.from('chat_messages').insert({
+    session_id: sessionId,
+    user_id: userId,
+    role: 'assistant',
+    content,
+    sources,
+    pdf_ids: pdfIds,
+  });
+}
+
+async function fetchNonStreamingRagAnswer({
+  ragApiUrl,
+  internalApiKey,
+  requestBody,
+  signal,
+}: {
+  ragApiUrl: string;
+  internalApiKey: string;
+  requestBody: Record<string, unknown>;
+  signal?: AbortSignal;
+}) {
+  const response = await fetch(ragAnswerEndpoint(ragApiUrl), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${internalApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+    signal,
+  });
+  if (!response.ok) {
+    console.error('RAG service error', {status: response.status, body: await response.text()});
+    throw new Error('RAG service failed to answer.');
+  }
+  return response.json();
+}
+
+async function streamRagAnswer({
+  request,
+  supabase,
+  ragApiUrl,
+  internalApiKey,
+  requestBody,
+  sessionId,
+  userId,
+  userMessageId,
+  pdfIds,
+}: {
+  request: Request;
+  supabase: SupabaseClient;
+  ragApiUrl: string;
+  internalApiKey: string;
+  requestBody: Record<string, unknown>;
+  sessionId: string;
+  userId: string;
+  userMessageId: string;
+  pdfIds: string[];
+}) {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const upstreamController = new AbortController();
+  const persistedKeys = new Set<string>();
+  const idempotencyKey = `${sessionId}:${userMessageId}`;
+  const disconnectPolicy = process.env.CHAT_PERSIST_ON_DISCONNECT === 'discard' ? 'discard' : 'truncated';
+  let accumulated = '';
+  let sources: unknown[] = [];
+  let browserDisconnected = false;
+
+  const upstream = await fetch(ragStreamEndpoint(ragApiUrl), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${internalApiKey}`,
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    },
+    body: JSON.stringify(requestBody),
+    signal: upstreamController.signal,
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    const fallback = await fetchNonStreamingRagAnswer({
+      ragApiUrl,
+      internalApiKey,
+      requestBody,
+    });
+    await persistAssistantMessageOnce({
+      supabase,
+      idempotencyKey,
+      persistedKeys,
+      sessionId,
+      userId,
+      content: String(fallback.answer ?? ''),
+      sources: fallback.sources ?? [],
+      pdfIds,
+    });
+    return NextResponse.json({
+      session_id: sessionId,
+      answer: fallback.answer,
+      sources: fallback.sources ?? [],
+      retrieval: {mode: 'hybrid', top_k: Number(requestBody.top_k ?? 8)},
+    } satisfies ChatResponse);
+  }
+
+  request.signal.addEventListener('abort', () => {
+    browserDisconnected = true;
+    if (disconnectPolicy === 'discard') {
+      upstreamController.abort();
+    }
+  });
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const reader = upstream.body!.getReader();
+      let buffer = '';
+      try {
+        while (true) {
+          const {done, value} = await reader.read();
+          if (done) {
+            break;
+          }
+          const chunk = decoder.decode(value, {stream: true});
+          buffer += chunk;
+          const parsed = parseSseEvents(buffer);
+          buffer = parsed.remainder;
+          let outboundChunk = '';
+          for (const event of parsed.events) {
+            let outboundEvent = event;
+            if (event.event_type === 'token') {
+              accumulated += event.content;
+            } else if (event.event_type === 'sources') {
+              sources = event.sources;
+            } else if (event.event_type === 'done') {
+              outboundEvent = {...event, session_id: sessionId};
+              await persistAssistantMessageOnce({
+                supabase,
+                idempotencyKey,
+                persistedKeys,
+                sessionId,
+                userId,
+                content: accumulated,
+                sources,
+                pdfIds,
+              });
+            } else if (event.event_type === 'error') {
+              await persistAssistantMessageOnce({
+                supabase,
+                idempotencyKey,
+                persistedKeys,
+                sessionId,
+                userId,
+                content: accumulated,
+                sources,
+                pdfIds,
+              });
+            }
+            outboundChunk += encodeSse(outboundEvent);
+          }
+          if (!browserDisconnected && outboundChunk) {
+            controller.enqueue(encoder.encode(outboundChunk));
+          }
+        }
+        if (!browserDisconnected) {
+          controller.close();
+        }
+      } catch (error) {
+        if (disconnectPolicy === 'discard' && browserDisconnected) {
+          controller.close();
+          return;
+        }
+        console.error('RAG stream proxy failed', error);
+        await persistAssistantMessageOnce({
+          supabase,
+          idempotencyKey,
+          persistedKeys,
+          sessionId,
+          userId,
+          content: accumulated,
+          sources,
+          pdfIds,
+        });
+        if (!browserDisconnected) {
+          controller.enqueue(encoder.encode(encodeSse({event_type: 'error', message: 'RAG service failed to answer.'})));
+          controller.close();
+        }
+      }
+    },
+    cancel() {
+      browserDisconnected = true;
+      if (disconnectPolicy === 'discard') {
+        upstreamController.abort();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+    },
+  });
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {data: {user}} = await supabase.auth.getUser();
@@ -676,7 +1011,7 @@ export async function POST(request: Request) {
     const session = await getOrCreateSession(supabase, user.id, body);
     const sessionId = session.id;
     const promptContext = await loadSessionPromptContext(supabase, sessionId, user.id);
-    const sessionMode = session.mode ?? promptContext.mode;
+    const sessionMode: ChatMode = session.mode ?? promptContext.mode;
     const activeLearningState = Object.keys(session.activeLearningState).length > 0
       ? session.activeLearningState
       : promptContext.activeLearningState;
@@ -729,49 +1064,53 @@ export async function POST(request: Request) {
       courseId,
       pdfIds,
     );
-    await supabase.from('chat_messages').insert({
+    const ragRequestBody = buildRagRequestBody({
+      trimmedMessage,
+      userId: user.id,
+      sourceTypes,
+      topK,
+      pdfIds,
+      recentMessages,
+      sessionId,
+      memorySourceIds,
+      promptContext,
+      webMode,
+      useIntentClassifier,
+      useRetrievalPlanner,
+      sessionMode,
+      requestActiveLearningState,
+      activeLearningControl,
+      language: body.language,
+    });
+
+    const {data: userMessage} = await supabase.from('chat_messages').insert({
       session_id: sessionId,
       user_id: user.id,
       role: 'user',
       content: trimmedMessage,
       pdf_ids: pdfIds,
-    });
+    }).select('id').single();
 
-    const response = await fetch(`${ragApiUrl.replace(/\/$/, '')}/rag/answer`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${internalApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: trimmedMessage,
-        user_id: user.id,
-        source_types: sourceTypes,
-        top_k: topK,
-        pdf_ids: pdfIds.length > 0 ? pdfIds : undefined,
-        recent_messages: recentMessages,
-        session_id: sessionId,
-        memory_source_ids: memorySourceIds,
-        memory_mode: 'auto',
-        graph_mode: parseBool(process.env.GRAPH_RETRIEVAL_ENABLED, false) ? 'auto' : 'off',
-        context_summary: promptContext.contextSummary ?? undefined,
-        web_mode: webMode,
-        use_intent_classifier: useIntentClassifier,
-        use_retrieval_planner: useRetrievalPlanner,
-        chat_mode: sessionMode,
-        active_learning_state: requestActiveLearningState,
-        active_learning_control: activeLearningControl,
-        chat_language: body.language,
-      }),
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      console.error('RAG service error', {status: response.status, body: await response.text()});
-      return errorResponse('RAG service failed to answer.', 500);
+    if (wantsStreaming(request, rawBody)) {
+      return await streamRagAnswer({
+        request,
+        supabase,
+        ragApiUrl,
+        internalApiKey,
+        requestBody: ragRequestBody,
+        sessionId,
+        userId: user.id,
+        userMessageId: String(userMessage?.id ?? crypto.randomUUID()),
+        pdfIds,
+      });
     }
 
-    const ragResponse = await response.json();
+    const ragResponse = await fetchNonStreamingRagAnswer({
+      ragApiUrl,
+      internalApiKey,
+      requestBody: ragRequestBody,
+      signal: controller.signal,
+    });
     if (
       ragResponse.updated_active_learning_state &&
       typeof ragResponse.updated_active_learning_state === 'object' &&
