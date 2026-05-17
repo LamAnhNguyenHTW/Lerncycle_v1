@@ -16,6 +16,7 @@ from rag_pipeline.graph_retrieval import retrieve_graph_context
 from rag_pipeline.intent_classifier import RetrievalIntent, classify_intent
 from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.memory_intent import detect_memory_intent
+from rag_pipeline.pedagogical_prompts import FEYNMAN_RESULT_SYSTEM_PROMPT
 from rag_pipeline.pedagogical_prompts import FEYNMAN_SYSTEM_PROMPT
 from rag_pipeline.pedagogical_prompts import GUIDED_LEARNING_SYSTEM_PROMPT
 from rag_pipeline.pedagogical_prompts import extract_al_state_update
@@ -228,10 +229,13 @@ def _select_system_prompt(
     has_graph: bool,
     has_web: bool,
     no_info_instruction: str,
+    generate_final_result: bool = False,
 ) -> str:
     if chat_mode == "guided_learning":
         return GUIDED_LEARNING_SYSTEM_PROMPT + no_info_instruction
     if chat_mode == "feynman":
+        if generate_final_result:
+            return FEYNMAN_RESULT_SYSTEM_PROMPT + no_info_instruction
         return FEYNMAN_SYSTEM_PROMPT + no_info_instruction
 
     prompt = CONVERSATION_SYSTEM_PROMPT if has_recent_messages else SYSTEM_PROMPT
@@ -240,6 +244,27 @@ def _select_system_prompt(
     if has_web:
         prompt += WEB_SYSTEM_PROMPT_ADDITION
     return prompt + no_info_instruction
+
+
+def _should_generate_final_result(
+    chat_mode: str,
+    active_learning_control: dict[str, Any] | None,
+) -> bool:
+    if chat_mode != "feynman":
+        return False
+    if not active_learning_control:
+        return False
+    return bool(active_learning_control.get("generate_final_result"))
+
+
+def _state_with_nudge(
+    active_learning_state: dict[str, Any] | None,
+    active_learning_control: dict[str, Any] | None,
+) -> dict[str, Any]:
+    base = dict(active_learning_state or {})
+    if active_learning_control and active_learning_control.get("should_nudge_completion"):
+        base["should_nudge_completion"] = True
+    return base
 
 
 def _append_active_learning_state(user_prompt: str, active_learning_state: dict[str, Any] | None) -> str:
@@ -310,6 +335,7 @@ def answer_with_rag(
     agentic_retriever_fn: Callable[..., AgenticRetrievalOutcome] | None = None,
     chat_mode: str = "normal",
     active_learning_state: dict[str, Any] | None = None,
+    active_learning_control: dict[str, Any] | None = None,
     chat_language: str | None = None,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
@@ -695,6 +721,7 @@ def answer_with_rag(
             has_graph=bool(graph_text),
             has_web=web_text,
             no_info_instruction=no_info_instruction,
+            generate_final_result=_should_generate_final_result(chat_mode, active_learning_control),
         ) + _language_instruction(chat_language)
     else:
         user_prompt = (
@@ -708,9 +735,11 @@ def answer_with_rag(
             has_graph=bool(graph_text),
             has_web=web_text,
             no_info_instruction=no_info_instruction,
+            generate_final_result=_should_generate_final_result(chat_mode, active_learning_control),
         ) + _language_instruction(chat_language)
     if _is_active_learning_mode(chat_mode):
-        user_prompt = _append_active_learning_state(user_prompt, active_learning_state)
+        state_for_prompt = _state_with_nudge(active_learning_state, active_learning_control)
+        user_prompt = _append_active_learning_state(user_prompt, state_for_prompt)
     answer = active_llm.complete(system_prompt=system_prompt, user_prompt=user_prompt)
     updated_active_learning_state = None
     if _is_active_learning_mode(chat_mode):

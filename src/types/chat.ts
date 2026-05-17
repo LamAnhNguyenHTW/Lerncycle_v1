@@ -10,6 +10,12 @@ export type ActiveLearningStep =
   | 'give_hint'
   | 'summarize';
 
+export type ExerciseStatus =
+  | 'active'
+  | 'final_check'
+  | 'ready_for_result'
+  | 'completed';
+
 export interface ActiveLearningState {
   mode?: ActiveLearningMode;
   topic?: string;
@@ -22,6 +28,17 @@ export interface ActiveLearningState {
   misconceptions?: string[];
   user_understanding_score?: number;
   next_goal?: string;
+  exercise_status?: ExerciseStatus;
+  completion_readiness?: number;
+  remaining_gaps?: string[];
+  final_check_question?: string;
+  turn_count?: number;
+}
+
+export interface ActiveLearningControl {
+  finish_requested: boolean;
+  should_nudge_completion: boolean;
+  generate_final_result: boolean;
 }
 
 export interface RecentChatMessage {

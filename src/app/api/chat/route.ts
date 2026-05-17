@@ -1,11 +1,13 @@
 import {NextResponse} from 'next/server';
 import {createClient} from '@/lib/supabase/server';
 import type {SupabaseClient} from '@supabase/supabase-js';
-import type {ActiveLearningState, ChatMode, ChatRequest, ChatResponse, ChatRole, ChatSourceType, RecentChatMessage} from '@/types/chat';
+import type {ActiveLearningControl, ActiveLearningState, ChatMode, ChatRequest, ChatResponse, ChatRole, ChatSourceType, RecentChatMessage} from '@/types/chat';
 
 const MATERIAL_SOURCE_TYPES: ChatSourceType[] = ['pdf', 'note', 'annotation_comment'];
 const SOURCE_TYPES: ChatSourceType[] = [...MATERIAL_SOURCE_TYPES, 'chat_memory', 'web'];
 const CHAT_MODES: ChatMode[] = ['normal', 'guided_learning', 'feynman'];
+const FEYNMAN_FINISH_COMMAND_PATTERN = /(^\/?(fertig|done|finish)[\s\p{P}]*$)|(ich bin fertig|bin fertig|i am done|i'm done|analyse zeigen|show analysis)/iu;
+const FEYNMAN_COMPLETION_NUDGE_TURN_COUNT = 8;
 const RECENT_MESSAGE_LIMIT = 10;
 const RECENT_MESSAGE_CONTENT_LIMIT = 2000;
 const CHAT_MEMORY_DEFAULT_THRESHOLD = 8;
@@ -678,6 +680,32 @@ export async function POST(request: Request) {
     const activeLearningState = Object.keys(session.activeLearningState).length > 0
       ? session.activeLearningState
       : promptContext.activeLearningState;
+    const trimmedMessage = body.message!.trim();
+    const finishRequested =
+      sessionMode === 'feynman' && FEYNMAN_FINISH_COMMAND_PATTERN.test(trimmedMessage);
+    const previousTurnCount = Number(
+      (activeLearningState as ActiveLearningState).turn_count ?? 0,
+    );
+    const incrementedTurnCount =
+      Number.isFinite(previousTurnCount) && previousTurnCount >= 0
+        ? previousTurnCount + 1
+        : 1;
+    const turnCountForState = sessionMode === 'feynman' ? incrementedTurnCount : previousTurnCount;
+    const exerciseStatus =
+      (activeLearningState as ActiveLearningState).exercise_status ?? 'active';
+    const shouldNudgeCompletion =
+      sessionMode === 'feynman' &&
+      turnCountForState >= FEYNMAN_COMPLETION_NUDGE_TURN_COUNT &&
+      exerciseStatus === 'active';
+    const shouldGenerateFinalResult = finishRequested;
+    const activeLearningControl: ActiveLearningControl | undefined =
+      sessionMode === 'feynman'
+        ? {
+          finish_requested: finishRequested,
+          should_nudge_completion: shouldNudgeCompletion,
+          generate_final_result: shouldGenerateFinalResult,
+        }
+        : undefined;
     const requestActiveLearningState = sessionMode === 'normal'
       ? activeLearningState
       : {
@@ -686,6 +714,7 @@ export async function POST(request: Request) {
         ...(body.difficulty ? {difficulty: body.difficulty} : {}),
         ...(body.language ? {language: body.language} : {}),
         ...(body.learner_name ? {learner_name: body.learner_name.trim().slice(0, 80)} : {}),
+        ...(sessionMode === 'feynman' ? {turn_count: turnCountForState} : {}),
       };
     const courseId = body.course_id ?? promptContext.courseId;
     const compactionConfig = promptCompactionConfig();
@@ -704,7 +733,7 @@ export async function POST(request: Request) {
       session_id: sessionId,
       user_id: user.id,
       role: 'user',
-      content: body.message!.trim(),
+      content: trimmedMessage,
       pdf_ids: pdfIds,
     });
 
@@ -715,7 +744,7 @@ export async function POST(request: Request) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        query: body.message!.trim(),
+        query: trimmedMessage,
         user_id: user.id,
         source_types: sourceTypes,
         top_k: topK,
@@ -731,6 +760,7 @@ export async function POST(request: Request) {
         use_retrieval_planner: useRetrievalPlanner,
         chat_mode: sessionMode,
         active_learning_state: requestActiveLearningState,
+        active_learning_control: activeLearningControl,
         chat_language: body.language,
       }),
       signal: controller.signal,
@@ -747,6 +777,9 @@ export async function POST(request: Request) {
       typeof ragResponse.updated_active_learning_state === 'object' &&
       !Array.isArray(ragResponse.updated_active_learning_state)
     ) {
+      if (shouldGenerateFinalResult) {
+        ragResponse.updated_active_learning_state.exercise_status = 'completed';
+      }
       const {error: stateError} = await supabase
         .from('chat_sessions')
         .update({active_learning_state: ragResponse.updated_active_learning_state})
@@ -754,6 +787,20 @@ export async function POST(request: Request) {
         .eq('user_id', user.id);
       if (stateError) {
         console.error('Failed to persist active learning state', stateError);
+      }
+    } else if (sessionMode === 'feynman') {
+      const fallbackState: ActiveLearningState = {
+        ...(activeLearningState as ActiveLearningState),
+        turn_count: turnCountForState,
+        ...(shouldGenerateFinalResult ? {exercise_status: 'completed' as const} : {}),
+      };
+      const {error: stateError} = await supabase
+        .from('chat_sessions')
+        .update({active_learning_state: fallbackState})
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
+      if (stateError) {
+        console.error('Failed to persist active learning turn_count fallback', stateError);
       }
     }
     await supabase.from('chat_messages').insert({

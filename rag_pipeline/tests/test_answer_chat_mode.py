@@ -182,3 +182,128 @@ def test_fallback_answer_unchanged_for_active_learning_without_results() -> None
 
     assert response["answer"] == FALLBACK_ANSWER
     assert "updated_active_learning_state" not in response
+
+
+def test_feynman_uses_result_prompt_when_generate_final_result_true() -> None:
+    llm = FakeLlmClient("Analyse")
+
+    answer_with_rag(
+        "/fertig",
+        "user-1",
+        chat_mode="feynman",
+        active_learning_state={"mode": "feynman", "language": "de"},
+        active_learning_control={
+            "finish_requested": True,
+            "should_nudge_completion": False,
+            "generate_final_result": True,
+        },
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    system_prompt = llm.calls[-1]["system_prompt"]
+    assert "Kurzfazit" in system_prompt
+    assert "final result of a Feynman" in system_prompt
+
+
+def test_feynman_uses_regular_prompt_without_control() -> None:
+    llm = FakeLlmClient("Reaction")
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        chat_mode="feynman",
+        active_learning_state={"mode": "feynman"},
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    system_prompt = llm.calls[-1]["system_prompt"]
+    assert "Completion behavior" in system_prompt
+    assert "final result of a Feynman" not in system_prompt
+
+
+def test_feynman_uses_regular_prompt_when_only_ready_for_result() -> None:
+    """`ready_for_result` alone must NOT auto-trigger the result prompt."""
+    llm = FakeLlmClient("Reaction")
+
+    answer_with_rag(
+        "weiter so",
+        "user-1",
+        chat_mode="feynman",
+        active_learning_state={"mode": "feynman", "exercise_status": "ready_for_result"},
+        active_learning_control={
+            "finish_requested": False,
+            "should_nudge_completion": False,
+            "generate_final_result": False,
+        },
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    system_prompt = llm.calls[-1]["system_prompt"]
+    assert "final result of a Feynman" not in system_prompt
+
+
+def test_feynman_should_nudge_completion_is_injected_into_state() -> None:
+    llm = FakeLlmClient("Reaction")
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        chat_mode="feynman",
+        active_learning_state={"mode": "feynman", "turn_count": 8},
+        active_learning_control={
+            "finish_requested": False,
+            "should_nudge_completion": True,
+            "generate_final_result": False,
+        },
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    user_prompt = llm.calls[-1]["user_prompt"]
+    assert '"should_nudge_completion":true' in user_prompt
+
+
+def test_normal_mode_ignores_active_learning_control() -> None:
+    llm = FakeLlmClient("Antwort")
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        chat_mode="normal",
+        active_learning_control={
+            "finish_requested": True,
+            "should_nudge_completion": True,
+            "generate_final_result": True,
+        },
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    system_prompt = llm.calls[-1]["system_prompt"]
+    assert "Kurzfazit" not in system_prompt
+    assert "Completion behavior" not in system_prompt
+
+
+def test_guided_learning_ignores_active_learning_control() -> None:
+    llm = FakeLlmClient("Antwort")
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        chat_mode="guided_learning",
+        active_learning_state={"mode": "guided_learning"},
+        active_learning_control={
+            "finish_requested": True,
+            "should_nudge_completion": True,
+            "generate_final_result": True,
+        },
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    system_prompt = llm.calls[-1]["system_prompt"]
+    assert "Kurzfazit" not in system_prompt
+    assert "socratic tutor" in system_prompt.lower()

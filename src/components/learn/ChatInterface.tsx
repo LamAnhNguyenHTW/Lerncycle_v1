@@ -7,7 +7,7 @@ import { ChevronDown, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Tras
 import { Button } from '@/components/ui/button';
 import { SourceCard } from '@/components/learn/SourceCard';
 import type { Course } from '@/lib/data';
-import type { ChatMode, ChatResponse, ChatSource, StoredChatMessage, StoredChatSession } from '@/types/chat';
+import type { ActiveLearningState, ChatMode, ChatResponse, ChatSource, StoredChatMessage, StoredChatSession } from '@/types/chat';
 import { NotionIcon } from '@/components/NotionIcon';
 import { deleteChatSession, renameChatSession } from '@/actions/chat';
 import { useLanguage } from '@/lib/i18n';
@@ -25,17 +25,20 @@ function buildFeynmanGreeting(
   topic?: string,
 ): ChatMessage {
   const normalizedTopic = topic?.trim();
+  const finishHint = language === 'de'
+    ? 'Wenn du fertig bist und eine kurze Analyse möchtest, schreibe `/fertig`.'
+    : "When you're done and want a short analysis, write `/done`.";
   if (normalizedTopic) {
-    const content = language === 'de'
+    const intro = language === 'de'
       ? `${displayName}, erklär mir ${normalizedTopic} mal ganz einfach. Was passiert da?`
       : `Hi ${displayName}, explain ${normalizedTopic} to me in very simple words. What happens there?`;
-    return { id: crypto.randomUUID(), role: 'assistant', content };
+    return { id: crypto.randomUUID(), role: 'assistant', content: `${intro}\n\n${finishHint}` };
   }
 
-  const content = language === 'de'
-    ? `Hallo ${displayName}, was erklärst du mir heute?`
-    : `Hi ${displayName}, what will you explain to me today?`;
-  return { id: crypto.randomUUID(), role: 'assistant', content };
+  const intro = language === 'de'
+    ? `Hallo ${displayName}, was erklärst du mir heute ganz einfach? Ich frage nach, wenn etwas noch unklar klingt.`
+    : `Hi ${displayName}, what will you explain to me today in very simple words? I'll ask when something still sounds unclear.`;
+  return { id: crypto.randomUUID(), role: 'assistant', content: `${intro}\n\n${finishHint}` };
 }
 
 function buildGuidedLearningGreeting(
@@ -126,6 +129,7 @@ export function ChatInterface({
   const [pendingConversationKeys, setPendingConversationKeys] = useState<string[]>([]);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [activeLearningState, setActiveLearningState] = useState<ActiveLearningState>({});
   const isActiveLearning = chatMode === 'guided_learning' || chatMode === 'feynman';
   const activeModeLabel = chatMode === 'guided_learning' ? t('active.guided') : chatMode === 'feynman' ? t('active.feynman') : t('nav.learn');
   const emptyTitle = chatMode === 'guided_learning'
@@ -230,12 +234,14 @@ export function ChatInterface({
             content: stored.content,
             sources: stored.sources,
           })));
+          setActiveLearningState(initialSession.active_learning_state ?? {});
         }
       }
     }
     setSessionId(undefined);
     setActiveConversationKey(crypto.randomUUID());
     setMessages(initialMessagesFor(chatMode, language, displayName, initialSessionId, activeLearningTopic));
+    setActiveLearningState({});
     setError(null);
     loadSessions();
     // language/displayName intentionally NOT in deps: switching language must
@@ -286,12 +292,17 @@ export function ChatInterface({
     setSessionId(undefined);
     setActiveConversationKey(crypto.randomUUID());
     setMessages(initialMessagesFor(chatMode, language, displayName, undefined, activeLearningTopic));
+    setActiveLearningState({});
     setError(null);
   }
 
   async function onSubmit(event?: React.FormEvent<HTMLFormElement>) {
     if (event) event.preventDefault();
-    const trimmed = message.trim();
+    await sendMessage(message);
+  }
+
+  async function sendMessage(rawText: string) {
+    const trimmed = rawText.trim();
     if (!trimmed || pendingConversationKeys.includes(activeConversationKey)) {
       return;
     }
@@ -344,6 +355,9 @@ export function ChatInterface({
           setSessionId(chatResponse.session_id);
         }
         setMessages((current) => [...current, assistantMessage]);
+        if (chatResponse.active_learning_state) {
+          setActiveLearningState(chatResponse.active_learning_state);
+        }
       }
       setSessions((current) => {
         const existing = current.filter((session) => session.id !== chatResponse.session_id);
@@ -566,6 +580,7 @@ export function ChatInterface({
                               content: stored.content,
                               sources: stored.sources,
                             })));
+                            setActiveLearningState(session.active_learning_state ?? {});
                           }}
                           className="flex flex-1 items-center gap-2.5 overflow-hidden"
                         >
@@ -700,7 +715,16 @@ export function ChatInterface({
 
         {/* Input Area */}
         <div className="absolute bottom-0 inset-x-0 bg-white pt-6 pb-6 px-4 md:px-8 border-t border-border/40 pointer-events-none">
-          <div className="max-w-3xl mx-auto w-full pointer-events-auto">
+          <div className="max-w-3xl mx-auto w-full pointer-events-auto space-y-2">
+            {chatMode === 'feynman' && activeLearningState.exercise_status !== 'completed' && (
+              <FeynmanCompletionPanel
+                language={language}
+                exerciseStatus={activeLearningState.exercise_status ?? 'active'}
+                turnCount={Number(activeLearningState.turn_count ?? 0)}
+                disabled={isCurrentConversationPending}
+                onClickFinish={() => sendMessage('/fertig')}
+              />
+            )}
             <form onSubmit={onSubmit} className="relative flex items-end gap-2 bg-white border border-border shadow-sm rounded-xl px-3 py-2 focus-within:border-black/30 transition-all">
               <button
                 type="button"
@@ -718,13 +742,14 @@ export function ChatInterface({
                 onKeyDown={onKeyDown}
                 maxLength={2000}
                 rows={1}
-                className="max-h-[200px] flex-1 resize-none bg-transparent py-1.5 px-1 text-sm outline-none placeholder:text-muted-foreground/70"
-                placeholder={inputPlaceholder}
+                disabled={chatMode === 'feynman' && activeLearningState.exercise_status === 'completed'}
+                className="max-h-[200px] flex-1 resize-none bg-transparent py-1.5 px-1 text-sm outline-none placeholder:text-muted-foreground/70 disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder={chatMode === 'feynman' && activeLearningState.exercise_status === 'completed' ? t('active.sessionCompleted') : inputPlaceholder}
                 style={{ minHeight: '32px' }}
               />
               <button
                 type="submit"
-                disabled={isCurrentConversationPending || !message.trim() || selectedPdfIds.length === 0}
+                disabled={isCurrentConversationPending || !message.trim() || selectedPdfIds.length === 0 || (chatMode === 'feynman' && activeLearningState.exercise_status === 'completed')}
                 className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-black hover:bg-black/80 transition-all mb-0.5 disabled:opacity-30 disabled:hover:bg-black"
                 title="Send"
               >
@@ -819,6 +844,50 @@ function SourceChip({ source }: { source: ChatSource }) {
       <span className="min-w-0 max-w-[180px] truncate text-foreground">{title}</span>
       {page && <span className="shrink-0 text-muted-foreground">{page}</span>}
     </span>
+  );
+}
+
+function FeynmanCompletionPanel({
+  language,
+  exerciseStatus,
+  turnCount,
+  disabled,
+  onClickFinish,
+}: {
+  language: 'de' | 'en';
+  exerciseStatus: NonNullable<ActiveLearningState['exercise_status']>;
+  turnCount: number;
+  disabled: boolean;
+  onClickFinish: () => void;
+}) {
+  const emphasised = exerciseStatus === 'ready_for_result';
+  const showNudgeHint = turnCount >= 8 && exerciseStatus === 'active';
+  const buttonLabel = language === 'de' ? 'Analyse anzeigen' : 'Show analysis';
+  const nudgeHint = language === 'de'
+    ? 'Du hast schon genug erklärt. Du kannst dir jetzt eine kurze Analyse anzeigen lassen.'
+    : "You've explained enough. You can ask for a short analysis now.";
+  const readyHint = language === 'de'
+    ? 'Du wirkst bereit. Klick auf „Analyse anzeigen" für deine kurze Auswertung.'
+    : 'You seem ready. Click "Show analysis" for your short result.';
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      {emphasised && (
+        <p className="text-xs text-muted-foreground">{readyHint}</p>
+      )}
+      {!emphasised && showNudgeHint && (
+        <p className="text-xs text-muted-foreground">{nudgeHint}</p>
+      )}
+      <Button
+        type="button"
+        variant={emphasised ? 'default' : 'outline'}
+        size="sm"
+        disabled={disabled}
+        onClick={onClickFinish}
+      >
+        {buttonLabel}
+      </Button>
+    </div>
   );
 }
 

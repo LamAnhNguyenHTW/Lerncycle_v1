@@ -54,6 +54,7 @@ export type TranslationKey =
   | 'active.beginner'
   | 'active.intermediate'
   | 'active.advanced'
+  | 'active.sessionCompleted'
   | 'materials.title'
   | 'materials.newFolder'
   | 'materials.folderPlaceholder'
@@ -259,6 +260,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'active.beginner': 'Beginner',
     'active.intermediate': 'Intermediate',
     'active.advanced': 'Advanced',
+    'active.sessionCompleted': 'Session completed. Open a new chat.',
     'materials.title': 'Materials & Folders',
     'materials.newFolder': 'New Folder',
     'materials.folderPlaceholder': 'Folder name (e.g. Week 1)',
@@ -463,6 +465,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'active.beginner': 'Anfänger',
     'active.intermediate': 'Fortgeschritten',
     'active.advanced': 'Experte',
+    'active.sessionCompleted': 'Lerneinheit abgeschlossen. Öffne einen neuen Chat.',
     'materials.title': 'Materialien & Ordner',
     'materials.newFolder': 'Neuer Ordner',
     'materials.folderPlaceholder': 'Ordnername (z.B. Woche 1)',

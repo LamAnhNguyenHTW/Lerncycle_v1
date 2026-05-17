@@ -1,6 +1,7 @@
 from rag_pipeline.pedagogical_prompts import (
     AL_STATE_CLOSE,
     AL_STATE_OPEN,
+    FEYNMAN_RESULT_SYSTEM_PROMPT,
     FEYNMAN_SYSTEM_PROMPT,
     GUIDED_LEARNING_SYSTEM_PROMPT,
     extract_al_state_update,
@@ -160,3 +161,116 @@ def test_extract_al_state_update_ignores_json_literals_and_citation_markers():
 
     assert clean_answer == answer
     assert merged_state == current_state
+
+
+def test_feynman_prompt_contains_completion_behavior():
+    prompt = FEYNMAN_SYSTEM_PROMPT.lower()
+    assert "completion behavior" in prompt
+    assert "completion criteria" in prompt
+    assert "ready_for_result" in prompt
+    assert "final_check" in prompt
+    assert "/fertig" in prompt
+    assert "should_nudge_completion" in prompt
+
+
+def test_feynman_result_prompt_structure():
+    assert isinstance(FEYNMAN_RESULT_SYSTEM_PROMPT, str)
+    prompt = FEYNMAN_RESULT_SYSTEM_PROMPT
+    assert "Kurzfazit" in prompt
+    assert "Was du schon" in prompt
+    assert "Missverst" in prompt
+    assert "Verbesserte Mini-Erkl" in prompt
+    assert "exercise_status" in prompt
+    assert "completed" in prompt
+    lower = prompt.lower()
+    assert "turn_count" in lower
+    assert "mode" in lower
+
+
+def test_extract_al_state_update_accepts_new_completion_keys():
+    answer = (
+        "Almost there."
+        f"{AL_STATE_OPEN}"
+        '{"exercise_status":"final_check","completion_readiness":0.78,'
+        '"remaining_gaps":[" event logs "," ","duplicate","duplicate"],'
+        '"final_check_question":"  Was zeigt die Karte wirklich?  "}'
+        f"{AL_STATE_CLOSE}"
+    )
+    current_state = {"mode": "feynman"}
+
+    _, merged_state = extract_al_state_update(answer, current_state)
+
+    assert merged_state["exercise_status"] == "final_check"
+    assert merged_state["completion_readiness"] == 0.78
+    assert merged_state["remaining_gaps"] == ["event logs", "duplicate"]
+    assert merged_state["final_check_question"] == "Was zeigt die Karte wirklich?"
+    assert merged_state["mode"] == "feynman"
+
+
+def test_extract_al_state_update_rejects_invalid_exercise_status():
+    answer = (
+        "Progress."
+        f"{AL_STATE_OPEN}"
+        '{"exercise_status":"some-other-status"}'
+        f"{AL_STATE_CLOSE}"
+    )
+    current_state = {"mode": "feynman", "exercise_status": "active"}
+
+    _, merged_state = extract_al_state_update(answer, current_state)
+
+    assert merged_state["exercise_status"] == "active"
+
+
+def test_extract_al_state_update_clamps_completion_readiness():
+    answer = (
+        "Progress."
+        f"{AL_STATE_OPEN}"
+        '{"completion_readiness":1.4}'
+        f"{AL_STATE_CLOSE}"
+    )
+    _, merged_state = extract_al_state_update(answer, {"mode": "feynman"})
+    assert merged_state["completion_readiness"] == 1.0
+
+    answer_neg = (
+        "Progress."
+        f"{AL_STATE_OPEN}"
+        '{"completion_readiness":-0.3}'
+        f"{AL_STATE_CLOSE}"
+    )
+    _, merged_neg = extract_al_state_update(answer_neg, {"mode": "feynman"})
+    assert merged_neg["completion_readiness"] == 0.0
+
+    answer_bad = (
+        "Progress."
+        f"{AL_STATE_OPEN}"
+        '{"completion_readiness":"high"}'
+        f"{AL_STATE_CLOSE}"
+    )
+    _, merged_bad = extract_al_state_update(answer_bad, {"mode": "feynman"})
+    assert "completion_readiness" not in merged_bad
+
+
+def test_extract_al_state_update_preserves_server_turn_count():
+    answer = (
+        "Almost there."
+        f"{AL_STATE_OPEN}"
+        '{"turn_count":99,"current_step":"ask_question"}'
+        f"{AL_STATE_CLOSE}"
+    )
+    current_state = {"mode": "feynman", "turn_count": 4}
+
+    _, merged_state = extract_al_state_update(answer, current_state)
+
+    assert merged_state["turn_count"] == 4
+    assert merged_state["current_step"] == "ask_question"
+
+
+def test_extract_al_state_update_remaining_gaps_must_be_list():
+    answer = (
+        "."
+        f"{AL_STATE_OPEN}"
+        '{"remaining_gaps":"single string"}'
+        f"{AL_STATE_CLOSE}"
+    )
+    _, merged_state = extract_al_state_update(answer, {"mode": "feynman"})
+    assert "remaining_gaps" not in merged_state

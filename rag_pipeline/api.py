@@ -73,6 +73,7 @@ class RagAnswerRequest(BaseModel):
     use_retrieval_planner: bool | None = None
     chat_mode: ChatMode = "normal"
     active_learning_state: dict[str, Any] | None = None
+    active_learning_control: dict[str, Any] | None = None
     chat_language: ChatLanguage | None = None
 
     @model_validator(mode="after")
@@ -322,6 +323,7 @@ def rag_answer(request: RagAnswerRequest) -> dict[str, Any]:
             agentic_retriever_enabled=config.agentic_retriever_enabled,
             chat_mode=request.chat_mode,
             active_learning_state=request.active_learning_state,
+            active_learning_control=request.active_learning_control,
             chat_language=request.chat_language,
         )
     except HTTPException:
