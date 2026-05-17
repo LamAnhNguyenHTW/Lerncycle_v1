@@ -31,7 +31,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
       setNewCourseName('');
       setIsCreating(false);
       setIsOpen(false);
-      router.push(`/?courseId=${id}`);
+      router.push(`/app?courseId=${id}`);
     }
   };
 
@@ -62,7 +62,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
     const remainingCourses = courses.filter((c) => c.id !== courseToDelete.id);
     const nextCourse = remainingCourses[0];
     setCourseToDelete(null);
-    router.push(nextCourse ? `/?courseId=${nextCourse.id}` : '/');
+    router.push(nextCourse ? `/app?courseId=${nextCourse.id}` : '/app');
     router.refresh();
   };
 
@@ -135,7 +135,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
                     <button
                       onClick={() => {
                         setIsOpen(false);
-                        router.push(`/?courseId=${course.id}`);
+                        router.push(`/app?courseId=${course.id}`);
                       }}
                       className="flex min-w-0 flex-1 items-center gap-3 text-left"
                     >

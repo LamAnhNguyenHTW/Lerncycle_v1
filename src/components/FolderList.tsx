@@ -250,7 +250,7 @@ function PdfRow({ pdf, courseId }: { pdf: PdfFile; courseId: string }) {
     <div
       className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border px-4 py-3 text-sm hover:border-black/20 transition-colors group cursor-pointer"
       onClick={() => {
-        router.push(`/?courseId=${courseId}&tab=notetaking&pdfId=${pdf.id}`);
+        router.push(`/app?courseId=${courseId}&tab=notetaking&pdfId=${pdf.id}`);
       }}
       title={pdf.name}
     >
@@ -263,7 +263,7 @@ function PdfRow({ pdf, courseId }: { pdf: PdfFile; courseId: string }) {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/?courseId=${courseId}&tab=learn&pdfId=${pdf.id}`);
+            router.push(`/app?courseId=${courseId}&tab=learn&pdfId=${pdf.id}`);
           }}
           className="opacity-0 group-hover:opacity-100 hover:text-foreground transition-all text-sm"
         >

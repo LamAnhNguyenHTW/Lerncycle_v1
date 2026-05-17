@@ -43,7 +43,7 @@ export function LoginForm() {
            </div>
            <span className="font-bold text-2xl tracking-tight text-foreground">Learncycle</span>
         </div>
-        
+
         <h1 className="text-3xl font-bold mb-4 text-center text-foreground">Welcome back</h1>
         <p className="text-muted-foreground text-center mb-10 text-base leading-relaxed">
           Your learning materials, well-structured and always within reach.
