@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import argparse
 from datetime import datetime, timezone
 import logging
 from pathlib import Path
+import signal
 import tempfile
+import threading
+import time
 from typing import Any
+from uuid import uuid4
 
 from rag_pipeline.config import WorkerConfig
 from rag_pipeline.docling_ingestion import process_pdf
@@ -91,6 +96,7 @@ class RagWorker:
             self._graph_store = self._graph_store or create_graph_store(config)
         self._learning_extractor = LearningExtractor()
         self._topic_consolidator = TopicConsolidator()
+        self._shutdown = threading.Event()
 
     def _get_embedder(self) -> Embedder:
         if self._embedder is None:
@@ -126,19 +132,99 @@ class RagWorker:
         Returns:
             True when a job was processed, otherwise False.
         """
+        return self._run_one_logged()
+
+    def _run_one_logged(self) -> bool:
+        """Claim one job, process it, and log the per-job outcome."""
         job = self._claim_job()
         if not job:
             return False
 
+        job_id = str(job["id"])
+        start = time.monotonic()
+        LOGGER.info(
+            "job_claimed job_id=%s job_kind=%s source_type=%s",
+            job_id,
+            str(job.get("job_kind") or "index_source"),
+            str(job.get("source_type") or "pdf"),
+        )
         try:
             self._process_job(job)
         except Exception as exc:
-            LOGGER.exception("RAG job failed: %s", job.get("id"))
-            self._mark_job_failed(str(job["id"]), str(exc))
+            self._mark_job_failed(job, str(exc))
+            attempts = int(job.get("attempts") or 0)
+            will_retry = attempts < self._config.worker_max_attempts
+            LOGGER.exception(
+                "job_failed job_id=%s attempts=%s will_retry=%s error=%s",
+                job_id,
+                attempts,
+                will_retry,
+                str(exc),
+            )
+            return True
+        LOGGER.info(
+            "job_completed job_id=%s duration_seconds=%.3f",
+            job_id,
+            time.monotonic() - start,
+        )
         return True
 
+    def run_loop(
+        self,
+        *,
+        worker_id: str,
+        poll_interval: float,
+        max_jobs_per_loop: int,
+        idle_backoff_max: float,
+        sleep: Any = time.sleep,
+    ) -> None:
+        """Continuously claim and process jobs until shutdown is requested."""
+        backoff = poll_interval
+        LOGGER.info(
+            "worker_started worker_id=%s poll_interval=%s max_jobs_per_loop=%s idle_backoff_max=%s",
+            worker_id,
+            poll_interval,
+            max_jobs_per_loop,
+            idle_backoff_max,
+        )
+        shutdown_reason = "signal"
+        while not self._shutdown.is_set():
+            handled_any = False
+            loop_error = False
+            burst_exhausted = True
+            for _ in range(max_jobs_per_loop):
+                if self._shutdown.is_set():
+                    break
+                try:
+                    handled = self._run_one_logged()
+                except Exception:
+                    LOGGER.exception("worker_loop_error")
+                    sleep(poll_interval)
+                    loop_error = True
+                    break
+                if not handled:
+                    burst_exhausted = False
+                    break
+                handled_any = True
+                backoff = poll_interval
+
+            if self._shutdown.is_set():
+                break
+            if loop_error:
+                continue
+            if handled_any and burst_exhausted:
+                continue
+            LOGGER.info("worker_idle sleep_seconds=%s", backoff)
+            sleep(backoff)
+            backoff = min(backoff * 2, idle_backoff_max)
+
+        LOGGER.info("worker_shutdown reason=%s", shutdown_reason)
+
     def _claim_job(self) -> dict[str, Any] | None:
-        response = self._supabase.rpc("claim_rag_index_job").execute()
+        response = self._supabase.rpc(
+            "claim_rag_index_job",
+            {"max_attempts": self._config.worker_max_attempts},
+        ).execute()
         jobs = response.data or []
         return jobs[0] if jobs else None
 
@@ -444,11 +530,9 @@ class RagWorker:
                     relationships_upserted += int(stats.get("relationships_upserted", 0))
 
         if chunks_processed == 0 and failures:
-            self._mark_job_failed(
-                str(job["id"]),
-                f"Graph extraction failed for all chunks: {failures[:5]}",
+            raise RuntimeError(
+                f"Graph extraction failed for all chunks: {failures[:5]}"
             )
-            return
         self._mark_job_completed(
             str(job["id"]),
             metadata={
@@ -720,8 +804,7 @@ class RagWorker:
                 rejected_samples.append({"group_id": group.group_id, "reason": "group_failed", "error": str(exc)[:500]})
 
         if successful_groups == 0 and failed_groups > 0:
-            self._mark_job_failed(str(job["id"]), "Learning graph extraction failed for all groups.")
-            return
+            raise RuntimeError("Learning graph extraction failed for all groups.")
 
         chunk_text_by_id = {chunk.chunk_id: chunk.text for chunk in chunks}
         document_page_count = _document_page_count(chunks)
@@ -1126,16 +1209,19 @@ class RagWorker:
             update["metadata"] = metadata
         self._supabase.table("rag_index_jobs").update(update).eq("id", job_id).execute()
 
-    def _mark_job_failed(self, job_id: str, error_message: str) -> None:
-        self._supabase.table("rag_index_jobs").update(
-            {
-                "status": "failed",
-                "locked_at": None,
-                "completed_at": _utc_now(),
-                "updated_at": _utc_now(),
-                "error_message": error_message[:4000],
-            }
-        ).eq("id", job_id).execute()
+    def _mark_job_failed(self, job: dict[str, Any] | str, error_message: str) -> None:
+        job_id = str(job["id"] if isinstance(job, dict) else job)
+        attempts = int(job.get("attempts") or 0) if isinstance(job, dict) else self._config.worker_max_attempts
+        will_retry = attempts < self._config.worker_max_attempts
+        update = {
+            "status": "pending" if will_retry else "failed",
+            "locked_at": None,
+            "updated_at": _utc_now(),
+            "error_message": error_message[:4000],
+        }
+        if not will_retry:
+            update["completed_at"] = _utc_now()
+        self._supabase.table("rag_index_jobs").update(update).eq("id", job_id).execute()
 
 
 def _utc_now() -> str:
@@ -1226,13 +1312,66 @@ def _document_page_count(chunks: list[ChunkForExtraction]) -> int | None:
     return (max(pages) + 1) if pages else None
 
 
-def main() -> None:
-    """Run one worker iteration from CLI."""
+def _install_shutdown_handlers(worker: RagWorker) -> None:
+    """Install signal handlers that request graceful worker shutdown."""
+    previous_handlers = {}
+
+    def _handle_signal(signum, _frame) -> None:
+        worker._shutdown.set()
+        previous = previous_handlers.get(signum)
+        if callable(previous):
+            return
+
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        previous_handlers[signum] = signal.getsignal(signum)
+        signal.signal(signum, _handle_signal)
+
+
+def _build_parser(config: WorkerConfig) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Run the RAG indexing worker.")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--once", action="store_true", help="Process at most one job and exit.")
+    mode.add_argument("--loop", action="store_true", help="Poll continuously for jobs.")
+    parser.add_argument(
+        "--poll-interval",
+        type=float,
+        default=config.worker_poll_interval_seconds,
+    )
+    parser.add_argument(
+        "--max-jobs-per-loop",
+        type=int,
+        default=config.worker_max_jobs_per_loop,
+    )
+    parser.add_argument("--worker-id", default=None)
+    parser.add_argument(
+        "--idle-backoff-max",
+        type=float,
+        default=config.worker_idle_backoff_max_seconds,
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the worker CLI."""
     logging.basicConfig(level=logging.INFO)
-    worker = RagWorker(WorkerConfig.from_env())
+    config = WorkerConfig.from_env()
+    args = _build_parser(config).parse_args(argv)
+    worker = RagWorker(config)
+    if args.loop:
+        worker_id = args.worker_id or f"worker-{uuid4().hex[:8]}"
+        _install_shutdown_handlers(worker)
+        worker.run_loop(
+            worker_id=worker_id,
+            poll_interval=args.poll_interval,
+            max_jobs_per_loop=args.max_jobs_per_loop,
+            idle_backoff_max=args.idle_backoff_max,
+        )
+        return 0
     processed = worker.run_once()
     LOGGER.info("processed_job=%s", processed)
+    LOGGER.info("worker_shutdown reason=--once")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

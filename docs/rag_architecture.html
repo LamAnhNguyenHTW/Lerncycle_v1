@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>LearnCycle — RAG Pipeline Architecture</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f7f7f5;
+    --text: #37352f;
+    --muted: rgba(55, 53, 47, 0.65);
+    --border: rgba(55, 53, 47, 0.16);
+    --accent: #0b6e99;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  main { max-width: 1200px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .lead { color: var(--muted); font-size: 17px; margin: 0 0 40px; }
+  h2 { font-size: 24px; font-weight: 600; margin: 48px 0 4px; letter-spacing: -0.01em; }
+  h2 + p { color: var(--muted); margin: 0 0 24px; }
+  h3 { font-size: 18px; font-weight: 600; margin: 32px 0 8px; }
+  .diagram {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-soft);
+    padding: 24px;
+    margin: 16px 0 32px;
+    overflow-x: auto;
+  }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 16px;
+    font-size: 13px; color: var(--muted);
+    margin-top: 12px;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i {
+    width: 12px; height: 12px; border-radius: 3px; display: inline-block;
+    border: 1px solid var(--border);
+  }
+  .legend .nx { background: #dbeafe; border-color: #93c5fd; }
+  .legend .py { background: #fef3c7; border-color: #fcd34d; }
+  .legend .db { background: #dcfce7; border-color: #86efac; }
+  .legend .ext { background: #ede9fe; border-color: #c4b5fd; }
+  .legend .opt { background: #fce7f3; border-color: #f9a8d4; }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+    margin: 12px 0 32px;
+  }
+  th, td {
+    text-align: left; padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.92em;
+    background: var(--bg-soft);
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .note {
+    border-left: 3px solid var(--accent);
+    background: rgba(11, 110, 153, 0.04);
+    padding: 12px 16px;
+    margin: 24px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .mermaid { font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>RAG Pipeline — Architektur</h1>
+  <p class="lead">
+    LearnCycle's Retrieval-Augmented-Generation Pipeline. Source-of-truth ist <code>PROJECT.md</code>; dieses Dokument visualisiert den Daten- und Kontrollfluss.
+  </p>
+
+  <div class="legend">
+    <span><i class="nx"></i> Next.js (App / API)</span>
+    <span><i class="py"></i> Python (FastAPI / Worker)</span>
+    <span><i class="db"></i> Datenspeicher</span>
+    <span><i class="ext"></i> Externe Services</span>
+    <span><i class="opt"></i> Optional / Feature-Flag</span>
+  </div>
+
+  <!-- ───────────────────────────────────────────────────────── -->
+  <h2>1. Storage-Layer</h2>
+  <p>
+    Supabase ist die kanonische Source-of-Truth für Dokumente, Notizen, Chunks und Sessions.
+    Qdrant ist <em>nur</em> der Vektor-Index. Neo4j ist optional für GraphRAG.
+  </p>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart LR
+  classDef nx fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+  classDef py fill:#fef3c7,stroke:#f59e0b,color:#7c2d12
+  classDef db fill:#dcfce7,stroke:#22c55e,color:#14532d
+  classDef ext fill:#ede9fe,stroke:#8b5cf6,color:#4c1d95
+  classDef opt fill:#fce7f3,stroke:#ec4899,color:#831843,stroke-dasharray: 4 3
+
+  subgraph SUPA["Supabase (Postgres + Auth + Storage)"]
+    direction TB
+    T1["pdfs<br/>notes<br/>pdf_annotations"]
+    T2["rag_index_jobs<br/>rag_chunks"]
+    T3["chat_sessions<br/>chat_messages<br/>chat_memory_summaries"]
+    T4["flashcards / decks<br/>mock_tests / questions / attempts"]
+    T5["beta_signups"]
+    ST["Storage bucket: pdfs (private)"]
+  end
+
+  Q[("Qdrant<br/>collection: learncycle_chunks<br/>named vector dense + sparse")]:::db
+  N[("Neo4j Aura<br/>concepts + relationships")]:::opt
+
+  SUPA:::db
+  T1 --> ST
+  T2 -. "qdrant_point_id<br/>(pointer)" .-> Q
+  T2 -. "node ids<br/>(optional)" .-> N
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────────────────────────── -->
+  <h2>2. Ingestion-Pfad</h2>
+  <p>
+    Jeder Upload, jede Notiz-Speicherung und jede Annotation queued einen Job. Der Python-Worker pollt, parst, chunked, embedded (dense + sparse), upsertet in Qdrant.
+  </p>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart TB
+  classDef nx fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+  classDef py fill:#fef3c7,stroke:#f59e0b,color:#7c2d12
+  classDef db fill:#dcfce7,stroke:#22c55e,color:#14532d
+  classDef ext fill:#ede9fe,stroke:#8b5cf6,color:#4c1d95
+  classDef opt fill:#fce7f3,stroke:#ec4899,color:#831843,stroke-dasharray: 4 3
+
+  U([User]) --> UI["Next.js UI<br/>(PdfDropzone, NoteEditor, Annotations)"]:::nx
+  UI -- "Server Action" --> SA["actions/pdfs.ts<br/>actions/notes.ts<br/>actions/annotations.ts"]:::nx
+  SA -- "upload" --> ST[("Supabase Storage<br/>pdfs bucket")]:::db
+  SA -- "insert + enqueue" --> JOBS[("rag_index_jobs<br/>status: pending")]:::db
+
+  JOBS -- "poll" --> W["worker.py<br/>(main loop)"]:::py
+
+  W --> ROUTE{"source_type"}
+  ROUTE -- "pdf" --> DOC["docling_ingestion.py<br/>parse + chunk"]:::py
+  ROUTE -- "note / annotation_comment / chat_memory" --> SRC["source_ingestion.py"]:::py
+
+  DOC --> CHUNKS[("rag_chunks<br/>text + metadata")]:::db
+  SRC --> CHUNKS
+
+  CHUNKS --> EMB["embeddings.py<br/>OpenAI text-embedding-3-small"]:::py
+  CHUNKS --> SPA["sparse_embeddings.py<br/>FastEmbed BM25"]:::py
+
+  EMB --> QS["qdrant_store.py<br/>upsert"]:::py
+  SPA --> QS
+  QS --> Q[("Qdrant<br/>dense + sparse vectors")]:::db
+
+  CHUNKS -. "optional" .-> GE["graph_extractor.py<br/>concepts + relations"]:::opt
+  GE -. "optional" .-> N[("Neo4j")]:::opt
+
+  W -- "status=completed" --> JOBS
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Source-Type</th><th>Trigger</th><th>Indizierter Inhalt</th></tr></thead>
+    <tbody>
+      <tr><td><code>pdf</code></td><td>PDF-Upload</td><td>Docling-Chunks (Sections, Seiten)</td></tr>
+      <tr><td><code>note</code></td><td>Note auto-save (deduped)</td><td>TipTap-Plain-Text</td></tr>
+      <tr><td><code>annotation_comment</code></td><td>Annotation create/edit</td><td>Quote + Kommentar</td></tr>
+      <tr><td><code>chat_memory</code></td><td>Session-Summary (opt.)</td><td>Komprimierter Session-Verlauf</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ───────────────────────────────────────────────────────── -->
+  <h2>3. Query / Chat-Pfad</h2>
+  <p>
+    Browser → Next.js Route → FastAPI RAG-Service → optionale Intent/Planner-Stufe → Tool-Registry → Reranker → LLM → SSE-Stream zurück. Alle optionalen Stufen sind über ENV-Flags abschaltbar.
+  </p>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart TB
+  classDef nx fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+  classDef py fill:#fef3c7,stroke:#f59e0b,color:#7c2d12
+  classDef db fill:#dcfce7,stroke:#22c55e,color:#14532d
+  classDef ext fill:#ede9fe,stroke:#8b5cf6,color:#4c1d95
+  classDef opt fill:#fce7f3,stroke:#ec4899,color:#831843,stroke-dasharray: 4 3
+
+  UI["ChatInterface / ActiveLearningSection<br/>(use client)"]:::nx
+  UI -- "POST /api/chat (SSE)" --> NXR["app/api/chat/route.ts<br/>auth check, load 10 recent msgs"]:::nx
+  NXR -- "proxy SSE<br/>+ shared secret" --> API["rag_pipeline/api.py<br/>(FastAPI, warm clients)"]:::py
+
+  API --> INT{"Intent<br/>Classifier?"}:::opt
+  INT -- "off" --> PLN
+  INT -- "on" --> IC["intent_classifier.py<br/>gpt-4.1-mini"]:::opt
+  IC --> PLN
+
+  PLN["retrieval_plan.py<br/>Planner: intent → ordered steps"]:::opt
+  PLN --> REG["retrieval_tools.py<br/>Tool Registry"]:::py
+
+  REG --> AGT{"Agentic<br/>Retriever?"}:::opt
+  AGT -- "heuristic / llm" --> REF["refinement.py<br/>bounded re-query"]:::opt
+  AGT -- "off / done" --> TOOLS
+
+  subgraph TOOLS["Tools (server-side only)"]
+    direction LR
+    T1["search_pdf_chunks"]:::py
+    T2["search_notes"]:::py
+    T3["search_annotations"]:::py
+    T4["search_chat_memory"]:::opt
+    T5["web_search"]:::opt
+    T6["query_knowledge_graph"]:::opt
+  end
+
+  T1 --> RET["retrieval.py<br/>dense / sparse / hybrid RRF<br/>(parallel)"]:::py
+  T2 --> RET
+  T3 --> RET
+  T4 --> RET
+  RET --> Q[("Qdrant")]:::db
+  T5 --> TV[("Tavily API")]:::ext
+  T6 --> GR["graph_retrieval.py"]:::opt
+  GR --> N[("Neo4j")]:::opt
+
+  RET --> RR["reranker.py<br/>noop / FastEmbed / LLM"]:::py
+  TOOLS --> CB["context_builder.py<br/>citations + budget"]:::py
+  RR --> CB
+
+  CB --> ANS["rag_answer.py<br/>OpenAI chat (stream)"]:::py
+  ANS --> OAI[("OpenAI Chat")]:::ext
+  ANS -- "SSE tokens + sources" --> NXR
+  NXR -- "stream + persist" --> UI
+  NXR -- "persist assistant msg<br/>(exactly once)" --> CM[("chat_messages")]:::db
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Scope-Garantien:</strong> Jeder Tool-Call läuft server-side mit Filter auf <code>user_id</code> aus der Auth-Session — niemals aus dem Request-Body.
+    Selektierte <code>pdf_id</code>s engen Retrieval zusätzlich ein. Web-Suche speichert nie in Supabase / Qdrant.
+  </div>
+
+  <!-- ───────────────────────────────────────────────────────── -->
+  <h2>4. Modul-Map</h2>
+  <p>Die wichtigsten Dateien unter <code>rag_pipeline/</code>:</p>
+  <table>
+    <thead><tr><th>Modul</th><th>Rolle</th></tr></thead>
+    <tbody>
+      <tr><td><code>worker.py</code></td><td>Job-Poller + Orchestrator des Ingestion-Flows</td></tr>
+      <tr><td><code>api.py</code></td><td>FastAPI: <code>/answer</code>, <code>/answer/stream</code>, <code>/healthz</code></td></tr>
+      <tr><td><code>docling_ingestion.py</code></td><td>PDF → strukturierte Chunks via Docling</td></tr>
+      <tr><td><code>source_ingestion.py</code></td><td>Notes & Annotation-Comments → Chunks</td></tr>
+      <tr><td><code>embeddings.py</code></td><td>Dense Embeddings (OpenAI <code>text-embedding-3-small</code>, batched)</td></tr>
+      <tr><td><code>sparse_embeddings.py</code></td><td>BM25 via FastEmbed (<code>Qdrant/bm25</code>)</td></tr>
+      <tr><td><code>qdrant_store.py</code></td><td>Upsert / delete / search (named vectors dense+sparse)</td></tr>
+      <tr><td><code>retrieval.py</code></td><td>Dense, sparse, hybrid (RRF oder Qdrant-native)</td></tr>
+      <tr><td><code>reranker.py</code></td><td>Noop, FastEmbed Cross-Encoder, oder LLM-Rerank</td></tr>
+      <tr><td><code>intent_classifier.py</code></td><td>(opt.) Query-Type-Routing</td></tr>
+      <tr><td><code>retrieval_plan.py</code></td><td>(opt.) Intent → konkrete Retrieval-Steps</td></tr>
+      <tr><td><code>retrieval_tools.py</code></td><td>Controlled Tool-Registry (6 Tools)</td></tr>
+      <tr><td><code>agentic_retriever.py</code></td><td>(opt.) Quality-Assessment + bounded Refinement</td></tr>
+      <tr><td><code>graph_extractor.py</code> / <code>graph_retrieval.py</code></td><td>(opt.) Neo4j GraphRAG</td></tr>
+      <tr><td><code>web_search.py</code></td><td>(opt.) Tavily-Backed Web-Suche</td></tr>
+      <tr><td><code>conversation_compressor.py</code></td><td>(opt.) Session-Memory-Summaries → <code>chat_memory</code>-Quelle</td></tr>
+      <tr><td><code>prompt_compaction.py</code></td><td>(opt.) Rolling In-Prompt Session-Summary (nie indexiert)</td></tr>
+      <tr><td><code>context_builder.py</code></td><td>Citation-Format, Token-Budget</td></tr>
+      <tr><td><code>rag_answer.py</code></td><td>LLM-Call + SSE-Generator</td></tr>
+      <tr><td><code>config.py</code></td><td>Alle ENV-Flags (<code>WorkerConfig</code>)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ───────────────────────────────────────────────────────── -->
+  <h2>5. Optionale Features (Feature-Flags)</h2>
+  <table>
+    <thead><tr><th>Flag</th><th>Standard</th><th>Was sich ändert</th></tr></thead>
+    <tbody>
+      <tr><td><code>RERANKING_ENABLED</code></td><td>false</td><td>Cross-Encoder oder LLM-Rerank vor Context-Build</td></tr>
+      <tr><td><code>QDRANT_NATIVE_HYBRID_ENABLED</code></td><td>true</td><td>Server-side Fusion statt RRF im Python</td></tr>
+      <tr><td><code>CHAT_MEMORY_ENABLED</code></td><td>false</td><td>Session-Summaries als <code>chat_memory</code>-Quelle indexieren</td></tr>
+      <tr><td><code>PROMPT_COMPACTION_ENABLED</code></td><td>false</td><td>Rolling-Summary nur im Prompt, nie in Qdrant</td></tr>
+      <tr><td><code>GRAPH_ENABLED</code> / <code>GRAPH_EXTRACTION_ENABLED</code> / <code>GRAPH_RETRIEVAL_ENABLED</code></td><td>false</td><td>Neo4j-Concepts + Graph-Context im LLM-Prompt</td></tr>
+      <tr><td><code>WEB_SEARCH_ENABLED</code></td><td>false</td><td>Tavily Web-Suche als ephemere Quelle</td></tr>
+      <tr><td><code>INTENT_CLASSIFIER_ENABLED</code></td><td>false</td><td>LLM-Klassifikation der Anfrage</td></tr>
+      <tr><td><code>RETRIEVAL_PLANNER_ENABLED</code></td><td>false</td><td>Intent → geordnete Retrieval-Steps</td></tr>
+      <tr><td><code>RETRIEVAL_TOOL_REGISTRY_ENABLED</code></td><td>false</td><td>Schema-validierte Tool-Layer über Planner</td></tr>
+      <tr><td><code>AGENTIC_RETRIEVER_ENABLED</code></td><td>false</td><td>Quality-Check + 1 Refinement-Round</td></tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top: 64px; color: var(--muted); font-size: 13px;">
+    Generiert · LearnCycle Bachelorarbeit · siehe <code>PROJECT.md</code> + <code>conductor/tracks/</code>
+  </p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif',
+      fontSize: '13px',
+      primaryColor: '#ffffff',
+      primaryTextColor: '#37352f',
+      primaryBorderColor: '#37352f29',
+      lineColor: '#37352f7a',
+      tertiaryColor: '#f7f7f5'
+    },
+    flowchart: { curve: 'basis', padding: 16 }
+  });
+</script>
+</body>
+</html>

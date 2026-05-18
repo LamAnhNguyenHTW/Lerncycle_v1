@@ -98,6 +98,9 @@ def test_plan_adds_ordered_steps_and_respects_scope() -> None:
         "query_knowledge_graph",
     ]
     assert plan.steps[0].source_ids == ["pdf-1"]
+    assert plan.steps[0].filters == {"pdf_ids": ["pdf-1"]}
+    assert plan.steps[1].filters == {"pdf_ids": ["pdf-1"]}
+    assert plan.steps[2].filters == {"pdf_ids": ["pdf-1"]}
     assert plan.steps[-1].status == PlanStepStatus.DISABLED
 
 

@@ -34,6 +34,10 @@ def test_config_defaults(monkeypatch) -> None:
     assert config.hybrid_fusion == "rrf"
     assert config.hybrid_prefetch_limit == 30
     assert config.hybrid_top_k == 10
+    assert config.worker_poll_interval_seconds == 2.0
+    assert config.worker_max_jobs_per_loop == 10
+    assert config.worker_idle_backoff_max_seconds == 30.0
+    assert config.worker_max_attempts == 3
 
 
 def test_config_env_overrides(monkeypatch) -> None:
@@ -50,6 +54,10 @@ def test_config_env_overrides(monkeypatch) -> None:
     monkeypatch.setenv("HYBRID_FUSION", "local_rrf")
     monkeypatch.setenv("HYBRID_PREFETCH_LIMIT", "42")
     monkeypatch.setenv("HYBRID_TOP_K", "7")
+    monkeypatch.setenv("RAG_WORKER_POLL_INTERVAL_SECONDS", "0.5")
+    monkeypatch.setenv("RAG_WORKER_MAX_JOBS_PER_LOOP", "4")
+    monkeypatch.setenv("RAG_WORKER_IDLE_BACKOFF_MAX_SECONDS", "8.0")
+    monkeypatch.setenv("RAG_WORKER_MAX_ATTEMPTS", "5")
 
     config = WorkerConfig.from_env()
 
@@ -64,6 +72,10 @@ def test_config_env_overrides(monkeypatch) -> None:
     assert config.hybrid_fusion == "local_rrf"
     assert config.hybrid_prefetch_limit == 42
     assert config.hybrid_top_k == 7
+    assert config.worker_poll_interval_seconds == 0.5
+    assert config.worker_max_jobs_per_loop == 4
+    assert config.worker_idle_backoff_max_seconds == 8.0
+    assert config.worker_max_attempts == 5
 
 
 def test_sparse_enabled_false_values(monkeypatch) -> None:
