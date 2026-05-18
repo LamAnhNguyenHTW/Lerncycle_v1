@@ -20,6 +20,17 @@ def test_config_defaults(monkeypatch) -> None:
     monkeypatch.delenv("HYBRID_FUSION", raising=False)
     monkeypatch.delenv("HYBRID_PREFETCH_LIMIT", raising=False)
     monkeypatch.delenv("HYBRID_TOP_K", raising=False)
+    monkeypatch.delenv("QDRANT_NATIVE_HYBRID_ENABLED", raising=False)
+    monkeypatch.delenv("QUERY_EMBEDDING_CACHE_ENABLED", raising=False)
+    monkeypatch.delenv("QUERY_EMBEDDING_CACHE_MAX_ENTRIES", raising=False)
+    monkeypatch.delenv("RETRIEVAL_RESULT_CACHE_ENABLED", raising=False)
+    monkeypatch.delenv("RETRIEVAL_RESULT_CACHE_MAX_ENTRIES", raising=False)
+    monkeypatch.delenv("RETRIEVAL_RESULT_CACHE_TTL_S", raising=False)
+    monkeypatch.delenv("RERANK_TIMEOUT_S", raising=False)
+    monkeypatch.delenv("RERANKER_NORMAL_MODE_DEFAULT", raising=False)
+    monkeypatch.delenv("RERANKER_CACHE_ENABLED", raising=False)
+    monkeypatch.delenv("RERANKER_CACHE_MAX_ENTRIES", raising=False)
+    monkeypatch.delenv("RERANKER_CACHE_TTL_S", raising=False)
 
     config = WorkerConfig.from_env()
 
@@ -38,6 +49,17 @@ def test_config_defaults(monkeypatch) -> None:
     assert config.worker_max_jobs_per_loop == 10
     assert config.worker_idle_backoff_max_seconds == 30.0
     assert config.worker_max_attempts == 3
+    assert config.qdrant_native_hybrid_enabled is True
+    assert config.query_embedding_cache_enabled is True
+    assert config.query_embedding_cache_max_entries == 512
+    assert config.retrieval_result_cache_enabled is True
+    assert config.retrieval_result_cache_max_entries == 512
+    assert config.retrieval_result_cache_ttl_s == 300
+    assert config.rerank_timeout_s == 1.5
+    assert config.reranker_normal_mode_default == "noop"
+    assert config.reranker_cache_enabled is True
+    assert config.reranker_cache_max_entries == 512
+    assert config.reranker_cache_ttl_s == 300
 
 
 def test_config_env_overrides(monkeypatch) -> None:
@@ -58,6 +80,17 @@ def test_config_env_overrides(monkeypatch) -> None:
     monkeypatch.setenv("RAG_WORKER_MAX_JOBS_PER_LOOP", "4")
     monkeypatch.setenv("RAG_WORKER_IDLE_BACKOFF_MAX_SECONDS", "8.0")
     monkeypatch.setenv("RAG_WORKER_MAX_ATTEMPTS", "5")
+    monkeypatch.setenv("QDRANT_NATIVE_HYBRID_ENABLED", "false")
+    monkeypatch.setenv("QUERY_EMBEDDING_CACHE_ENABLED", "false")
+    monkeypatch.setenv("QUERY_EMBEDDING_CACHE_MAX_ENTRIES", "64")
+    monkeypatch.setenv("RETRIEVAL_RESULT_CACHE_ENABLED", "false")
+    monkeypatch.setenv("RETRIEVAL_RESULT_CACHE_MAX_ENTRIES", "32")
+    monkeypatch.setenv("RETRIEVAL_RESULT_CACHE_TTL_S", "30")
+    monkeypatch.setenv("RERANK_TIMEOUT_S", "0.75")
+    monkeypatch.setenv("RERANKER_NORMAL_MODE_DEFAULT", "fastembed")
+    monkeypatch.setenv("RERANKER_CACHE_ENABLED", "false")
+    monkeypatch.setenv("RERANKER_CACHE_MAX_ENTRIES", "16")
+    monkeypatch.setenv("RERANKER_CACHE_TTL_S", "45")
 
     config = WorkerConfig.from_env()
 
@@ -76,6 +109,17 @@ def test_config_env_overrides(monkeypatch) -> None:
     assert config.worker_max_jobs_per_loop == 4
     assert config.worker_idle_backoff_max_seconds == 8.0
     assert config.worker_max_attempts == 5
+    assert config.qdrant_native_hybrid_enabled is False
+    assert config.query_embedding_cache_enabled is False
+    assert config.query_embedding_cache_max_entries == 64
+    assert config.retrieval_result_cache_enabled is False
+    assert config.retrieval_result_cache_max_entries == 32
+    assert config.retrieval_result_cache_ttl_s == 30
+    assert config.rerank_timeout_s == 0.75
+    assert config.reranker_normal_mode_default == "fastembed"
+    assert config.reranker_cache_enabled is False
+    assert config.reranker_cache_max_entries == 16
+    assert config.reranker_cache_ttl_s == 45
 
 
 def test_sparse_enabled_false_values(monkeypatch) -> None:

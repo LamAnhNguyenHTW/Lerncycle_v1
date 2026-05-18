@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChevronDown, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2 } from 'lucide-react';
+import { ChevronDown, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SourceCard } from '@/components/learn/SourceCard';
 import type { Course } from '@/lib/data';
@@ -17,7 +17,16 @@ type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   sources?: ChatSource[];
+  streamStatus?: 'retrieval_started' | 'retrieval_completed' | 'reranking_started' | 'generation_started';
+  sourcesPending?: boolean;
 };
+
+type ChatStreamEvent =
+  | {event_type: 'status'; status: 'retrieval_started' | 'retrieval_completed' | 'reranking_started' | 'generation_started'; stage?: string}
+  | {event_type: 'sources'; sources: ChatSource[]}
+  | {event_type: 'token'; content: string}
+  | {event_type: 'done'; timing?: unknown; session_id?: string}
+  | {event_type: 'error'; message: string};
 
 function buildFeynmanGreeting(
   language: 'de' | 'en',
@@ -72,6 +81,26 @@ function initialMessagesFor(
     return greeting ? [greeting] : [];
   }
   return [];
+}
+
+function parseChatStreamEvents(buffer: string): { events: ChatStreamEvent[]; remainder: string } {
+  const events: ChatStreamEvent[] = [];
+  let remainder = buffer;
+  let separatorIndex = remainder.indexOf('\n\n');
+  while (separatorIndex !== -1) {
+    const block = remainder.slice(0, separatorIndex);
+    remainder = remainder.slice(separatorIndex + 2);
+    const data = block
+      .split('\n')
+      .filter((line) => line.startsWith('data: '))
+      .map((line) => line.slice(6))
+      .join('\n');
+    if (data) {
+      events.push(JSON.parse(data) as ChatStreamEvent);
+    }
+    separatorIndex = remainder.indexOf('\n\n');
+  }
+  return { events, remainder };
 }
 
 export function ChatInterface({
@@ -150,6 +179,7 @@ export function ChatInterface({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const activeAbortControllerRef = useRef<AbortController | null>(null);
   const activeConversationKeyRef = useRef(activeConversationKey);
   const isCurrentConversationPending = pendingConversationKeys.includes(activeConversationKey);
   const topicSuggestionsRef = useRef(topicSuggestions);
@@ -315,16 +345,28 @@ export function ChatInterface({
       role: 'user',
       content: trimmed,
     };
-    setMessages((current) => [...current, userMessage]);
+    const assistantMessageId = crypto.randomUUID();
+    const placeholderAssistant: ChatMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      sources: [],
+      streamStatus: 'retrieval_started',
+      sourcesPending: true,
+    };
+    setMessages((current) => [...current, userMessage, placeholderAssistant]);
     setMessage(''); // Clear input early for better UX
 
     try {
+      const abortController = new AbortController();
+      activeAbortControllerRef.current = abortController;
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify({
           message: trimmed,
           use_rag: true,
+          stream: true,
           source_types: ['pdf', 'note', 'annotation_comment'],
           top_k: 8,
           course_id: course.id,
@@ -337,14 +379,70 @@ export function ChatInterface({
           pdf_ids: selectedPdfIds,
           enableWebSearch,
         }),
+        signal: abortController.signal,
       });
+      if (res.headers.get('content-type')?.includes('text/event-stream') && res.body) {
+        const streamResult = await consumeChatStream(res, assistantMessageId);
+        if (activeConversationKeyRef.current === requestConversationKey) {
+          if (streamResult.sessionId) {
+            setActiveConversationKey(streamResult.sessionId);
+            setSessionId(streamResult.sessionId);
+          }
+          setMessages((current) => current.map((item) =>
+            item.id === assistantMessageId
+              ? {
+                ...item,
+                content: streamResult.answer,
+                sources: streamResult.sources,
+                streamStatus: undefined,
+                sourcesPending: false,
+              }
+              : item,
+          ));
+        }
+        setSessions((current) => {
+          const existing = current.filter((session) => session.id !== (streamResult.sessionId ?? sessionId));
+          const existingSession = current.find((session) => session.id === (streamResult.sessionId ?? sessionId));
+          return [
+            {
+              id: streamResult.sessionId ?? sessionId ?? crypto.randomUUID(),
+              title: existingSession?.title ?? trimmed.slice(0, 80),
+              course_id: course.id,
+              updated_at: new Date().toISOString(),
+              mode: existingSession?.mode ?? chatMode,
+              active_learning_state: existingSession?.active_learning_state ?? activeLearningState ?? {},
+              messages: [
+                ...(existingSession?.messages ?? []),
+                {
+                  id: userMessage.id,
+                  role: 'user',
+                  content: trimmed,
+                  sources: [],
+                  pdf_ids: selectedPdfIds,
+                  created_at: new Date().toISOString(),
+                },
+                {
+                  id: assistantMessageId,
+                  role: 'assistant',
+                  content: streamResult.answer,
+                  sources: streamResult.sources,
+                  pdf_ids: selectedPdfIds,
+                  created_at: new Date().toISOString(),
+                }
+              ],
+            },
+            ...existing,
+          ];
+        });
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error ?? 'Chat request failed.');
       }
       const chatResponse = data as ChatResponse;
       const assistantMessage: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: assistantMessageId,
         role: 'assistant',
         content: chatResponse.answer,
         sources: chatResponse.sources,
@@ -354,7 +452,7 @@ export function ChatInterface({
           setActiveConversationKey(chatResponse.session_id);
           setSessionId(chatResponse.session_id);
         }
-        setMessages((current) => [...current, assistantMessage]);
+        setMessages((current) => current.map((item) => item.id === assistantMessageId ? assistantMessage : item));
         if (chatResponse.active_learning_state) {
           setActiveLearningState(chatResponse.active_learning_state);
         }
@@ -397,10 +495,53 @@ export function ChatInterface({
       setError(caught instanceof Error ? caught.message : 'Chat request failed.');
       if (activeConversationKeyRef.current === requestConversationKey) {
         setMessage(trimmed); // Restore message on failure
+        setMessages((current) => current.filter((item) => item.id !== assistantMessageId));
       }
     } finally {
+      if (activeAbortControllerRef.current?.signal.aborted || activeAbortControllerRef.current) {
+        activeAbortControllerRef.current = null;
+      }
       setPendingConversationKeys((current) => current.filter((key) => key !== requestConversationKey));
     }
+  }
+
+  async function consumeChatStream(response: Response, assistantMessageId: string) {
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let answer = '';
+    let sources: ChatSource[] = [];
+    let sessionIdFromStream: string | undefined;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parsed = parseChatStreamEvents(buffer);
+      buffer = parsed.remainder;
+      for (const event of parsed.events) {
+        if (event.event_type === 'status') {
+          if (event.status === 'retrieval_started' || event.status === 'generation_started') {
+            setMessages((current) => current.map((item) => item.id === assistantMessageId ? { ...item, streamStatus: event.status } : item));
+          }
+        } else if (event.event_type === 'sources') {
+          sources = event.sources ?? [];
+          setMessages((current) => current.map((item) => item.id === assistantMessageId ? { ...item, sources, sourcesPending: false } : item));
+        } else if (event.event_type === 'token') {
+          answer += event.content;
+          setMessages((current) => current.map((item) => item.id === assistantMessageId ? { ...item, content: answer, streamStatus: undefined } : item));
+        } else if (event.event_type === 'done') {
+          const maybeSessionId = (event as {session_id?: unknown}).session_id;
+          if (typeof maybeSessionId === 'string') {
+            sessionIdFromStream = maybeSessionId;
+          }
+        } else if (event.event_type === 'error') {
+          throw new Error(event.message);
+        }
+      }
+    }
+
+    return { answer, sources, sessionId: sessionIdFromStream };
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -683,23 +824,15 @@ export function ChatInterface({
                       {chatMessage.sources && chatMessage.sources.length > 0 && (
                         <SourceReferences sources={chatMessage.sources} />
                       )}
+                      {chatMessage.role === 'assistant' && (chatMessage.sourcesPending || (chatMessage.streamStatus && !chatMessage.content)) && (
+                        <div className="text-xs text-muted-foreground">
+                          {chatMessage.streamStatus === 'generation_started' ? 'Generating…' : 'Searching sources…'}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
 
-                {isCurrentConversationPending && (
-                  <div className="flex gap-4 p-5 rounded-2xl bg-[#F7F7F5] border border-transparent animate-pulse">
-                    <div className="mt-1 shrink-0 flex items-center justify-center">
-                      <Sparkles className="h-5 w-5 text-black/50" />
-                    </div>
-                    <div className="flex-1 space-y-1.5">
-                      <div className="font-semibold text-sm text-black/50">Learncycle</div>
-                      <div className="text-muted-foreground text-sm flex gap-1 items-center">
-                        {t('chat.thinking')} <span className="flex gap-0.5"><span className="animate-bounce">.</span><span className="animate-bounce delay-75">.</span><span className="animate-bounce delay-150">.</span></span>
-                      </div>
-                    </div>
-                  </div>
-                )}
                 <div ref={messagesEndRef} className="h-4" />
               </div>
             )}
@@ -747,14 +880,25 @@ export function ChatInterface({
                 placeholder={chatMode === 'feynman' && activeLearningState.exercise_status === 'completed' ? t('active.sessionCompleted') : inputPlaceholder}
                 style={{ minHeight: '32px' }}
               />
-              <button
-                type="submit"
-                disabled={isCurrentConversationPending || !message.trim() || selectedPdfIds.length === 0 || (chatMode === 'feynman' && activeLearningState.exercise_status === 'completed')}
-                className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-black hover:bg-black/80 transition-all mb-0.5 disabled:opacity-30 disabled:hover:bg-black"
-                title="Send"
-              >
-                <Send className="h-3.5 w-3.5 text-white" />
-              </button>
+              {isCurrentConversationPending ? (
+                <button
+                  type="button"
+                  onClick={() => activeAbortControllerRef.current?.abort()}
+                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-black hover:bg-black/80 transition-all mb-0.5"
+                  title="Stop"
+                >
+                  <Square className="h-3.5 w-3.5 fill-white text-white" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!message.trim() || selectedPdfIds.length === 0 || (chatMode === 'feynman' && activeLearningState.exercise_status === 'completed')}
+                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-black hover:bg-black/80 transition-all mb-0.5 disabled:opacity-30 disabled:hover:bg-black"
+                  title="Send"
+                >
+                  <Send className="h-3.5 w-3.5 text-white" />
+                </button>
+              )}
             </form>
             <div className="text-center mt-2 text-[11px] text-muted-foreground/60">
               {t('chat.disclaimer')}

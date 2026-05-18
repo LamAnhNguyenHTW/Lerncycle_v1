@@ -5,6 +5,9 @@ from __future__ import annotations
 import logging
 import json
 import re
+from contextlib import nullcontext
+from collections.abc import AsyncIterator
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from types import SimpleNamespace
 from typing import Any, Callable
 
@@ -16,11 +19,18 @@ from rag_pipeline.graph_retrieval import retrieve_graph_context
 from rag_pipeline.intent_classifier import RetrievalIntent, classify_intent
 from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.memory_intent import detect_memory_intent
+from rag_pipeline.observability.timing import SkippedSpan
+from rag_pipeline.observability.timing import Timer
+from rag_pipeline.observability.timing import TimingReport
+from rag_pipeline.observability.timing import current_timing_report
+from rag_pipeline.observability.timing import timing_report_context
 from rag_pipeline.pedagogical_prompts import FEYNMAN_RESULT_SYSTEM_PROMPT
 from rag_pipeline.pedagogical_prompts import FEYNMAN_SYSTEM_PROMPT
 from rag_pipeline.pedagogical_prompts import GUIDED_LEARNING_SYSTEM_PROMPT
 from rag_pipeline.pedagogical_prompts import extract_al_state_update
 from rag_pipeline.query_understanding import QueryRoute, QueryUnderstanding, understand_query
+from rag_pipeline.reranker_cache import default_reranker_cache
+from rag_pipeline.reranker_cache import make_reranker_cache_key
 from rag_pipeline.retrieval_plan import PlanExecutionOutcome
 from rag_pipeline.retrieval_plan import RetrievalPlan
 from rag_pipeline.retrieval_plan import build_retrieval_plan
@@ -83,6 +93,71 @@ FALLBACK_ANSWER = (
     "Ich habe in deinen Materialien keine passenden Quellen gefunden. "
     "Bitte formuliere die Frage etwas konkreter oder lade passende Unterlagen hoch."
 )
+
+
+class _PromptCaptureLlmClient:
+    def __init__(self) -> None:
+        self.system_prompt = ""
+        self.user_prompt = ""
+
+    def complete(self, *, system_prompt: str, user_prompt: str) -> str:
+        self.system_prompt = system_prompt
+        self.user_prompt = user_prompt
+        return ""
+
+
+async def stream_answer_with_rag(
+    query: str,
+    user_id: str,
+    **kwargs: Any,
+) -> AsyncIterator[dict[str, Any]]:
+    """Stream a RAG answer as status, source, token, and terminal events."""
+    yield {
+        "event_type": "status",
+        "status": "retrieval_started",
+        "stage": "qdrant_retrieve",
+    }
+
+    original_llm = kwargs.get("llm_client")
+    prompt_capture = _PromptCaptureLlmClient()
+    response = answer_with_rag(
+        query,
+        user_id,
+        **{**kwargs, "llm_client": prompt_capture},
+    )
+
+    yield {
+        "event_type": "status",
+        "status": "retrieval_completed",
+        "stage": "qdrant_retrieve",
+    }
+    yield {"event_type": "sources", "sources": response.get("sources", [])}
+
+    if kwargs.get("reranking_enabled") and kwargs.get("reranker") is not None:
+        yield {
+            "event_type": "status",
+            "status": "reranking_started",
+            "stage": "rerank",
+        }
+
+    yield {
+        "event_type": "status",
+        "status": "generation_started",
+        "stage": "llm_first_token",
+    }
+
+    stream_llm = original_llm or OpenAILlmClient()
+    stream_answer = getattr(stream_llm, "stream_answer", None)
+    if stream_answer is None:
+        yield {"event_type": "token", "content": response.get("answer", "")}
+        yield {"event_type": "done"}
+        return
+
+    async for event in stream_answer(
+        system_prompt=prompt_capture.system_prompt,
+        user_prompt=prompt_capture.user_prompt,
+    ):
+        yield event
 
 
 def _format_conversation_block(messages: list[dict]) -> str:
@@ -337,41 +412,122 @@ def answer_with_rag(
     active_learning_state: dict[str, Any] | None = None,
     active_learning_control: dict[str, Any] | None = None,
     chat_language: str | None = None,
+    enable_timing: bool = False,
+    vector_retrieve_timeout_s: float = 4.0,
+    graph_retrieve_timeout_s: float = 2.0,
+    memory_retrieve_timeout_s: float = 1.5,
+    web_retrieve_timeout_s: float = 4.0,
+    rerank_timeout_s: float = 1.5,
+    reranker_provider: str = "",
+    reranker_model: str = "",
+    reranker_cache_enabled: bool = True,
+    reranker_cache_max_entries: int = 512,
+    reranker_cache_ttl_s: int = 300,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
+    if enable_timing and current_timing_report() is None:
+        report = TimingReport()
+        with timing_report_context(report):
+            response = answer_with_rag(
+                query=query,
+                user_id=user_id,
+                source_types=source_types,
+                top_k=top_k,
+                pdf_ids=pdf_ids,
+                recent_messages=recent_messages,
+                llm_client=llm_client,
+                retrieval_fn=retrieval_fn,
+                reranker=reranker,
+                reranking_enabled=reranking_enabled,
+                reranking_candidate_k=reranking_candidate_k,
+                reranking_top_k=reranking_top_k,
+                session_id=session_id,
+                memory_mode=memory_mode,
+                chat_memory_retrieval_enabled=chat_memory_retrieval_enabled,
+                chat_memory_top_k=chat_memory_top_k,
+                memory_source_ids=memory_source_ids,
+                graph_retrieval_enabled=graph_retrieval_enabled,
+                graph_mode=graph_mode,
+                graph_top_k=graph_top_k,
+                graph_store=graph_store,
+                context_summary=context_summary,
+                web_mode=web_mode,
+                web_search_enabled=web_search_enabled,
+                web_search_query=web_search_query,
+                web_search_fn=web_search_fn,
+                web_search_top_k=web_search_top_k,
+                web_search_provider=web_search_provider,
+                web_search_api_key=web_search_api_key,
+                web_search_timeout_seconds=web_search_timeout_seconds,
+                web_search_max_query_chars=web_search_max_query_chars,
+                web_search_max_context_sources=web_search_max_context_sources,
+                web_search_max_chars_per_source=web_search_max_chars_per_source,
+                web_search_max_total_context_chars=web_search_max_total_context_chars,
+                intent_classifier_enabled=intent_classifier_enabled,
+                intent=intent,
+                intent_classifier_fn=intent_classifier_fn,
+                intent_classifier_config=intent_classifier_config,
+                retrieval_planner_enabled=retrieval_planner_enabled,
+                retrieval_plan=retrieval_plan,
+                retrieval_planner_fn=retrieval_planner_fn,
+                retrieval_plan_executor_fn=retrieval_plan_executor_fn,
+                retrieval_planner_config=retrieval_planner_config,
+                tool_registry=tool_registry,
+                agentic_retriever_enabled=agentic_retriever_enabled,
+                agentic_retriever_fn=agentic_retriever_fn,
+                chat_mode=chat_mode,
+                active_learning_state=active_learning_state,
+                active_learning_control=active_learning_control,
+                chat_language=chat_language,
+                enable_timing=False,
+                vector_retrieve_timeout_s=vector_retrieve_timeout_s,
+                graph_retrieve_timeout_s=graph_retrieve_timeout_s,
+                memory_retrieve_timeout_s=memory_retrieve_timeout_s,
+                web_retrieve_timeout_s=web_retrieve_timeout_s,
+                rerank_timeout_s=rerank_timeout_s,
+                reranker_provider=reranker_provider,
+                reranker_model=reranker_model,
+                reranker_cache_enabled=reranker_cache_enabled,
+                reranker_cache_max_entries=reranker_cache_max_entries,
+                reranker_cache_ttl_s=reranker_cache_ttl_s,
+            )
+        response["timing"] = report.to_dict()
+        return response
+
     active_retrieval = retrieval_fn or search_hybrid_chunks
     query_understanding: QueryUnderstanding | None = None
     conversation_only_followup = False
     active_intent = intent
     classifier_used = False
     fallback_used = False
-    if active_intent is None and intent_classifier_enabled and intent_classifier_fn is None:
-        classifier_used = True
-        query_understanding = understand_query(
-            query,
-            recent_messages=recent_messages,
-            llm_client=llm_client,
-            config=intent_classifier_config,
-        )
-        active_intent = query_understanding.to_intent()
-        conversation_only_followup = query_understanding.route == QueryRoute.CONVERSATION_ONLY
-    elif active_intent is None and intent_classifier_enabled:
-        classifier_used = True
-        try:
-            active_classifier = intent_classifier_fn or classify_intent
-            active_intent = active_classifier(
-                query=query,
+    with Timer("query_understanding"):
+        if active_intent is None and intent_classifier_enabled and intent_classifier_fn is None:
+            classifier_used = True
+            query_understanding = understand_query(
+                query,
                 recent_messages=recent_messages,
+                llm_client=llm_client,
                 config=intent_classifier_config,
             )
-        except Exception:
-            logger.warning("Intent classifier integration failed; continuing without intent.", exc_info=True)
-            fallback_used = True
-            active_intent = None
-    elif active_intent is not None:
-        classifier_used = True
-    if query_understanding is None:
-        conversation_only_followup = _is_conversation_only_followup(query, recent_messages)
+            active_intent = query_understanding.to_intent()
+            conversation_only_followup = query_understanding.route == QueryRoute.CONVERSATION_ONLY
+        elif active_intent is None and intent_classifier_enabled:
+            classifier_used = True
+            try:
+                active_classifier = intent_classifier_fn or classify_intent
+                active_intent = active_classifier(
+                    query=query,
+                    recent_messages=recent_messages,
+                    config=intent_classifier_config,
+                )
+            except Exception:
+                logger.warning("Intent classifier integration failed; continuing without intent.", exc_info=True)
+                fallback_used = True
+                active_intent = None
+        elif active_intent is not None:
+            classifier_used = True
+        if query_understanding is None:
+            conversation_only_followup = _is_conversation_only_followup(query, recent_messages)
 
     effective_web_mode = web_mode
     effective_memory_mode = memory_mode
@@ -524,72 +680,132 @@ def answer_with_rag(
                 web_outcome = WebSearchOutcome(planner_web_results, web_search_provider, len(planner_web_results), None)
         except Exception:
             logger.warning("Retrieval planner failed; falling back to existing retrieval.", exc_info=True)
-            results = active_retrieval(
-                query=retrieval_query,
-                user_id=user_id,
-                source_types=material_source_types,
-                top_k=retrieval_top_k,
-                pdf_ids=pdf_ids,
-            )
+            with Timer("qdrant_retrieve"):
+                results = active_retrieval(
+                    query=retrieval_query,
+                    user_id=user_id,
+                    source_types=material_source_types,
+                    top_k=retrieval_top_k,
+                    pdf_ids=pdf_ids,
+                )
             planner_metadata = _planner_metadata(False, True, [], error_type="planner_error")
-    else:
-        results = active_retrieval(
-            query=retrieval_query,
-            user_id=user_id,
-            source_types=material_source_types,
-            top_k=retrieval_top_k,
-            pdf_ids=pdf_ids,
-        )
-    graph_context = {"context_text": "", "sources": []}
-    if not conversation_only_followup and not planner_used and _should_retrieve_graph(query, graph_mode, graph_retrieval_enabled, graph_store):
-        try:
-            graph_context = retrieve_graph_context(
-                query=query,
-                user_id=user_id,
-                source_types=material_source_types,
-                source_ids=pdf_ids,
-                top_k=graph_top_k or 8,
-                graph_store=graph_store,
-            )
-        except Exception:
-            logger.warning("Graph retrieval failed; continuing without graph context.", exc_info=True)
-            graph_context = {"context_text": "", "sources": []}
-    memory_results: list[dict[str, Any]] = []
-    if not conversation_only_followup and not planner_used and _should_retrieve_memory(
+    should_retrieve_graph = not conversation_only_followup and not planner_used and _should_retrieve_graph(query, graph_mode, graph_retrieval_enabled, graph_store)
+    should_retrieve_memory = not conversation_only_followup and not planner_used and _should_retrieve_memory(
         query,
         recent_messages,
         session_id,
         effective_memory_mode,
         chat_memory_retrieval_enabled,
-    ):
+    )
+    should_retrieve_web = not conversation_only_followup and not planner_used and web_search_enabled and effective_web_mode == "on"
+    timing_report = current_timing_report()
+
+    def _timing_context():
+        return timing_report_context(timing_report) if timing_report is not None else nullcontext()
+
+    def _retrieve_vector() -> list[dict[str, Any]]:
+        with _timing_context():
+            with Timer("qdrant_retrieve"):
+                return active_retrieval(
+                    query=retrieval_query,
+                    user_id=user_id,
+                    source_types=material_source_types,
+                    top_k=retrieval_top_k,
+                    pdf_ids=pdf_ids,
+                )
+
+    def _retrieve_graph() -> dict[str, Any]:
+        with _timing_context():
+            if not should_retrieve_graph:
+                SkippedSpan("graph_retrieve")
+                return {"context_text": "", "sources": []}
+            try:
+                with Timer("graph_retrieve"):
+                    return retrieve_graph_context(
+                        query=query,
+                        user_id=user_id,
+                        source_types=material_source_types,
+                        source_ids=pdf_ids,
+                        top_k=graph_top_k or 8,
+                        graph_store=graph_store,
+                    )
+            except Exception:
+                logger.warning("Graph retrieval failed; continuing without graph context.", exc_info=True)
+                return {"context_text": "", "sources": []}
+
+    def _retrieve_memory() -> list[dict[str, Any]]:
+        with _timing_context():
+            if not should_retrieve_memory:
+                SkippedSpan("memory_retrieve")
+                return []
+            try:
+                memory_ids = _memory_source_ids(session_id, memory_source_ids)
+                with Timer("memory_retrieve"):
+                    return active_retrieval(
+                        query=retrieval_query,
+                        user_id=user_id,
+                        source_types=["chat_memory"],
+                        source_ids=memory_ids,
+                        top_k=chat_memory_top_k or 2,
+                        pdf_ids=None,
+                    )
+            except Exception:
+                logger.warning("Chat memory retrieval failed; continuing without memory.", exc_info=True)
+                return []
+
+    def _retrieve_web() -> WebSearchOutcome:
+        with _timing_context():
+            if not should_retrieve_web:
+                SkippedSpan("web_retrieve")
+                return web_outcome
+            try:
+                active_web_search = web_search_fn or search_web
+                with Timer("web_retrieve"):
+                    outcome = active_web_search(
+                        query=web_search_query or retrieval_query,
+                        top_k=web_search_top_k or 5,
+                        provider=web_search_provider,
+                        api_key=web_search_api_key,
+                        timeout_seconds=web_search_timeout_seconds,
+                        max_query_chars=web_search_max_query_chars,
+                    )
+                return _coerce_web_outcome(outcome, web_search_provider)
+            except Exception:
+                logger.warning("Web search failed; continuing without web context.", exc_info=True)
+                return WebSearchOutcome([], web_search_provider, 0, "provider_error")
+
+    if conversation_only_followup or skip_internal_retrieval or planner_used:
+        graph_context = _retrieve_graph()
+        memory_results = _retrieve_memory()
+        web_outcome = _retrieve_web()
+    else:
+        executor = ThreadPoolExecutor(max_workers=4)
         try:
-            memory_ids = _memory_source_ids(session_id, memory_source_ids)
-            memory_results = active_retrieval(
-                query=retrieval_query,
-                user_id=user_id,
-                source_types=["chat_memory"],
-                source_ids=memory_ids,
-                top_k=chat_memory_top_k or 2,
-                pdf_ids=None,
-            )
-        except Exception:
-            logger.warning("Chat memory retrieval failed; continuing without memory.", exc_info=True)
-            memory_results = []
-    if not conversation_only_followup and not planner_used and web_search_enabled and effective_web_mode == "on":
-        try:
-            active_web_search = web_search_fn or search_web
-            outcome = active_web_search(
-                query=web_search_query or retrieval_query,
-                top_k=web_search_top_k or 5,
-                provider=web_search_provider,
-                api_key=web_search_api_key,
-                timeout_seconds=web_search_timeout_seconds,
-                max_query_chars=web_search_max_query_chars,
-            )
-            web_outcome = _coerce_web_outcome(outcome, web_search_provider)
-        except Exception:
-            logger.warning("Web search failed; continuing without web context.", exc_info=True)
-            web_outcome = WebSearchOutcome([], web_search_provider, 0, "provider_error")
+            vector_future = executor.submit(_retrieve_vector)
+            graph_future = executor.submit(_retrieve_graph)
+            memory_future = executor.submit(_retrieve_memory)
+            web_future = executor.submit(_retrieve_web)
+            results = vector_future.result(timeout=vector_retrieve_timeout_s)
+            try:
+                graph_context = graph_future.result(timeout=graph_retrieve_timeout_s)
+            except FutureTimeoutError:
+                logger.warning("Graph retrieval timed out; continuing without graph context.")
+                graph_context = {"context_text": "", "sources": []}
+            try:
+                memory_results = memory_future.result(timeout=memory_retrieve_timeout_s)
+            except FutureTimeoutError:
+                logger.warning("Chat memory retrieval timed out; continuing without memory.")
+                memory_results = []
+            try:
+                web_outcome = web_future.result(timeout=web_retrieve_timeout_s)
+            except FutureTimeoutError:
+                logger.warning("Web search timed out; continuing without web context.")
+                web_outcome = WebSearchOutcome([], web_search_provider, 0, "timeout")
+        except FutureTimeoutError as exc:
+            raise TimeoutError("Vector retrieval timed out.") from exc
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
     results = results + memory_results
     if web_outcome.results:
         results = results + web_outcome.results
@@ -659,22 +875,36 @@ def answer_with_rag(
     if reranking_enabled and reranker is not None:
         context_top_k = reranking_top_k
         try:
-            context_results = reranker.rerank(
-                retrieval_query,
-                results,
-                top_k=reranking_top_k,
-            )
+            with Timer("rerank"):
+                context_results = _rerank_with_cache(
+                    reranker,
+                    retrieval_query,
+                    results,
+                    reranking_top_k,
+                    timeout_s=rerank_timeout_s,
+                    provider=reranker_provider,
+                    model=reranker_model,
+                    cache_enabled=reranker_cache_enabled,
+                    cache_max_entries=reranker_cache_max_entries,
+                    cache_ttl_s=reranker_cache_ttl_s,
+                )
+        except TimeoutError:
+            logger.warning("Reranker timed out; using original retrieval order.")
+            context_results = results[:reranking_top_k]
         except Exception:
             logger.warning("Reranker failed; using original retrieval order.", exc_info=True)
             context_results = results[:reranking_top_k]
+    else:
+        SkippedSpan("rerank")
 
-    context = build_rag_context(
-        context_results,
-        max_chunks=context_top_k,
-        web_max_sources=web_search_max_context_sources,
-        web_max_chars_per_source=web_search_max_chars_per_source,
-        web_max_total_chars=web_search_max_total_context_chars,
-    )
+    with Timer("context_build"):
+        context = build_rag_context(
+            context_results,
+            max_chunks=context_top_k,
+            web_max_sources=web_search_max_context_sources,
+            web_max_chars_per_source=web_search_max_chars_per_source,
+            web_max_total_chars=web_search_max_total_context_chars,
+        )
     text_context = context["context_text"]
     graph_text = str(graph_context.get("context_text") or "").strip()
     combined_context = _combine_context(text_context, graph_text)
@@ -740,7 +970,8 @@ def answer_with_rag(
     if _is_active_learning_mode(chat_mode):
         state_for_prompt = _state_with_nudge(active_learning_state, active_learning_control)
         user_prompt = _append_active_learning_state(user_prompt, state_for_prompt)
-    answer = active_llm.complete(system_prompt=system_prompt, user_prompt=user_prompt)
+    with Timer("llm_total"):
+        answer = active_llm.complete(system_prompt=system_prompt, user_prompt=user_prompt)
     updated_active_learning_state = None
     if _is_active_learning_mode(chat_mode):
         answer, updated_active_learning_state = extract_al_state_update(
@@ -769,6 +1000,62 @@ def answer_with_rag(
     if updated_active_learning_state is not None:
         response["updated_active_learning_state"] = updated_active_learning_state
     return response
+
+
+def _rerank_with_timeout(
+    reranker: Any,
+    query: str,
+    results: list[dict[str, Any]],
+    top_k: int,
+    *,
+    timeout_s: float,
+) -> list[dict[str, Any]]:
+    executor = ThreadPoolExecutor(max_workers=1)
+    try:
+        future = executor.submit(reranker.rerank, query, results, top_k)
+        return future.result(timeout=timeout_s)
+    except FutureTimeoutError as exc:
+        raise TimeoutError("Reranker timed out.") from exc
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _rerank_with_cache(
+    reranker: Any,
+    query: str,
+    results: list[dict[str, Any]],
+    top_k: int,
+    *,
+    timeout_s: float,
+    provider: str,
+    model: str,
+    cache_enabled: bool,
+    cache_max_entries: int,
+    cache_ttl_s: int,
+) -> list[dict[str, Any]]:
+    cache_allowed = cache_enabled and bool(provider) and bool(model)
+    key = make_reranker_cache_key(
+        query=query,
+        reranker_provider=provider,
+        reranker_model=model,
+        candidates=results,
+    )
+    if cache_allowed:
+        default_reranker_cache.max_entries = cache_max_entries
+        default_reranker_cache.ttl_s = cache_ttl_s
+        cached = default_reranker_cache.get(key)
+        if cached is not None:
+            return cached
+    reranked = _rerank_with_timeout(
+        reranker,
+        query,
+        results,
+        top_k,
+        timeout_s=timeout_s,
+    )
+    if cache_allowed:
+        default_reranker_cache.set(key, reranked)
+    return reranked
 
 
 def _should_retrieve_memory(
