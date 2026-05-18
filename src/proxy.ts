@@ -36,8 +36,17 @@ export async function proxy(request: NextRequest) {
 
   const {pathname} = request.nextUrl;
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/auth');
+  // Public marketing surface — `/`, `/de`, `/en`, and any nested marketing route
+  // under those locales. Auth is not required to view them.
+  const isMarketingRoute =
+    pathname === '/' ||
+    pathname === '/de' ||
+    pathname === '/en' ||
+    pathname.startsWith('/de/') ||
+    pathname.startsWith('/en/');
+  const isPublicRoute = isAuthRoute || isMarketingRoute;
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
@@ -45,7 +54,7 @@ export async function proxy(request: NextRequest) {
 
   if (user && pathname === '/login') {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = '/app';
     return NextResponse.redirect(url);
   }
 

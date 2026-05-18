@@ -73,35 +73,35 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
             icon={<NotionIcon name="ni-house" className="w-[24px] h-[24px]" />}
             label={t('nav.home')}
             active={activeTab === 'home'}
-            href={`/?courseId=${activeCourseId}&tab=home`}
+            href={`/app?courseId=${activeCourseId}&tab=home`}
             collapsed={collapsed}
           />
           <NavItem
             icon={<NotionIcon name="ni-pen-line" className="w-[24px] h-[24px]" />}
             label={t('nav.notetaking')}
             active={activeTab === 'notetaking'}
-            href={`/?courseId=${activeCourseId}&tab=notetaking${activePdfId ? `&pdfId=${activePdfId}` : ''}`}
+            href={`/app?courseId=${activeCourseId}&tab=notetaking${activePdfId ? `&pdfId=${activePdfId}` : ''}`}
             collapsed={collapsed}
           />
           <NavItem
             icon={<NotionIcon name="ni-comment-text" className="w-[24px] h-[24px]" />}
             label={t('nav.learn')}
             active={activeTab === 'learn'}
-            href={`/?courseId=${activeCourseId}&tab=learn${activePdfId ? `&pdfId=${activePdfId}` : ''}`}
+            href={`/app?courseId=${activeCourseId}&tab=learn${activePdfId ? `&pdfId=${activePdfId}` : ''}`}
             collapsed={collapsed}
           />
           <NavItem
             icon={<NotionIcon name="ni-rocket" className="w-[24px] h-[24px]" />}
             label={t('nav.activeLearning')}
             active={activeTab === 'feynman'}
-            href={`/?courseId=${activeCourseId}&tab=feynman`}
+            href={`/app?courseId=${activeCourseId}&tab=feynman`}
             collapsed={collapsed}
           />
           <NavItem
             icon={<NotionIcon name="ni-timeline" className="w-[24px] h-[24px]" />}
             label={t('nav.revision')}
             active={activeTab === 'revision'}
-            href={`/?courseId=${activeCourseId}&tab=revision`}
+            href={`/app?courseId=${activeCourseId}&tab=revision`}
             collapsed={collapsed}
           />
         </nav>
@@ -126,7 +126,7 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
           onClick={() => {
             const params = new URLSearchParams(window.location.search);
             params.set('tab', 'profile');
-            router.push(`/?${params.toString()}`);
+            router.push(`/app?${params.toString()}`);
           }}
           className={cn(
             'flex items-center rounded-xl px-3 py-3 transition-colors cursor-pointer group mb-1',

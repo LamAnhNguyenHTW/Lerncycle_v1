@@ -19,17 +19,17 @@ export default async function Page({searchParams}: Props) {
   const courses = await getCourses();
   const profile = await getProfile();
 
-  const activeCourse = courseId 
-    ? courses.find(c => c.id === courseId) || courses[0] 
+  const activeCourse = courseId
+    ? courses.find(c => c.id === courseId) || courses[0]
     : courses[0];
 
   return (
     <ResponsiveLayout
       sidebar={
-        <LeftSidebar 
-          courses={courses} 
-          activeCourseId={activeCourse?.id} 
-          activeTab={tab} 
+        <LeftSidebar
+          courses={courses}
+          activeCourseId={activeCourse?.id}
+          activeTab={tab}
           activePdfId={pdfId}
           profile={profile}
         />

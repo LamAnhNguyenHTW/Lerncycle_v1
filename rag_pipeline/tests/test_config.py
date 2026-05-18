@@ -45,6 +45,10 @@ def test_config_defaults(monkeypatch) -> None:
     assert config.hybrid_fusion == "rrf"
     assert config.hybrid_prefetch_limit == 30
     assert config.hybrid_top_k == 10
+    assert config.worker_poll_interval_seconds == 2.0
+    assert config.worker_max_jobs_per_loop == 10
+    assert config.worker_idle_backoff_max_seconds == 30.0
+    assert config.worker_max_attempts == 3
     assert config.qdrant_native_hybrid_enabled is True
     assert config.query_embedding_cache_enabled is True
     assert config.query_embedding_cache_max_entries == 512
@@ -72,6 +76,10 @@ def test_config_env_overrides(monkeypatch) -> None:
     monkeypatch.setenv("HYBRID_FUSION", "local_rrf")
     monkeypatch.setenv("HYBRID_PREFETCH_LIMIT", "42")
     monkeypatch.setenv("HYBRID_TOP_K", "7")
+    monkeypatch.setenv("RAG_WORKER_POLL_INTERVAL_SECONDS", "0.5")
+    monkeypatch.setenv("RAG_WORKER_MAX_JOBS_PER_LOOP", "4")
+    monkeypatch.setenv("RAG_WORKER_IDLE_BACKOFF_MAX_SECONDS", "8.0")
+    monkeypatch.setenv("RAG_WORKER_MAX_ATTEMPTS", "5")
     monkeypatch.setenv("QDRANT_NATIVE_HYBRID_ENABLED", "false")
     monkeypatch.setenv("QUERY_EMBEDDING_CACHE_ENABLED", "false")
     monkeypatch.setenv("QUERY_EMBEDDING_CACHE_MAX_ENTRIES", "64")
@@ -97,6 +105,10 @@ def test_config_env_overrides(monkeypatch) -> None:
     assert config.hybrid_fusion == "local_rrf"
     assert config.hybrid_prefetch_limit == 42
     assert config.hybrid_top_k == 7
+    assert config.worker_poll_interval_seconds == 0.5
+    assert config.worker_max_jobs_per_loop == 4
+    assert config.worker_idle_backoff_max_seconds == 8.0
+    assert config.worker_max_attempts == 5
     assert config.qdrant_native_hybrid_enabled is False
     assert config.query_embedding_cache_enabled is False
     assert config.query_embedding_cache_max_entries == 64

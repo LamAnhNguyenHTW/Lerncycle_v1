@@ -21,6 +21,23 @@ services:
       QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
       NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
 
+  rag-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.rag
+    depends_on:
+      qdrant:
+        condition: service_started
+      neo4j:
+        condition: service_healthy
+    env_file:
+      - rag_pipeline/.env
+    environment:
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+    command: ["python", "-m", "rag_pipeline.worker", "--loop"]
+    restart: unless-stopped
+
   neo4j:
     image: neo4j:latest
     ports:
@@ -28,6 +45,12 @@ services:
       - "7687:7687"
     environment:
       NEO4J_AUTH: neo4j/password
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p password 'RETURN 1' || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
     volumes:
       - neo4j_data:/data
 

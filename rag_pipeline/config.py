@@ -122,6 +122,10 @@ class WorkerConfig:
     revision_retrieval_top_k: int = 8
     chunking_strategy: str = "docling_hybrid_semantic_refinement"
     chunking_version: str = "v1"
+    worker_poll_interval_seconds: float = 2.0
+    worker_max_jobs_per_loop: int = 10
+    worker_idle_backoff_max_seconds: float = 30.0
+    worker_max_attempts: int = 3
     rag_debug_timing_enabled: bool = False
     vector_retrieve_timeout_s: float = 4.0
     graph_retrieve_timeout_s: float = 2.0
@@ -461,6 +465,27 @@ class WorkerConfig:
             raise ValueError("REVISION_MAX_QUESTIONS_PER_TEST must be between 1 and 50")
         if not 1 <= revision_retrieval_top_k <= 30:
             raise ValueError("REVISION_RETRIEVAL_TOP_K must be between 1 and 30")
+        worker_poll_interval_seconds = _float_or_default(
+            "RAG_WORKER_POLL_INTERVAL_SECONDS",
+            2.0,
+        )
+        worker_max_jobs_per_loop = _int_or_default(
+            "RAG_WORKER_MAX_JOBS_PER_LOOP",
+            10,
+        )
+        worker_idle_backoff_max_seconds = _float_or_default(
+            "RAG_WORKER_IDLE_BACKOFF_MAX_SECONDS",
+            30.0,
+        )
+        worker_max_attempts = _int_or_default("RAG_WORKER_MAX_ATTEMPTS", 3)
+        if worker_poll_interval_seconds <= 0:
+            raise ValueError("RAG_WORKER_POLL_INTERVAL_SECONDS must be > 0")
+        if worker_max_jobs_per_loop < 1:
+            raise ValueError("RAG_WORKER_MAX_JOBS_PER_LOOP must be >= 1")
+        if worker_idle_backoff_max_seconds <= 0:
+            raise ValueError("RAG_WORKER_IDLE_BACKOFF_MAX_SECONDS must be > 0")
+        if worker_max_attempts < 1:
+            raise ValueError("RAG_WORKER_MAX_ATTEMPTS must be >= 1")
 
         return cls(
             supabase_url=required["SUPABASE_URL"] or "",
@@ -638,6 +663,10 @@ class WorkerConfig:
                 "docling_hybrid_semantic_refinement",
             ),
             chunking_version=os.getenv("RAG_CHUNKING_VERSION", "v1"),
+            worker_poll_interval_seconds=worker_poll_interval_seconds,
+            worker_max_jobs_per_loop=worker_max_jobs_per_loop,
+            worker_idle_backoff_max_seconds=worker_idle_backoff_max_seconds,
+            worker_max_attempts=worker_max_attempts,
             rag_debug_timing_enabled=_optional_bool(
                 os.getenv("RAG_DEBUG_TIMING_ENABLED"),
                 False,
