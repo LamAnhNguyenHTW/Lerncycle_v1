@@ -61,6 +61,7 @@ export interface ChatRequest {
   pdf_ids?: string[];
   recent_messages?: RecentChatMessage[];
   enableWebSearch?: boolean;
+  stream?: boolean;
 }
 
 export interface ChatSource {
