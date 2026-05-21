@@ -1,4 +1,5 @@
 import {getCourses} from '@/lib/data';
+import {getBetaLimits} from '@/lib/beta-limits';
 import {getProfile} from '@/actions/profile';
 import {LeftSidebar} from '@/components/sidebar/LeftSidebar';
 import {DashboardPlaceholder} from '@/components/DashboardPlaceholder';
@@ -18,6 +19,7 @@ export default async function Page({searchParams}: Props) {
   const {courseId, tab = 'home', pdfId, sessionId} = await searchParams;
   const courses = await getCourses();
   const profile = await getProfile();
+  const betaLimits = getBetaLimits();
 
   const activeCourse = courseId
     ? courses.find(c => c.id === courseId) || courses[0]
@@ -46,7 +48,12 @@ export default async function Page({searchParams}: Props) {
           <>
             {tab === 'home' && (
               <div className="max-w-4xl mx-auto w-full md:pt-4">
-                <DashboardPlaceholder courseId={activeCourse.id} courseName={activeCourse.name} displayName={profile?.display_name ?? 'there'} />
+                <DashboardPlaceholder
+                  courseId={activeCourse.id}
+                  courseName={activeCourse.name}
+                  displayName={profile?.display_name ?? 'there'}
+                  betaLimits={betaLimits}
+                />
                 <FolderList course={activeCourse} />
               </div>
             )}

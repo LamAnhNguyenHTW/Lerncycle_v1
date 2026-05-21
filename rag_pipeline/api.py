@@ -229,6 +229,7 @@ def create_neo4j_driver(config: WorkerConfig) -> Any:
 
 
 @app.get("/health")
+@app.get("/healthz")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 

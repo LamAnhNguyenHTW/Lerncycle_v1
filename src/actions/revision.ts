@@ -1,5 +1,6 @@
 'use server';
 
+import {assertBetaNotFrozen} from '@/lib/beta-guard';
 import {createClient} from '@/lib/supabase/server';
 import {applySm2} from '@/lib/sm2';
 import type {
@@ -232,6 +233,16 @@ export async function createFlashcardDeck(input: {
   const isManualDeck = input.pdfIds.length === 0;
   const count = Math.max(1, Math.min(Math.floor(input.count || 0), 30));
   const language: RevisionLanguage = input.language === 'en' ? 'en' : 'de';
+
+  if (!isManualDeck) {
+    try {
+      assertBetaNotFrozen();
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Could not create deck.',
+      };
+    }
+  }
 
   const {data: deckRow, error: insertError} = await supabase
     .from('flashcard_decks')
@@ -486,6 +497,12 @@ export async function createMockTest(input: {
   }
   const count = Math.max(1, Math.min(Math.floor(input.count || 0), 20));
   const language: RevisionLanguage = input.language === 'en' ? 'en' : 'de';
+
+  try {
+    assertBetaNotFrozen();
+  } catch (error) {
+    return {error: error instanceof Error ? error.message : 'Could not create test.'};
+  }
 
   const {data: testRow, error: insertError} = await supabase
     .from('mock_tests')
@@ -816,4 +833,3 @@ export async function updateFlashcard(input: {
   if (error || !cardRow) return {error: error?.message ?? 'Could not update card.'};
   return {data: cardFromRow(cardRow)};
 }
-
