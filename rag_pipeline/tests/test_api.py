@@ -45,6 +45,15 @@ def test_health_returns_ok(client) -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_healthz_returns_ok(client) -> None:
+    test_client, _ = client
+
+    response = test_client.get("/healthz")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_rag_answer_requires_auth(client) -> None:
     test_client, _ = client
 

@@ -4,8 +4,19 @@ import {useState} from 'react';
 import {PdfDropzone} from '@/components/PdfDropzone';
 import {NotionIcon} from './NotionIcon';
 import {useLanguage} from '@/lib/i18n';
+import type {BetaLimits} from '@/lib/beta-limits';
 
-export function DashboardPlaceholder({courseId, courseName, displayName}: {courseId: string; courseName: string; displayName: string}) {
+export function DashboardPlaceholder({
+  courseId,
+  courseName,
+  displayName,
+  betaLimits,
+}: {
+  courseId: string;
+  courseName: string;
+  displayName: string;
+  betaLimits: BetaLimits;
+}) {
   const [showCourseUpload, setShowCourseUpload] = useState(false);
   const {t} = useLanguage();
 
@@ -19,6 +30,8 @@ export function DashboardPlaceholder({courseId, courseName, displayName}: {cours
           {t('dashboard.subtitle')}
         </p>
       </div>
+
+      <BetaLimitsNotice limits={betaLimits} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 w-full max-w-3xl mb-8">
         <button 
@@ -50,6 +63,44 @@ export function DashboardPlaceholder({courseId, courseName, displayName}: {cours
         </div>
       )}
     </div>
+  );
+}
+
+function BetaLimitsNotice({limits}: {limits: BetaLimits}) {
+  const {t} = useLanguage();
+  const items = [
+    t('beta.limitPdfSize', {value: String(limits.maxPdfMegabytes)}),
+    t('beta.limitPdfCount', {value: String(limits.maxPdfsPerUser)}),
+    t('beta.limitChat', {value: String(limits.maxChatMessagesPerDay)}),
+    t('beta.limitIndexing', {value: String(limits.maxRagJobsPerDay)}),
+  ];
+
+  return (
+    <section className="w-full max-w-3xl rounded-lg border border-border bg-white px-4 py-3 text-left shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <NotionIcon name="ni-rocket" className="h-4 w-4" />
+            <span>{t('beta.limitsTitle')}</span>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {t('beta.limitsDescription')}
+          </p>
+        </div>
+        {limits.frozen && (
+          <span className="w-fit rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+            {t('beta.paused')}
+          </span>
+        )}
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+        {items.map((item) => (
+          <div key={item} className="rounded-md bg-gray-50 px-3 py-2">
+            {item}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

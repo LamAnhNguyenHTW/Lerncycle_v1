@@ -696,6 +696,18 @@ def test_claim_job_passes_worker_max_attempts_to_rpc() -> None:
     # supabase/migrations/20260406000006_rag_pipeline.sql.
 
 
+def test_worker_skips_claiming_jobs_when_beta_frozen(monkeypatch) -> None:
+    worker = object.__new__(RagWorker)
+
+    def fail_claim() -> None:
+        raise AssertionError("worker should not claim jobs while beta is frozen")
+
+    worker._claim_job = fail_claim
+    monkeypatch.setenv("BETA_FROZEN", "true")
+
+    assert worker._run_one_logged() is False
+
+
 def test_worker_processes_note_job() -> None:
     worker = RecordingWorker()
 

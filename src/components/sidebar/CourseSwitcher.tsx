@@ -20,19 +20,24 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [editingCourseName, setEditingCourseName] = useState('');
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const activeCourse = courses.find((c) => c.id === activeCourseId) || courses[0];
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCourseName.trim()) return;
+    setErrorMessage(null);
     const {id, error} = await createCourse(newCourseName);
     if (!error && id) {
       setNewCourseName('');
       setIsCreating(false);
       setIsOpen(false);
       router.push(`/app?courseId=${id}`);
+      router.refresh();
+      return;
     }
+    setErrorMessage(error ?? 'Could not create course.');
   };
 
   const handleStartEdit = (course: Course) => {
@@ -45,19 +50,26 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
     if (!editingCourseId) return;
     const trimmed = editingCourseName.trim();
     if (!trimmed) return;
+    setErrorMessage(null);
 
     const {error} = await updateCourse(editingCourseId, trimmed);
     if (!error) {
       setEditingCourseId(null);
       setEditingCourseName('');
       router.refresh();
+      return;
     }
+    setErrorMessage(error ?? 'Could not update course.');
   };
 
   const handleDeleteConfirm = async () => {
     if (!courseToDelete) return;
+    setErrorMessage(null);
     const {error} = await deleteCourse(courseToDelete.id);
-    if (error) return;
+    if (error) {
+      setErrorMessage(error);
+      return;
+    }
 
     const remainingCourses = courses.filter((c) => c.id !== courseToDelete.id);
     const nextCourse = remainingCourses[0];
@@ -98,6 +110,11 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
             <div className="px-3 py-2 text-xs uppercase tracking-wider font-semibold text-muted-foreground">
               Private Courses
             </div>
+            {errorMessage && (
+              <div className="mx-2 mb-2 rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+                {errorMessage}
+              </div>
+            )}
             {courses.map((course) => (
               <div
                 key={course.id}

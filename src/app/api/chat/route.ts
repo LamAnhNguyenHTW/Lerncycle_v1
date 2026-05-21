@@ -1,4 +1,9 @@
 import {NextResponse} from 'next/server';
+import {
+  assertBetaNotFrozen,
+  assertUserChatMessagesUnderDailyLimit,
+  BetaGuardError,
+} from '@/lib/beta-guard';
 import {createClient} from '@/lib/supabase/server';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import type {ActiveLearningControl, ActiveLearningState, ChatMode, ChatRequest, ChatResponse, ChatRole, ChatSourceType, RecentChatMessage} from '@/types/chat';
@@ -967,6 +972,17 @@ export async function POST(request: Request) {
   const {data: {user}} = await supabase.auth.getUser();
   if (!user) {
     return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    assertBetaNotFrozen();
+    await assertUserChatMessagesUnderDailyLimit(supabase, user.id);
+  } catch (error) {
+    if (error instanceof BetaGuardError) {
+      return errorResponse(error.message, error.status);
+    }
+    console.error('Beta chat guard failed.', error);
+    return errorResponse('Chat guardrail check failed.', 500);
   }
 
   let rawBody: Record<string, unknown>;

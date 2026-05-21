@@ -8,10 +8,12 @@ export async function createCourse(name: string): Promise<{error?: string; id?: 
   const {data: {user}} = await supabase.auth.getUser();
 
   if (!user) return {error: 'Not authenticated.'};
+  const trimmedName = name.trim();
+  if (!trimmedName) return {error: 'Course name is required.'};
 
   const {data, error} = await supabase
     .from('courses')
-    .insert({name, user_id: user.id})
+    .insert({name: trimmedName, user_id: user.id})
     .select('id')
     .single();
 
@@ -27,7 +29,11 @@ export async function deleteCourse(id: string): Promise<{error?: string}> {
 
   if (!user) return {error: 'Not authenticated.'};
 
-  const {error} = await supabase.from('courses').delete().eq('id', id);
+  const {error} = await supabase
+    .from('courses')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) return {error: error.message};
 
@@ -40,11 +46,14 @@ export async function updateCourse(id: string, name: string): Promise<{error?: s
   const {data: {user}} = await supabase.auth.getUser();
 
   if (!user) return {error: 'Not authenticated.'};
+  const trimmedName = name.trim();
+  if (!trimmedName) return {error: 'Course name is required.'};
 
   const {error} = await supabase
     .from('courses')
-    .update({name})
-    .eq('id', id);
+    .update({name: trimmedName})
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) return {error: error.message};
 

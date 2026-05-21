@@ -352,6 +352,7 @@ def _cached_health_checks(state: Any) -> dict[str, bool]:
 
 
 @app.get("/health")
+@app.get("/healthz")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 

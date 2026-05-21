@@ -25,6 +25,13 @@ export type TranslationKey =
   | 'dashboard.insertSubtitle'
   | 'dashboard.record'
   | 'dashboard.recordSubtitle'
+  | 'beta.limitsTitle'
+  | 'beta.limitsDescription'
+  | 'beta.paused'
+  | 'beta.limitPdfSize'
+  | 'beta.limitPdfCount'
+  | 'beta.limitChat'
+  | 'beta.limitIndexing'
   | 'chat.courseMaterials'
   | 'chat.useAllMaterials'
   | 'chat.recentChats'
@@ -231,6 +238,13 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'dashboard.insertSubtitle': 'YouTube, website, text',
     'dashboard.record': 'Record',
     'dashboard.recordSubtitle': 'Record live lecture',
+    'beta.limitsTitle': 'Beta limits',
+    'beta.limitsDescription': 'These limits keep the beta stable while we test with real users.',
+    'beta.paused': 'Beta paused',
+    'beta.limitPdfSize': 'PDF upload: up to {value} MB per file',
+    'beta.limitPdfCount': 'PDF library: up to {value} PDFs per account',
+    'beta.limitChat': 'Chat: up to {value} messages per day',
+    'beta.limitIndexing': 'Indexing: up to {value} material updates per day',
     'chat.courseMaterials': 'Course Materials',
     'chat.useAllMaterials': 'Use all materials',
     'chat.recentChats': 'Recent Chats',
@@ -436,6 +450,13 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'dashboard.insertSubtitle': 'YouTube, Website, Text',
     'dashboard.record': 'Aufnehmen',
     'dashboard.recordSubtitle': 'Live-Vorlesung aufnehmen',
+    'beta.limitsTitle': 'Beta-Limits',
+    'beta.limitsDescription': 'Diese Limits halten die Beta stabil, w\u00e4hrend wir mit echten Nutzern testen.',
+    'beta.paused': 'Beta pausiert',
+    'beta.limitPdfSize': 'PDF-Upload: bis zu {value} MB pro Datei',
+    'beta.limitPdfCount': 'PDF-Bibliothek: bis zu {value} PDFs pro Account',
+    'beta.limitChat': 'Chat: bis zu {value} Nachrichten pro Tag',
+    'beta.limitIndexing': 'Indexierung: bis zu {value} Material-Updates pro Tag',
     'chat.courseMaterials': 'Kursmaterialien',
     'chat.useAllMaterials': 'Alle Materialien nutzen',
     'chat.recentChats': 'Letzte Chats',

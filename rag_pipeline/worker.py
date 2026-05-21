@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import argparse
 from datetime import datetime, timezone
 import logging
+import os
 from pathlib import Path
 import signal
 import tempfile
@@ -45,6 +46,11 @@ from rag_pipeline.source_ingestion import chunks_from_note
 LOGGER = logging.getLogger(__name__)
 PDF_BUCKET = "pdfs"
 GRAPH_INDEXABLE_SOURCE_TYPES = {"pdf", "note", "annotation_comment"}
+
+
+def beta_frozen() -> bool:
+    """Return True when the beta kill switch should stop background work."""
+    return os.getenv("BETA_FROZEN", "").strip().lower() == "true"
 
 
 class RagWorker:
@@ -136,6 +142,10 @@ class RagWorker:
 
     def _run_one_logged(self) -> bool:
         """Claim one job, process it, and log the per-job outcome."""
+        if beta_frozen():
+            LOGGER.info("worker_frozen_skip_claim")
+            return False
+
         job = self._claim_job()
         if not job:
             return False
