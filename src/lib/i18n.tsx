@@ -215,7 +215,21 @@ export type TranslationKey =
   | 'revision.common.close'
   | 'revision.common.back'
   | 'revision.common.pdfSelectAll'
-  | 'revision.common.pdfSelectNone';
+  | 'revision.common.pdfSelectNone'
+  | 'welcome.headline'
+  | 'welcome.subtitle'
+  | 'welcome.placeholder'
+  | 'welcome.create'
+  | 'welcome.creating'
+  | 'welcome.errorEmpty'
+  | 'welcome.errorGeneric'
+  | 'welcome.orTry'
+  | 'welcome.step1Title'
+  | 'welcome.step1Body'
+  | 'welcome.step2Title'
+  | 'welcome.step2Body'
+  | 'welcome.step3Title'
+  | 'welcome.step3Body';
 
 const translations: Record<Language, Record<TranslationKey, string>> = {
   en: {
@@ -429,6 +443,20 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'revision.common.back': 'Back',
     'revision.common.pdfSelectAll': 'Select all',
     'revision.common.pdfSelectNone': 'Clear',
+    'welcome.headline': 'Welcome to Lerncycle, {name}.',
+    'welcome.subtitle': 'Create your first course to organize your PDFs, notes, and AI study sessions.',
+    'welcome.placeholder': 'e.g. Microeconomics',
+    'welcome.create': 'Create course',
+    'welcome.creating': 'Creating…',
+    'welcome.errorEmpty': 'Please enter a course name.',
+    'welcome.errorGeneric': 'Could not create course.',
+    'welcome.orTry': 'Or try:',
+    'welcome.step1Title': 'Upload your PDFs',
+    'welcome.step1Body': 'Lecture slides, papers, textbooks — drop them into a course.',
+    'welcome.step2Title': 'Learn actively',
+    'welcome.step2Body': 'Highlight, take notes, ask the AI tutor with citations from your material.',
+    'welcome.step3Title': 'Review & retain',
+    'welcome.step3Body': 'Flashcards, mocktests, and a mindmap keep what you learned fresh.',
   },
   de: {
     'nav.home': 'Home',
@@ -641,6 +669,20 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'revision.common.back': 'Zurück',
     'revision.common.pdfSelectAll': 'Alle auswählen',
     'revision.common.pdfSelectNone': 'Auswahl löschen',
+    'welcome.headline': 'Willkommen bei Lerncycle, {name}.',
+    'welcome.subtitle': 'Erstelle deinen ersten Kurs, um PDFs, Notizen und KI-Lerneinheiten zu organisieren.',
+    'welcome.placeholder': 'z. B. Mikroökonomie',
+    'welcome.create': 'Kurs erstellen',
+    'welcome.creating': 'Wird erstellt…',
+    'welcome.errorEmpty': 'Bitte gib einen Kursnamen ein.',
+    'welcome.errorGeneric': 'Kurs konnte nicht erstellt werden.',
+    'welcome.orTry': 'Oder probiere:',
+    'welcome.step1Title': 'Lade deine PDFs hoch',
+    'welcome.step1Body': 'Vorlesungsfolien, Paper, Lehrbücher — lege sie in einen Kurs.',
+    'welcome.step2Title': 'Aktiv lernen',
+    'welcome.step2Body': 'Markiere, notiere und frage den KI-Tutor — mit Zitaten aus deinem Material.',
+    'welcome.step3Title': 'Wiederholen & behalten',
+    'welcome.step3Body': 'Karteikarten, Mocktests und eine Mindmap halten dein Wissen frisch.',
   },
 };
 

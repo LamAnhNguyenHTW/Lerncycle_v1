@@ -24,10 +24,10 @@ export function ProblemSection({dict}: Props) {
           </ScrollReveal>
           
           <ScrollReveal animation="slide-left" className="order-1 lg:order-2 flex flex-col justify-center">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground leading-tight">
               {dict.problem.headline}
             </h2>
-            <p className="mt-6 text-lg sm:text-xl text-muted-foreground leading-relaxed">
+            <p className="mt-5 text-base sm:text-lg text-muted-foreground leading-relaxed">
               {dict.problem.body}
             </p>
           </ScrollReveal>

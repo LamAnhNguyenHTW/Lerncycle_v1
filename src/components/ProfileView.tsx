@@ -221,7 +221,7 @@ export function ProfileView({ profile }: { profile: Profile }) {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
-                className="w-full rounded-xl border border-border px-5 py-4 text-lg outline-none focus:border-black transition-all bg-gray-50/50"
+                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-black transition-all bg-gray-50/50"
                 required
               />
             </div>

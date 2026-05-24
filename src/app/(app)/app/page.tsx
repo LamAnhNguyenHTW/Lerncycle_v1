@@ -6,6 +6,7 @@ import {DashboardPlaceholder} from '@/components/DashboardPlaceholder';
 import {FolderList} from '@/components/FolderList';
 import {ResponsiveLayout} from '@/components/ResponsiveLayout';
 import {ProfileView} from '@/components/ProfileView';
+import {WelcomeEmptyState} from '@/components/WelcomeEmptyState';
 import {StudyInterface} from '@/components/study/StudyInterface';
 import {ChatInterface} from '@/components/learn/ChatInterface';
 import {ActiveLearningSection} from '@/components/active-learning/ActiveLearningSection';
@@ -70,10 +71,7 @@ export default async function Page({searchParams}: Props) {
             {tab === 'revision' && <RevisionSection course={activeCourse} />}
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center flex-col text-center mt-20">
-            <h1 className="text-2xl font-semibold mb-2">Welcome to Learncycle</h1>
-            <p className="text-muted-foreground">Create your first course in the sidebar to get started.</p>
-          </div>
+          <WelcomeEmptyState displayName={profile?.display_name ?? 'there'} />
         )}
       </main>
     </ResponsiveLayout>

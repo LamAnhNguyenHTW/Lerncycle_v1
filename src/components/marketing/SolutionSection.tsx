@@ -13,10 +13,10 @@ export function SolutionSection({dict}: Props) {
       <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:py-32">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <ScrollReveal animation="slide-right" className="flex flex-col justify-center">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground leading-tight">
               {dict.solution.headline}
             </h2>
-            <p className="mt-6 text-lg sm:text-xl text-muted-foreground leading-relaxed">
+            <p className="mt-5 text-base sm:text-lg text-muted-foreground leading-relaxed">
               {dict.solution.body}
             </p>
           </ScrollReveal>
