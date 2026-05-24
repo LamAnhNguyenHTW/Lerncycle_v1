@@ -376,7 +376,7 @@ export function ChatInterface({
           difficulty: activeLearningDifficulty || undefined,
           language,
           learner_name: displayName,
-          pdf_ids: selectedPdfIds.length === allPdfs.length ? [] : selectedPdfIds,
+          pdf_ids: selectedPdfIds,
           enableWebSearch,
         }),
         signal: abortController.signal,

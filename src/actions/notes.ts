@@ -1,5 +1,9 @@
 'use server';
 
+import {
+  assertBetaNotFrozen,
+  assertUserRagJobsUnderDailyLimit,
+} from '@/lib/beta-guard';
 import {createClient} from '@/lib/supabase/server';
 
 // NoteContent matches TipTap's JSONContent schema stored as jsonb
@@ -67,6 +71,13 @@ export async function upsertNote(
   const {data: {user}} = await supabase.auth.getUser();
 
   if (!user) return {error: 'Not authenticated.'};
+
+  try {
+    assertBetaNotFrozen();
+    await assertUserRagJobsUnderDailyLimit(supabase, user.id);
+  } catch (error) {
+    return {error: error instanceof Error ? error.message : 'Could not save note.'};
+  }
 
   const {data: note, error} = await supabase
     .from('notes')

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import pytest
+import threading
 from types import SimpleNamespace
 from typing import Any
 
+import rag_pipeline.worker as worker_module
 from rag_pipeline.models import RagChunk, SourceRef
 from rag_pipeline.refinement import SemanticRefiner
 from rag_pipeline.sparse_embeddings import SparseVectorData
@@ -20,6 +22,7 @@ class RecordingWorker(RagWorker):
             chunking_strategy="test_strategy",
             chunking_version="v1",
             qdrant_collection=None,
+            worker_max_attempts=3,
         )
         self._refiner = SemanticRefiner(openai_api_key=None)
         self.completed_jobs: list[str] = []
@@ -78,7 +81,8 @@ class RecordingWorker(RagWorker):
     def _mark_job_completed(self, job_id: str) -> None:
         self.completed_jobs.append(job_id)
 
-    def _mark_job_failed(self, job_id: str, error_message: str) -> None:
+    def _mark_job_failed(self, job: dict[str, Any] | str, error_message: str) -> None:
+        job_id = str(job["id"] if isinstance(job, dict) else job)
         self.failed_jobs.append((job_id, error_message))
 
 
@@ -289,6 +293,65 @@ class FakeResponse:
         self.data = data
 
 
+class FakeRpc:
+    def __init__(self, response: FakeResponse) -> None:
+        self.response = response
+
+    def execute(self) -> FakeResponse:
+        return self.response
+
+
+class FakeRpcSupabase:
+    def __init__(self, jobs: list[dict[str, Any]]) -> None:
+        self.jobs = jobs
+        self.rpc_calls: list[tuple[str, dict[str, Any] | None]] = []
+        self.updates: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
+
+    def rpc(self, name: str, params: dict[str, Any] | None = None) -> FakeRpc:
+        self.rpc_calls.append((name, params))
+        return FakeRpc(FakeResponse(self.jobs))
+
+    def table(self, name: str):
+        return FakeRetryTable(self, name)
+
+
+class FakeRetryTable:
+    def __init__(self, supabase: FakeRpcSupabase, name: str) -> None:
+        self.supabase = supabase
+        self.name = name
+        self.pending_update: dict[str, Any] = {}
+        self.filters: dict[str, Any] = {}
+
+    def update(self, values):
+        self.pending_update = values
+        return self
+
+    def eq(self, key, value):
+        self.filters[key] = value
+        return self
+
+    def execute(self):
+        self.supabase.updates.append(
+            (self.name, self.pending_update, dict(self.filters))
+        )
+        return FakeResponse([])
+
+
+class LoopWorker(RagWorker):
+    def __init__(self, results: list[bool | Exception]) -> None:
+        self._config = SimpleNamespace(worker_max_attempts=3)
+        self._shutdown = threading.Event()
+        self.results = results
+        self.calls = 0
+
+    def _run_one_logged(self) -> bool:
+        self.calls += 1
+        result = self.results.pop(0) if self.results else False
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
 class FakeTable:
     def __init__(self, supabase: "FakeSupabase", name: str) -> None:
         self.supabase = supabase
@@ -409,6 +472,240 @@ def _chunk(content: str = "Note text") -> RagChunk:
         content_hash=f"hash-{content}",
         metadata={"kind": "test"},
     )
+
+
+def test_main_defaults_to_once(monkeypatch) -> None:
+    calls = []
+
+    class FakeCliWorker:
+        def __init__(self, config) -> None:
+            self.config = config
+
+        def run_once(self) -> bool:
+            calls.append(("once", None))
+            return False
+
+    monkeypatch.setattr(
+        worker_module.WorkerConfig,
+        "from_env",
+        lambda: SimpleNamespace(
+            worker_poll_interval_seconds=1.5,
+            worker_max_jobs_per_loop=2,
+            worker_idle_backoff_max_seconds=9.0,
+        ),
+    )
+    monkeypatch.setattr(worker_module, "RagWorker", FakeCliWorker)
+
+    assert worker_module.main(argv=[]) == 0
+    assert calls == [("once", None)]
+
+
+def test_main_dispatches_loop_with_cli_overrides(monkeypatch) -> None:
+    calls = []
+
+    class FakeCliWorker:
+        def __init__(self, config) -> None:
+            self.config = config
+
+        def run_loop(self, **kwargs) -> None:
+            calls.append(kwargs)
+
+    monkeypatch.setattr(
+        worker_module.WorkerConfig,
+        "from_env",
+        lambda: SimpleNamespace(
+            worker_poll_interval_seconds=1.5,
+            worker_max_jobs_per_loop=2,
+            worker_idle_backoff_max_seconds=9.0,
+        ),
+    )
+    monkeypatch.setattr(worker_module, "RagWorker", FakeCliWorker)
+    monkeypatch.setattr(worker_module, "_install_shutdown_handlers", lambda worker: None)
+
+    assert worker_module.main(
+        argv=[
+            "--loop",
+            "--poll-interval",
+            "0.25",
+            "--max-jobs-per-loop",
+            "4",
+            "--worker-id",
+            "worker-test",
+            "--idle-backoff-max",
+            "3",
+        ]
+    ) == 0
+    assert calls == [
+        {
+            "worker_id": "worker-test",
+            "poll_interval": 0.25,
+            "max_jobs_per_loop": 4,
+            "idle_backoff_max": 3.0,
+        }
+    ]
+
+
+def test_run_loop_idles_until_shutdown() -> None:
+    worker = LoopWorker([False, False, False])
+    sleeps = []
+
+    def fake_sleep(seconds) -> None:
+        sleeps.append(seconds)
+        if len(sleeps) == 3:
+            worker._shutdown.set()
+
+    worker.run_loop(
+        worker_id="worker-test",
+        poll_interval=1.0,
+        max_jobs_per_loop=10,
+        idle_backoff_max=4.0,
+        sleep=fake_sleep,
+    )
+
+    assert sleeps == [1.0, 2.0, 4.0]
+
+
+def test_run_loop_processes_burst_then_idles() -> None:
+    worker = LoopWorker([True, True, True, False])
+    sleeps = []
+
+    def fake_sleep(seconds) -> None:
+        sleeps.append(seconds)
+        worker._shutdown.set()
+
+    worker.run_loop(
+        worker_id="worker-test",
+        poll_interval=1.0,
+        max_jobs_per_loop=10,
+        idle_backoff_max=8.0,
+        sleep=fake_sleep,
+    )
+
+    assert worker.calls == 4
+    assert sleeps == [1.0]
+
+
+def test_run_loop_continues_after_process_exception() -> None:
+    worker = LoopWorker([RuntimeError("boom"), True, False])
+    sleeps = []
+
+    def fake_sleep(seconds) -> None:
+        sleeps.append(seconds)
+        if len(sleeps) == 2:
+            worker._shutdown.set()
+
+    worker.run_loop(
+        worker_id="worker-test",
+        poll_interval=1.0,
+        max_jobs_per_loop=10,
+        idle_backoff_max=4.0,
+        sleep=fake_sleep,
+    )
+
+    assert worker.calls == 3
+    assert sleeps == [1.0, 1.0]
+
+
+def test_run_loop_backoff_resets_after_success() -> None:
+    worker = LoopWorker([False, False, True, False])
+    sleeps = []
+
+    def fake_sleep(seconds) -> None:
+        sleeps.append(seconds)
+        if len(sleeps) == 3:
+            worker._shutdown.set()
+
+    worker.run_loop(
+        worker_id="worker-test",
+        poll_interval=1.0,
+        max_jobs_per_loop=10,
+        idle_backoff_max=8.0,
+        sleep=fake_sleep,
+    )
+
+    assert sleeps == [1.0, 2.0, 1.0]
+
+
+def test_run_loop_shutdown_while_idle_exits_cleanly() -> None:
+    worker = LoopWorker([False])
+    sleeps = []
+
+    def fake_sleep(seconds) -> None:
+        sleeps.append(seconds)
+        worker._shutdown.set()
+
+    worker.run_loop(
+        worker_id="worker-test",
+        poll_interval=1.0,
+        max_jobs_per_loop=10,
+        idle_backoff_max=4.0,
+        sleep=fake_sleep,
+    )
+
+    assert worker.calls == 1
+    assert sleeps == [1.0]
+
+
+def test_run_loop_shutdown_mid_job_finishes_before_next_claim() -> None:
+    worker = LoopWorker([])
+
+    def one_job_then_signal() -> bool:
+        worker.calls += 1
+        worker._shutdown.set()
+        return True
+
+    worker._run_one_logged = one_job_then_signal
+    worker.run_loop(
+        worker_id="worker-test",
+        poll_interval=1.0,
+        max_jobs_per_loop=10,
+        idle_backoff_max=4.0,
+        sleep=lambda _seconds: None,
+    )
+
+    assert worker.calls == 1
+
+
+def test_mark_job_failed_retries_until_max_attempts() -> None:
+    worker = object.__new__(RagWorker)
+    worker._config = SimpleNamespace(worker_max_attempts=3)
+    worker._supabase = FakeRpcSupabase([])
+
+    worker._mark_job_failed({"id": "job-1", "attempts": 1}, "boom")
+    worker._mark_job_failed({"id": "job-2", "attempts": 2}, "boom")
+    worker._mark_job_failed({"id": "job-3", "attempts": 3}, "boom")
+
+    updates = [update for _table, update, _filters in worker._supabase.updates]
+    assert updates[0]["status"] == "pending"
+    assert updates[1]["status"] == "pending"
+    assert updates[2]["status"] == "failed"
+    assert "completed_at" not in updates[0]
+    assert "completed_at" in updates[2]
+
+
+def test_claim_job_passes_worker_max_attempts_to_rpc() -> None:
+    worker = RecordingWorker()
+    worker._config.worker_max_attempts = 5
+    worker._supabase = FakeRpcSupabase([{"id": "job-1"}])
+
+    assert worker._claim_job() == {"id": "job-1"}
+    assert worker._supabase.rpc_calls == [
+        ("claim_rag_index_job", {"max_attempts": 5})
+    ]
+    # Stale reclaim remains covered at the RPC layer in
+    # supabase/migrations/20260406000006_rag_pipeline.sql.
+
+
+def test_worker_skips_claiming_jobs_when_beta_frozen(monkeypatch) -> None:
+    worker = object.__new__(RagWorker)
+
+    def fail_claim() -> None:
+        raise AssertionError("worker should not claim jobs while beta is frozen")
+
+    worker._claim_job = fail_claim
+    monkeypatch.setenv("BETA_FROZEN", "true")
+
+    assert worker._run_one_logged() is False
 
 
 def test_worker_processes_note_job() -> None:
@@ -764,16 +1061,17 @@ def test_worker_continues_on_single_chunk_extraction_failure() -> None:
 def test_worker_marks_graph_job_failed_when_all_chunks_fail() -> None:
     worker = GraphWorker(extractor=FakeGraphExtractor(fail_all=True))
 
-    worker._process_knowledge_graph_job(
-        {
-            "id": "job-1",
-            "user_id": "user-1",
-            "source_id": "pdf-1",
-            "metadata": {"original_source_type": "pdf", "original_source_id": "pdf-1"},
-        }
-    )
+    with pytest.raises(RuntimeError, match="Graph extraction failed"):
+        worker._process_knowledge_graph_job(
+            {
+                "id": "job-1",
+                "user_id": "user-1",
+                "source_id": "pdf-1",
+                "metadata": {"original_source_type": "pdf", "original_source_id": "pdf-1"},
+            }
+        )
 
-    assert worker.graph_failed
+    assert worker.graph_failed == []
     assert worker.graph_completed == []
 
 

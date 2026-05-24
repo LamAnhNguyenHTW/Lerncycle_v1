@@ -148,6 +148,7 @@ def build_default_plan(
                 query=normalize_plan_query(query),
                 top_k=config.retrieval_planner_default_top_k,
                 source_types=["note"],
+                filters={"pdf_ids": selected_pdf_ids or None},
             )
         )
     if "annotation_comment" in allowed:
@@ -157,6 +158,7 @@ def build_default_plan(
                 query=normalize_plan_query(query),
                 top_k=config.retrieval_planner_default_top_k,
                 source_types=["annotation_comment"],
+                filters={"pdf_ids": selected_pdf_ids or None},
             )
         )
     return RetrievalPlan(
@@ -205,6 +207,7 @@ def build_retrieval_plan(
             query=material_query,
             top_k=config.retrieval_planner_notes_top_k,
             source_type="note",
+            filters={"pdf_ids": selected_pdf_ids or None},
         )
     if intent.needs_annotations:
         _append_material_step(
@@ -215,6 +218,7 @@ def build_retrieval_plan(
             query=material_query,
             top_k=config.retrieval_planner_annotations_top_k,
             source_type="annotation_comment",
+            filters={"pdf_ids": selected_pdf_ids or None},
         )
     if intent.needs_chat_memory:
         if session_id:

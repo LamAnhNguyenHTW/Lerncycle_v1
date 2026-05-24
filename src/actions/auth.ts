@@ -1,6 +1,11 @@
 'use server';
 
 import {createClient} from '@/lib/supabase/server';
+import {
+  BETA_NOT_INVITED_ERROR_DE,
+  isEmailBetaInvited,
+  normalizeEmail,
+} from '@/actions/auth-invite';
 import {redirect} from 'next/navigation';
 
 /** Sends a magic link to the provided email address. */
@@ -11,9 +16,16 @@ export async function signInWithEmail(formData: FormData): Promise<{error?: stri
     return {error: 'Please enter a valid email address.'};
   }
 
+  const normalizedEmail = normalizeEmail(email);
   const supabase = await createClient();
+  const invited = await isEmailBetaInvited(supabase, normalizedEmail);
+
+  if (!invited) {
+    return {error: BETA_NOT_INVITED_ERROR_DE};
+  }
+
   const {error} = await supabase.auth.signInWithOtp({
-    email,
+    email: normalizedEmail,
     options: {
       emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/auth/callback`,
     },

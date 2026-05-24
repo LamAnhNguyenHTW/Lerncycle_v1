@@ -13,14 +13,28 @@ export async function getProfile() {
     .from('profiles')
     .select('id, display_name, avatar_name, avatar_url')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
+
+  if (!error && data) {
+    return data;
+  }
 
   if (error) {
     console.error('Error fetching profile:', error);
+  }
+
+  const {data: created, error: createError} = await supabase
+    .from('profiles')
+    .insert({id: user.id})
+    .select('id, display_name, avatar_name, avatar_url')
+    .single();
+
+  if (createError) {
+    console.error('Error creating profile:', createError);
     return null;
   }
 
-  return data;
+  return created;
 }
 
 /**
@@ -50,8 +64,7 @@ export async function updateProfile(formData: FormData): Promise<{error?: string
 
   const {error} = await supabase
     .from('profiles')
-    .update(updates)
-    .eq('id', user.id);
+    .upsert({id: user.id, ...updates}, {onConflict: 'id'});
 
   if (error) return {error: error.message};
 
@@ -89,8 +102,15 @@ export async function uploadAvatar(formData: FormData): Promise<{url?: string; e
 
   const {error: dbError} = await supabase
     .from('profiles')
-    .update({avatar_url: urlWithBuster, avatar_name: null, updated_at: new Date().toISOString()})
-    .eq('id', user.id);
+    .upsert(
+      {
+        id: user.id,
+        avatar_url: urlWithBuster,
+        avatar_name: null,
+        updated_at: new Date().toISOString(),
+      },
+      {onConflict: 'id'},
+    );
 
   if (dbError) return {error: dbError.message};
 

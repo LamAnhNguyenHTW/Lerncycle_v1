@@ -1,5 +1,12 @@
 'use server';
 
+import {
+  assertBetaNotFrozen,
+  assertPdfWithinLimits,
+  assertUserPdfCountBelowLimit,
+  assertUserRagJobsUnderDailyLimit,
+  BetaGuardError,
+} from '@/lib/beta-guard';
 import {createClient} from '@/lib/supabase/server';
 import {revalidatePath} from 'next/cache';
 
@@ -25,9 +32,10 @@ export async function uploadPdf(
       return {error: 'No file provided.'};
     }
 
-    if (file.type !== 'application/pdf') {
-      return {error: 'Only PDF files are allowed.'};
-    }
+    assertBetaNotFrozen();
+    assertPdfWithinLimits(file);
+    await assertUserPdfCountBelowLimit(supabase, user.id);
+    await assertUserRagJobsUnderDailyLimit(supabase, user.id);
 
     let courseId: string;
     let folderId: string | null = null;
@@ -117,6 +125,10 @@ export async function uploadPdf(
     revalidatePath('/');
     return {};
   } catch (error) {
+    if (error instanceof BetaGuardError) {
+      return {error: error.message};
+    }
+
     return {
       error:
         error instanceof Error

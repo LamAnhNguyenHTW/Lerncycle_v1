@@ -1,5 +1,9 @@
 'use server';
 
+import {
+  assertBetaNotFrozen,
+  assertUserRagJobsUnderDailyLimit,
+} from '@/lib/beta-guard';
 import {createClient} from '@/lib/supabase/server';
 import {revalidatePath} from 'next/cache';
 
@@ -92,6 +96,15 @@ export async function createAnnotation(
 
   if (!user) return {error: 'Not authenticated.'};
 
+  try {
+    assertBetaNotFrozen();
+    await assertUserRagJobsUnderDailyLimit(supabase, user.id);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Could not create annotation.',
+    };
+  }
+
   const {data: row, error} = await supabase
     .from('pdf_annotations')
     .insert({
@@ -128,6 +141,15 @@ export async function deleteAnnotation(
 
   if (!user) return {error: 'Not authenticated.'};
 
+  try {
+    assertBetaNotFrozen();
+    await assertUserRagJobsUnderDailyLimit(supabase, user.id);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Could not delete annotation.',
+    };
+  }
+
   const {error} = await supabase
     .from('pdf_annotations')
     .delete()
@@ -159,6 +181,15 @@ export async function updateAnnotation(
   const {data: {user}} = await supabase.auth.getUser();
 
   if (!user) return {error: 'Not authenticated.'};
+
+  try {
+    assertBetaNotFrozen();
+    await assertUserRagJobsUnderDailyLimit(supabase, user.id);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Could not update annotation.',
+    };
+  }
 
   const updates: Record<string, unknown> = {};
   if (data.comment !== undefined) updates.comment = data.comment;
