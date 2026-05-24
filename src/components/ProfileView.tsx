@@ -1,9 +1,9 @@
 'use client';
 
-import {useRef, useState} from 'react';
-import {NotionIcon} from './NotionIcon';
-import {updateProfile, uploadAvatar} from '@/actions/profile';
-import {useRouter} from 'next/navigation';
+import { useRef, useState } from 'react';
+import { NotionIcon } from './NotionIcon';
+import { changePassword, updateProfile, uploadAvatar } from '@/actions/profile';
+import { useRouter } from 'next/navigation';
 
 interface Profile {
   id: string;
@@ -20,7 +20,7 @@ const AVATARS = [
   'ni-avatar-female-5',
 ];
 
-export function ProfileView({profile}: {profile: Profile}) {
+export function ProfileView({ profile }: { profile: Profile }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,7 +33,13 @@ export function ProfileView({profile}: {profile: Profile}) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{type: 'success' | 'error'; text: string} | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,7 +52,7 @@ export function ProfileView({profile}: {profile: Profile}) {
     const result = await uploadAvatar(fd);
 
     if (result.error) {
-      setMessage({type: 'error', text: result.error});
+      setMessage({ type: 'error', text: result.error });
     } else if (result.url) {
       setAvatarUrl(result.url);
       setAvatarMode('custom');
@@ -76,13 +82,36 @@ export function ProfileView({profile}: {profile: Profile}) {
 
     const result = await updateProfile(fd);
     if (result?.error) {
-      setMessage({type: 'error', text: 'Failed to update profile.'});
+      setMessage({ type: 'error', text: 'Failed to update profile.' });
     } else {
-      setMessage({type: 'success', text: 'Profile updated successfully!'});
+      setMessage({ type: 'success', text: 'Profile updated successfully!' });
       if (avatarMode === 'preset') setAvatarUrl(null);
       router.refresh();
     }
     setSaving(false);
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setChangingPassword(true);
+    setPasswordMessage(null);
+
+    const fd = new FormData();
+    fd.append('current_password', currentPassword);
+    fd.append('new_password', newPassword);
+    fd.append('confirm_password', confirmPassword);
+
+    const result = await changePassword(fd);
+
+    if (result?.error) {
+      setPasswordMessage({ type: 'error', text: result.error });
+    } else {
+      setPasswordMessage({ type: 'success', text: 'Password updated successfully.' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    }
+    setChangingPassword(false);
   };
 
   return (
@@ -151,11 +180,10 @@ export function ProfileView({profile}: {profile: Profile}) {
                       key={avatar}
                       type="button"
                       onClick={() => handlePresetClick(avatar)}
-                      className={`relative p-3 rounded-2xl border-2 transition-all hover:bg-black/5 ${
-                        active
-                          ? 'border-black bg-black/5 scale-110 shadow-md'
-                          : 'border-transparent'
-                      }`}
+                      className={`relative p-3 rounded-2xl border-2 transition-all hover:bg-black/5 ${active
+                        ? 'border-black bg-black/5 scale-110 shadow-md'
+                        : 'border-transparent'
+                        }`}
                     >
                       <NotionIcon name={avatar} className="w-[56px] h-[56px]" />
                       {active && (
@@ -201,9 +229,8 @@ export function ProfileView({profile}: {profile: Profile}) {
 
           {message && (
             <div
-              className={`p-4 rounded-xl text-center font-medium ${
-                message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-              }`}
+              className={`p-4 rounded-xl text-center font-medium ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                }`}
             >
               {message.text}
             </div>
@@ -222,6 +249,92 @@ export function ProfileView({profile}: {profile: Profile}) {
                 </>
               ) : (
                 'Save Changes'
+              )}
+            </button>
+          </div>
+        </form>
+
+        {/* Password change — separate form so it submits independently */}
+        <form onSubmit={handlePasswordSubmit} className="space-y-6 mt-16">
+          <section className="space-y-6">
+            <h2 className="text-xl font-semibold border-b border-border pb-3">Change Password</h2>
+
+            <div className="space-y-2">
+              <label htmlFor="current_password" className="text-sm font-medium text-muted-foreground">
+                Current Password
+              </label>
+              <input
+                id="current_password"
+                name="current_password"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter your current password"
+                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-black transition-all bg-gray-50/50"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="new_password" className="text-sm font-medium text-muted-foreground">
+                New Password
+              </label>
+              <input
+                id="new_password"
+                name="new_password"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-black transition-all bg-gray-50/50"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="confirm_password" className="text-sm font-medium text-muted-foreground">
+                Confirm New Password
+              </label>
+              <input
+                id="confirm_password"
+                name="confirm_password"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repeat new password"
+                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-black transition-all bg-gray-50/50"
+                required
+              />
+            </div>
+          </section>
+
+          {passwordMessage && (
+            <div
+              className={`p-4 rounded-xl text-center font-medium ${passwordMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                }`}
+            >
+              {passwordMessage.text}
+            </div>
+          )}
+
+          <div className="pt-6 border-t border-border">
+            <button
+              type="submit"
+              disabled={changingPassword}
+              className="button-notion button-notion-primary px-8 py-4 text-lg flex items-center justify-center gap-3 min-w-[180px]"
+            >
+              {changingPassword ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Updating…
+                </>
+              ) : (
+                'Update Password'
               )}
             </button>
           </div>

@@ -3,6 +3,8 @@
 import {createClient} from '@/lib/supabase/server';
 import {revalidatePath} from 'next/cache';
 
+const MIN_PASSWORD_LENGTH = 8;
+
 export async function getProfile() {
   const supabase = await createClient();
   const {data: {user}} = await supabase.auth.getUser();
@@ -116,4 +118,60 @@ export async function uploadAvatar(formData: FormData): Promise<{url?: string; e
 
   revalidatePath('/');
   return {url: urlWithBuster};
+}
+
+/**
+ * Changes the authenticated user's password.
+ *
+ * Requires the current password as a re-authentication check (Supabase's
+ * `updateUser` itself does not verify the old password). We re-verify by
+ * calling `signInWithPassword` with the user's email + the supplied current
+ * password before applying the update.
+ */
+export async function changePassword(formData: FormData): Promise<{error?: string; success?: boolean}> {
+  const supabase = await createClient();
+  const {data: {user}} = await supabase.auth.getUser();
+
+  if (!user || !user.email) return {error: 'Not authenticated.'};
+
+  const currentPassword = formData.get('current_password');
+  const newPassword = formData.get('new_password');
+  const confirmPassword = formData.get('confirm_password');
+
+  if (
+    typeof currentPassword !== 'string' ||
+    typeof newPassword !== 'string' ||
+    typeof confirmPassword !== 'string'
+  ) {
+    return {error: 'Invalid input.'};
+  }
+
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    return {error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`};
+  }
+
+  if (newPassword !== confirmPassword) {
+    return {error: 'New passwords do not match.'};
+  }
+
+  if (newPassword === currentPassword) {
+    return {error: 'New password must differ from current password.'};
+  }
+
+  const {error: reauthError} = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+
+  if (reauthError) {
+    return {error: 'Current password is incorrect.'};
+  }
+
+  const {error: updateError} = await supabase.auth.updateUser({password: newPassword});
+
+  if (updateError) {
+    return {error: 'Failed to update password. Please try again.'};
+  }
+
+  return {success: true};
 }
