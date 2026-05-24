@@ -25,7 +25,8 @@ type ChatStreamEvent =
   | {event_type: 'status'; status: 'retrieval_started' | 'retrieval_completed' | 'reranking_started' | 'generation_started'; stage?: string}
   | {event_type: 'sources'; sources: ChatSource[]}
   | {event_type: 'token'; content: string}
-  | {event_type: 'done'; timing?: unknown; session_id?: string}
+  | {event_type: 'replace_answer'; content: string}
+  | {event_type: 'done'; timing?: unknown; session_id?: string; updated_active_learning_state?: unknown}
   | {event_type: 'error'; message: string};
 
 function buildFeynmanGreeting(
@@ -388,6 +389,9 @@ export function ChatInterface({
             setActiveConversationKey(streamResult.sessionId);
             setSessionId(streamResult.sessionId);
           }
+          if (streamResult.activeLearningState) {
+            setActiveLearningState(streamResult.activeLearningState);
+          }
           setMessages((current) => current.map((item) =>
             item.id === assistantMessageId
               ? {
@@ -410,7 +414,7 @@ export function ChatInterface({
               course_id: course.id,
               updated_at: new Date().toISOString(),
               mode: existingSession?.mode ?? chatMode,
-              active_learning_state: existingSession?.active_learning_state ?? activeLearningState ?? {},
+              active_learning_state: streamResult.activeLearningState ?? existingSession?.active_learning_state ?? activeLearningState ?? {},
               messages: [
                 ...(existingSession?.messages ?? []),
                 {
@@ -512,6 +516,7 @@ export function ChatInterface({
     let answer = '';
     let sources: ChatSource[] = [];
     let sessionIdFromStream: string | undefined;
+    let activeLearningStateFromStream: ActiveLearningState | undefined;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -530,10 +535,17 @@ export function ChatInterface({
         } else if (event.event_type === 'token') {
           answer += event.content;
           setMessages((current) => current.map((item) => item.id === assistantMessageId ? { ...item, content: answer, streamStatus: undefined } : item));
+        } else if (event.event_type === 'replace_answer') {
+          answer = event.content;
+          setMessages((current) => current.map((item) => item.id === assistantMessageId ? { ...item, content: answer, streamStatus: undefined } : item));
         } else if (event.event_type === 'done') {
           const maybeSessionId = (event as {session_id?: unknown}).session_id;
           if (typeof maybeSessionId === 'string') {
             sessionIdFromStream = maybeSessionId;
+          }
+          const maybeActiveLearningState = (event as {updated_active_learning_state?: unknown}).updated_active_learning_state;
+          if (maybeActiveLearningState && typeof maybeActiveLearningState === 'object' && !Array.isArray(maybeActiveLearningState)) {
+            activeLearningStateFromStream = maybeActiveLearningState as ActiveLearningState;
           }
         } else if (event.event_type === 'error') {
           throw new Error(event.message);
@@ -541,7 +553,7 @@ export function ChatInterface({
       }
     }
 
-    return { answer, sources, sessionId: sessionIdFromStream };
+    return { answer, sources, sessionId: sessionIdFromStream, activeLearningState: activeLearningStateFromStream };
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

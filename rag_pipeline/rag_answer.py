@@ -88,6 +88,16 @@ WEB_SYSTEM_PROMPT_ADDITION = (
     "uploaded LearnCycle material. Clearly distinguish web information from "
     "the user's internal materials when relevant."
 )
+SOURCE_CITATION_INSTRUCTION = (
+    " Cite every factual claim that uses retrieved context with inline source markers "
+    "like [Source 1]. Only cite source numbers that appear in the provided context. "
+    "If you did not use a source, do not cite it."
+)
+SOURCE_SELECTION_STOPWORDS = {
+    "aber", "about", "also", "and", "auf", "aus", "bei", "das", "der", "die",
+    "dies", "ein", "eine", "einer", "eines", "for", "from", "ist", "mit",
+    "nicht", "oder", "sich", "the", "und", "von", "was", "werden", "wie", "with",
+}
 
 FALLBACK_ANSWER = (
     "Ich habe in deinen Materialien keine passenden Quellen gefunden. "
@@ -123,7 +133,7 @@ async def stream_answer_with_rag(
     response = answer_with_rag(
         query,
         user_id,
-        **{**kwargs, "llm_client": prompt_capture},
+        **{**kwargs, "generation_llm_client": prompt_capture, "filter_sources_by_answer": False},
     )
 
     yield {
@@ -131,7 +141,7 @@ async def stream_answer_with_rag(
         "status": "retrieval_completed",
         "stage": "qdrant_retrieve",
     }
-    yield {"event_type": "sources", "sources": response.get("sources", [])}
+    yield {"event_type": "sources", "sources": []}
 
     if kwargs.get("reranking_enabled") and kwargs.get("reranker") is not None:
         yield {
@@ -153,10 +163,55 @@ async def stream_answer_with_rag(
         yield {"event_type": "done"}
         return
 
+    if _is_active_learning_mode(str(kwargs.get("chat_mode", "normal"))):
+        accumulated_answer = ""
+        terminal_event: dict[str, Any] = {"event_type": "done"}
+        async for event in stream_answer(
+            system_prompt=prompt_capture.system_prompt,
+            user_prompt=prompt_capture.user_prompt,
+        ):
+            if event.get("event_type") == "token":
+                accumulated_answer += str(event.get("content", ""))
+                continue
+            if event.get("event_type") == "done":
+                terminal_event = dict(event)
+                break
+            yield event
+
+        clean_answer, updated_active_learning_state = extract_al_state_update(
+            accumulated_answer,
+            kwargs.get("active_learning_state") or {},
+        )
+        display_answer = _strip_source_markers(clean_answer)
+        if display_answer:
+            yield {"event_type": "token", "content": display_answer}
+        yield {
+            "event_type": "sources",
+            "sources": _select_answer_sources(clean_answer, response.get("sources", [])),
+        }
+        terminal_event["updated_active_learning_state"] = updated_active_learning_state
+        yield terminal_event
+        return
+
+    accumulated_answer = ""
     async for event in stream_answer(
         system_prompt=prompt_capture.system_prompt,
         user_prompt=prompt_capture.user_prompt,
     ):
+        if event.get("event_type") == "token":
+            accumulated_answer += str(event.get("content", ""))
+            yield event
+            continue
+        if event.get("event_type") == "done":
+            display_answer = _strip_source_markers(accumulated_answer)
+            if display_answer != accumulated_answer:
+                yield {"event_type": "replace_answer", "content": display_answer}
+            yield {
+                "event_type": "sources",
+                "sources": _select_answer_sources(accumulated_answer, response.get("sources", [])),
+            }
+            yield event
+            return
         yield event
 
 
@@ -307,18 +362,18 @@ def _select_system_prompt(
     generate_final_result: bool = False,
 ) -> str:
     if chat_mode == "guided_learning":
-        return GUIDED_LEARNING_SYSTEM_PROMPT + no_info_instruction
+        return GUIDED_LEARNING_SYSTEM_PROMPT + SOURCE_CITATION_INSTRUCTION + no_info_instruction
     if chat_mode == "feynman":
         if generate_final_result:
-            return FEYNMAN_RESULT_SYSTEM_PROMPT + no_info_instruction
-        return FEYNMAN_SYSTEM_PROMPT + no_info_instruction
+            return FEYNMAN_RESULT_SYSTEM_PROMPT + SOURCE_CITATION_INSTRUCTION + no_info_instruction
+        return FEYNMAN_SYSTEM_PROMPT + SOURCE_CITATION_INSTRUCTION + no_info_instruction
 
     prompt = CONVERSATION_SYSTEM_PROMPT if has_recent_messages else SYSTEM_PROMPT
     if has_graph:
         prompt += GRAPH_SYSTEM_PROMPT_ADDITION
     if has_web:
         prompt += WEB_SYSTEM_PROMPT_ADDITION
-    return prompt + no_info_instruction
+    return prompt + SOURCE_CITATION_INSTRUCTION + no_info_instruction
 
 
 def _should_generate_final_result(
@@ -369,6 +424,7 @@ def answer_with_rag(
     pdf_ids: list[str] | None = None,
     recent_messages: list[dict] | None = None,
     llm_client: Any = None,
+    generation_llm_client: Any = None,
     retrieval_fn: Callable[..., list[dict[str, Any]]] | None = None,
     reranker: Any = None,
     reranking_enabled: bool = False,
@@ -423,6 +479,7 @@ def answer_with_rag(
     reranker_cache_enabled: bool = True,
     reranker_cache_max_entries: int = 512,
     reranker_cache_ttl_s: int = 300,
+    filter_sources_by_answer: bool = True,
 ) -> dict[str, Any]:
     """Retrieve user-scoped chunks, generate an answer, and return citations."""
     if enable_timing and current_timing_report() is None:
@@ -436,6 +493,7 @@ def answer_with_rag(
                 pdf_ids=pdf_ids,
                 recent_messages=recent_messages,
                 llm_client=llm_client,
+                generation_llm_client=generation_llm_client,
                 retrieval_fn=retrieval_fn,
                 reranker=reranker,
                 reranking_enabled=reranking_enabled,
@@ -490,6 +548,7 @@ def answer_with_rag(
                 reranker_cache_enabled=reranker_cache_enabled,
                 reranker_cache_max_entries=reranker_cache_max_entries,
                 reranker_cache_ttl_s=reranker_cache_ttl_s,
+                filter_sources_by_answer=filter_sources_by_answer,
             )
         response["timing"] = report.to_dict()
         return response
@@ -919,7 +978,7 @@ def answer_with_rag(
             "agentic_retriever": agentic_metadata,
         }
 
-    active_llm = llm_client or OpenAILlmClient()
+    active_llm = generation_llm_client or llm_client or OpenAILlmClient()
     web_text = any(result.get("source_type") == "web" for result in context_results)
     prompt_addition = ""
     if graph_text:
@@ -979,7 +1038,12 @@ def answer_with_rag(
             active_learning_state or {},
         )
     
-    final_sources = context["sources"] + list(graph_context.get("sources") or [])
+    candidate_sources = context["sources"] + list(graph_context.get("sources") or [])
+    final_sources = (
+        _select_answer_sources(answer, candidate_sources)
+        if filter_sources_by_answer
+        else candidate_sources
+    )
     if answer.strip().startswith("[NO_INFO]"):
         answer = answer.replace("[NO_INFO]", "", 1).strip()
         final_sources = []
@@ -989,7 +1053,7 @@ def answer_with_rag(
         final_sources = [synthetic_general_knowledge_source()]
 
     response = {
-        "answer": answer,
+        "answer": _strip_source_markers(answer),
         "sources": final_sources,
         "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode),
         "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
@@ -1018,6 +1082,105 @@ def _rerank_with_timeout(
         raise TimeoutError("Reranker timed out.") from exc
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _select_answer_sources(answer: str, sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return sources cited by, or strongly overlapping with, the answer."""
+
+    if not sources:
+        return []
+
+    cited_indexes = _extract_cited_source_indexes(answer)
+    if cited_indexes:
+        cited_sources: list[dict[str, Any]] = []
+        for index in cited_indexes:
+            source_index = index - 1
+            if 0 <= source_index < len(sources):
+                cited_sources.append(sources[source_index])
+        if len(sources) == 1:
+            return cited_sources
+        return _select_overlapping_sources(answer, cited_sources)
+
+    if len(sources) == 1:
+        return sources
+    return _select_overlapping_sources(answer, sources)
+
+
+def _extract_cited_source_indexes(answer: str) -> list[int]:
+    indexes: list[int] = []
+    patterns = [
+        r"\[Source\s+(\d+)\]",
+        r"\[Quelle\s+(\d+)\]",
+        r"\[S(?:ource)?\s*(\d+)\]",
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, answer, flags=re.IGNORECASE):
+            index = int(match.group(1))
+            if index not in indexes:
+                indexes.append(index)
+    return indexes
+
+
+def _strip_source_markers(answer: str) -> str:
+    cleaned = re.sub(
+        r"(?:\s*\[(?:Source|Quelle|S(?:ource)?)\s+\d+\])+",
+        "",
+        answer,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"[ \t]+([.,;:!?])", r"\1", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def _select_overlapping_sources(answer: str, sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    answer_terms = _content_terms(answer)
+    if not answer_terms:
+        return []
+
+    scored: list[tuple[int, int, float, int, dict[str, Any]]] = []
+    for position, source in enumerate(sources):
+        source_text = " ".join(
+            str(value or "")
+            for value in [
+                source.get("title"),
+                source.get("heading"),
+                source.get("snippet"),
+            ]
+        )
+        source_terms = _content_terms(source_text)
+        if not source_terms:
+            continue
+        overlap = answer_terms & source_terms
+        overlap_count = len(overlap)
+        overlap_ratio = overlap_count / max(1, min(len(answer_terms), len(source_terms)))
+        source_specific_overlap = overlap - _generic_source_terms(source_terms)
+        if (len(source_specific_overlap) >= 2 and overlap_count >= 3) or (
+            len(source_specific_overlap) >= 1 and overlap_count >= 4 and overlap_ratio >= 0.3
+        ):
+            scored.append((len(source_specific_overlap), overlap_count, overlap_ratio, -position, source))
+
+    scored.sort(reverse=True, key=lambda item: (item[0], item[1], item[2], item[3]))
+    return [source for *_score, source in scored[:3]]
+
+
+def _content_terms(text: str) -> set[str]:
+    terms = set()
+    for raw_term in re.findall(r"[\wÄÖÜäöüß-]{4,}", text.lower()):
+        term = raw_term.strip("-_")
+        if len(term) < 4 or term in SOURCE_SELECTION_STOPWORDS:
+            continue
+        terms.add(term)
+    return terms
+
+
+def _generic_source_terms(source_terms: set[str]) -> set[str]:
+    generic = set()
+    generic_prefixes = ("source", "quelle", "chunk", "pdf")
+    for term in source_terms:
+        if any(term.startswith(prefix) for prefix in generic_prefixes):
+            generic.add(term)
+    return generic
 
 
 def _rerank_with_cache(

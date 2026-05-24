@@ -41,6 +41,14 @@ LEARNING_QUESTION_TYPE_VALUES = {
 INTERNAL_SOURCE_TYPES = {"pdf", "notes", "annotations", "chat_memory", "graph"}
 
 
+class QueryUnderstandingParseError(ValueError):
+    """Raised when the classifier response cannot be parsed as valid JSON."""
+
+    def __init__(self, message: str, *, preview: str = "") -> None:
+        super().__init__(message)
+        self.preview = preview
+
+
 class QueryRoute(str, Enum):
     INTERNAL_RETRIEVAL = "internal_retrieval"
     WEB_SEARCH = "web_search"
@@ -223,7 +231,26 @@ def understand_query(
                 available_source_types=available_source_types,
             ),
         )
-        understanding = QueryUnderstanding.model_validate(_parse_llm_json(str(raw)))
+        try:
+            understanding = QueryUnderstanding.model_validate(_parse_llm_json(str(raw)))
+        except (QueryUnderstandingParseError, ValidationError) as exc:
+            preview = getattr(exc, "preview", _preview_text(str(raw)))
+            logger.warning(
+                "Query understanding returned invalid JSON; using heuristic fallback.",
+                extra={
+                    "error_type": "query_understanding_invalid_json",
+                    "exception_type": type(exc).__name__,
+                    "response_preview": preview,
+                },
+            )
+            fallback = fallback_query_understanding(query, recent_messages)
+            return normalize_query_understanding(
+                fallback,
+                query=query,
+                has_internal_sources=has_internal_sources,
+                has_active_scope=has_active_scope,
+                available_source_types=available_source_types,
+            )
         return normalize_query_understanding(
             understanding,
             query=query,
@@ -401,13 +428,25 @@ def synthetic_general_knowledge_source() -> dict[str, Any]:
 
 def _parse_llm_json(text: str) -> dict[str, Any]:
     stripped = _strip_json_fence(text)
+    if not stripped:
+        raise QueryUnderstandingParseError("query_understanding_response_empty")
+
     try:
         payload = json.loads(stripped)
     except json.JSONDecodeError:
-        payload = json.loads(_extract_json_object(stripped))
+        try:
+            payload = json.loads(_extract_json_object(stripped))
+        except json.JSONDecodeError as nested_error:
+            raise QueryUnderstandingParseError(
+                "query_understanding_response_not_json",
+                preview=_preview_text(stripped),
+            ) from nested_error
 
     if not isinstance(payload, dict):
-        raise ValueError("query_understanding_response_must_be_json_object")
+        raise QueryUnderstandingParseError(
+            "query_understanding_response_must_be_json_object",
+            preview=_preview_text(stripped),
+        )
     return payload
 
 
@@ -425,6 +464,13 @@ def _extract_json_object(text: str) -> str:
     if start == -1 or end == -1 or end <= start:
         raise json.JSONDecodeError("No JSON object found", text, 0)
     return text[start : end + 1]
+
+
+def _preview_text(text: str, *, max_chars: int = 180) -> str:
+    compact = " ".join(text.strip().split())
+    if len(compact) <= max_chars:
+        return compact
+    return f"{compact[:max_chars]}..."
 
 
 def _format_bool_unknown(value: bool | None) -> str:

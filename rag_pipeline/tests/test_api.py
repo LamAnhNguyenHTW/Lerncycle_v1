@@ -48,7 +48,7 @@ def test_health_returns_ok(client) -> None:
 def test_healthz_returns_ok(client) -> None:
     test_client, _ = client
 
-    response = test_client.get("/healthz")
+    response = test_client.get("/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}

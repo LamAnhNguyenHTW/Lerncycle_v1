@@ -81,6 +81,19 @@ def test_understand_query_rejects_invalid_json_and_falls_back() -> None:
     assert result.needs_web is True
 
 
+def test_understand_query_logs_empty_llm_output_without_traceback(caplog) -> None:
+    result = understand_query(
+        "Welche Haupttypen von Process Mining gibt es?",
+        llm_client=FakeLlm(""),
+        config=SimpleNamespace(intent_classifier_max_recent_messages=4, intent_classifier_max_message_chars=1000),
+    )
+
+    assert result.route == QueryRoute.INTERNAL_RETRIEVAL
+    assert result.needs_pdf is True
+    assert "Query understanding returned invalid JSON; using heuristic fallback." in caplog.text
+    assert "Traceback" not in caplog.text
+
+
 def test_fallback_query_understanding_uses_existing_heuristics() -> None:
     result = fallback_query_understanding("Was ist der Zusammenhang zwischen BPMN und Process Mining?")
 

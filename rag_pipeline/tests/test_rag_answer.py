@@ -5,7 +5,9 @@ from typing import Any
 
 from rag_pipeline.rag_answer import (
     CONVERSATION_SYSTEM_PROMPT,
+    SOURCE_CITATION_INSTRUCTION,
     SYSTEM_PROMPT,
+    _select_answer_sources,
     answer_with_rag,
     rewrite_query_for_retrieval,
 )
@@ -290,13 +292,95 @@ def test_answer_with_rag_returns_answer_and_sources() -> None:
     assert response["sources"][0]["chunk_id"] == "chunk-1"
 
 
+def test_answer_with_rag_returns_only_valid_cited_sources_and_strips_markers() -> None:
+    response = answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient("Process Mining analysiert Event Logs. [Source 2]"),
+        retrieval_fn=lambda **_: [
+            _result_with(1, "Docker Container Reverse Proxy"),
+            _result_with(2, "Process Mining analysiert Event Logs."),
+            _result_with(3, "BPMN Gateways Ereignisse"),
+        ],
+    )
+
+    assert response["answer"] == "Process Mining analysiert Event Logs."
+    assert [source["chunk_id"] for source in response["sources"]] == ["chunk-2"]
+
+
+def test_answer_with_rag_rejects_cited_sources_without_answer_overlap() -> None:
+    answer = (
+        "Um PM Process Mining zu beherrschen, solltest du Geschäftsprozessmanagement, "
+        "Process Mining Konzepte, Prozessvisualisierung, Datenaufbereitung, Simulation "
+        "von Geschäftsprozessen und Bewertung von Soll-Prozessen verstehen. "
+        "[Source 1][Source 2][Source 4][Source 7]"
+    )
+
+    response = answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient(answer),
+        retrieval_fn=lambda **_: [
+            _result_with(1, "Process Mining Konzepte Geschäftsprozessmanagement Datenaufbereitung Prozesse"),
+            _result_with(2, "Reverse Proxy Load Balancer Docker Networks Anwendungs-Container"),
+            _result_with(3, "Nicht zitiert aber irrelevant"),
+            _result_with(4, "Excalidraw Diagramm Service Abhängigkeiten Dependency Diagramm"),
+            _result_with(5, "Nicht zitiert"),
+            _result_with(6, "Nicht zitiert"),
+            _result_with(7, "Inhaltsverzeichnis Auswahl der Anwendung Beschreibung Dienste-Zerlegung"),
+        ],
+    )
+
+    assert "[Source" not in response["answer"]
+    assert [source["chunk_id"] for source in response["sources"]] == ["chunk-1"]
+
+
+def test_answer_with_rag_falls_back_to_overlapping_sources_without_markers() -> None:
+    response = answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=FakeLlmClient("Process Mining analysiert Event Logs und verbessert Prozesse."),
+        retrieval_fn=lambda **_: [
+            _result_with(1, "Docker Container Reverse Proxy Load Balancer"),
+            _result_with(2, "Process Mining analysiert Event Logs in Geschäftsprozessen."),
+            _result_with(3, "BPMN Gateways Ereignisse Sequenzflüsse"),
+        ],
+    )
+
+    assert [source["chunk_id"] for source in response["sources"]] == ["chunk-2"]
+
+
+def test_select_answer_sources_supports_german_source_marker() -> None:
+    sources = [
+        {"chunk_id": "chunk-1", "snippet": "Docker Container Reverse Proxy"},
+        {"chunk_id": "chunk-2", "snippet": "Process Mining analysiert Event Logs"},
+    ]
+
+    assert _select_answer_sources("Process Mining analysiert Event Logs. [Quelle 2]", sources) == [
+        {"chunk_id": "chunk-2", "snippet": "Process Mining analysiert Event Logs"}
+    ]
+
+
+def test_system_prompt_requires_source_citations() -> None:
+    llm = FakeLlmClient("Eine Antwort [Source 1]")
+
+    answer_with_rag(
+        "Frage",
+        "user-1",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    assert SOURCE_CITATION_INSTRUCTION in llm.calls[0]["system_prompt"]
+
+
 def test_web_search_not_used_by_default() -> None:
     calls = []
 
     answer_with_rag(
         "Frage",
         "user-1",
-        llm_client=FakeLlmClient(),
+        llm_client=FakeLlmClient("Current web information. [Source 2]"),
         retrieval_fn=lambda **_: [_result()],
         web_search_fn=lambda **kwargs: calls.append(kwargs) or WebSearchOutcome([], "tavily", 0),
     )
@@ -310,7 +394,7 @@ def test_web_search_used_when_web_mode_on_and_enabled() -> None:
     response = answer_with_rag(
         "Frage",
         "user-1",
-        llm_client=FakeLlmClient(),
+        llm_client=FakeLlmClient("Current web information. [Source 2]"),
         retrieval_fn=lambda **_: [_result()],
         web_mode="on",
         web_search_enabled=True,
@@ -328,7 +412,7 @@ def test_answer_with_rag_does_not_plan_when_disabled() -> None:
     answer_with_rag(
         "Frage",
         "user-1",
-        llm_client=FakeLlmClient(),
+        llm_client=FakeLlmClient("Process Mining nutzt Event Logs. [Source 2]"),
         retrieval_fn=lambda **_: [_result()],
         intent=_intent(needs_pdf=True),
         retrieval_planner_enabled=False,
@@ -1304,7 +1388,7 @@ def test_answer_with_rag_returns_knowledge_graph_source_when_used() -> None:
     response = answer_with_rag(
         "Wie hängt Process Mining mit Event Logs zusammen?",
         "user-1",
-        llm_client=FakeLlmClient(),
+        llm_client=FakeLlmClient("Process Mining nutzt Event Logs. [Source 2]"),
         retrieval_fn=lambda **_: [_result()],
         graph_store=FakeGraphStore(),
         graph_retrieval_enabled=True,

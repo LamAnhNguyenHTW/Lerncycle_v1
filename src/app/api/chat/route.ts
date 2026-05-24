@@ -55,7 +55,8 @@ type RagStreamEvent =
   | {event_type: 'status'; status: string; stage?: string}
   | {event_type: 'sources'; sources: unknown[]}
   | {event_type: 'token'; content: string}
-  | {event_type: 'done'; timing?: unknown; session_id?: string}
+  | {event_type: 'replace_answer'; content: string}
+  | {event_type: 'done'; timing?: unknown; session_id?: string; updated_active_learning_state?: unknown}
   | {event_type: 'error'; message: string};
 
 function errorResponse(message: string, status: number) {
@@ -893,10 +894,31 @@ async function streamRagAnswer({
             let outboundEvent = event;
             if (event.event_type === 'token') {
               accumulated += event.content;
+            } else if (event.event_type === 'replace_answer') {
+              accumulated = event.content;
             } else if (event.event_type === 'sources') {
               sources = event.sources;
             } else if (event.event_type === 'done') {
               outboundEvent = {...event, session_id: sessionId};
+              if (
+                event.updated_active_learning_state &&
+                typeof event.updated_active_learning_state === 'object' &&
+                !Array.isArray(event.updated_active_learning_state)
+              ) {
+                const nextActiveLearningState = normalizeActiveLearningState(event.updated_active_learning_state);
+                const {error: stateError} = await supabase
+                  .from('chat_sessions')
+                  .update({active_learning_state: nextActiveLearningState})
+                  .eq('id', sessionId)
+                  .eq('user_id', userId);
+                if (stateError) {
+                  console.error('Failed to persist active learning state', stateError);
+                }
+                outboundEvent = {
+                  ...outboundEvent,
+                  updated_active_learning_state: nextActiveLearningState,
+                };
+              }
               await persistAssistantMessageOnce({
                 supabase,
                 idempotencyKey,
