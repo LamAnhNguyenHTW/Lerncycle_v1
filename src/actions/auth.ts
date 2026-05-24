@@ -1,41 +1,38 @@
 'use server';
 
 import {createClient} from '@/lib/supabase/server';
-import {
-  BETA_NOT_INVITED_ERROR_DE,
-  isEmailBetaInvited,
-  normalizeEmail,
-} from '@/actions/auth-invite';
 import {redirect} from 'next/navigation';
 
-/** Sends a magic link to the provided email address. */
-export async function signInWithEmail(formData: FormData): Promise<{error?: string}> {
+/**
+ * Signs the user in with email + password.
+ *
+ * Beta auth: accounts are admin-created in the Supabase dashboard. Self-service
+ * signup, magic link, and password reset are out of scope until a custom domain
+ * + SMTP provider are configured. Errors are returned generically to avoid
+ * leaking which emails are registered.
+ */
+export async function signInWithPassword(formData: FormData): Promise<{error?: string}> {
   const email = formData.get('email');
+  const password = formData.get('password');
 
-  if (typeof email !== 'string' || !email.includes('@')) {
-    return {error: 'Please enter a valid email address.'};
+  if (
+    typeof email !== 'string' ||
+    typeof password !== 'string' ||
+    email.length === 0 ||
+    password.length === 0 ||
+    !email.includes('@')
+  ) {
+    return {error: 'Invalid email or password.'};
   }
 
-  const normalizedEmail = normalizeEmail(email);
   const supabase = await createClient();
-  const invited = await isEmailBetaInvited(supabase, normalizedEmail);
-
-  if (!invited) {
-    return {error: BETA_NOT_INVITED_ERROR_DE};
-  }
-
-  const {error} = await supabase.auth.signInWithOtp({
-    email: normalizedEmail,
-    options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/auth/callback`,
-    },
-  });
+  const {error} = await supabase.auth.signInWithPassword({email, password});
 
   if (error) {
-    return {error: error.message};
+    return {error: 'Invalid email or password.'};
   }
 
-  redirect('/login?sent=true');
+  redirect('/app');
 }
 
 /** Signs the current user out. */

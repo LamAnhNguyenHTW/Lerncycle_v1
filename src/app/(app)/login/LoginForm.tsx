@@ -1,77 +1,48 @@
 'use client';
 
-import {signInWithEmail} from '@/actions/auth';
+import {signInWithPassword} from '@/actions/auth';
 import {useSearchParams} from 'next/navigation';
 import {useActionState, useState} from 'react';
-import {NotionIcon} from '@/components/NotionIcon';
-import {BookOpen, Send} from 'lucide-react';
+import {BookOpen} from 'lucide-react';
 
 type State = {error?: string} | undefined;
 type LoginLanguage = 'de' | 'en';
 
 const copy = {
   de: {
-    checkInboxTitle: 'Postfach prüfen',
-    checkInboxBody:
-      'Wir haben dir einen Magic Link geschickt. Klicke darauf, um dich ohne Passwort einzuloggen.',
     welcomeTitle: 'Willkommen zurück',
     welcomeBody:
       'Deine Lernmaterialien, sauber strukturiert und jederzeit griffbereit.',
     emailPlaceholder: 'E-Mail eingeben...',
+    passwordPlaceholder: 'Passwort eingeben...',
     authFailed: 'Authentifizierung fehlgeschlagen.',
     loading: 'Lade...',
-    submit: 'Mit Magic Link einloggen',
+    submit: 'Einloggen',
     languageLabel: 'Sprache wechseln',
   },
   en: {
-    checkInboxTitle: 'Check your inbox',
-    checkInboxBody:
-      "We've sent you a Magic Link. Click it to log in without a password.",
     welcomeTitle: 'Welcome back',
     welcomeBody:
       'Your learning materials, well-structured and always within reach.',
     emailPlaceholder: 'Enter email...',
+    passwordPlaceholder: 'Enter password...',
     authFailed: 'Authentication failed.',
     loading: 'Loading...',
-    submit: 'Log in with Magic Link',
+    submit: 'Log in',
     languageLabel: 'Switch language',
   },
 } satisfies Record<LoginLanguage, Record<string, string>>;
 
 export function LoginForm() {
   const searchParams = useSearchParams();
-  const sent = searchParams.get('sent') === 'true';
   const callbackError = searchParams.get('error');
   const [language, setLanguage] = useState<LoginLanguage>('de');
   const text = copy[language];
 
   const [state, action, pending] = useActionState(
-    (_prev: State, formData: FormData) => signInWithEmail(formData),
+    (_prev: State, formData: FormData) => signInWithPassword(formData),
     undefined,
   );
-
-  if (sent) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#F7F7F5]">
-        <div className="card-notion w-full max-w-md mx-4 p-10 flex flex-col items-center text-center">
-          <LanguageToggle
-            language={language}
-            label={text.languageLabel}
-            onToggle={() => setLanguage(language === 'de' ? 'en' : 'de')}
-          />
-          <div className="flex size-20 items-center justify-center rounded-full bg-black/5 text-foreground mb-8">
-            <Send className="w-[40px] h-[40px]" strokeWidth={1.5} />
-          </div>
-          <h1 className="text-3xl font-bold mb-4 text-foreground">
-            {text.checkInboxTitle}
-          </h1>
-          <p className="text-muted-foreground text-lg leading-relaxed">
-            {text.checkInboxBody}
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-[#F7F7F5]">
@@ -103,6 +74,16 @@ export function LoginForm() {
             placeholder={text.emailPlaceholder}
             required
             autoComplete="email"
+            className="w-full rounded-md border border-border px-4 py-3 text-base outline-none focus:border-primary transition-colors"
+          />
+
+          <input
+            id="password"
+            name="password"
+            type="password"
+            placeholder={text.passwordPlaceholder}
+            required
+            autoComplete="current-password"
             className="w-full rounded-md border border-border px-4 py-3 text-base outline-none focus:border-primary transition-colors"
           />
 
