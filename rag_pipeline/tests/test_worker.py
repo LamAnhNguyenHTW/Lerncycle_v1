@@ -29,6 +29,7 @@ class RecordingWorker(RagWorker):
         self.documents: list[tuple[str, str, dict[str, Any] | None]] = []
         self.replaced_chunks: dict[tuple[str, str, str], list[Any]] = {}
         self.failed_jobs: list[tuple[str, str]] = []
+        self.stage_writes: list[tuple[str, str, str | None]] = []
 
     def _fetch_note_row(self, note_id: str, user_id: str) -> dict[str, Any]:
         return {
@@ -73,12 +74,16 @@ class RecordingWorker(RagWorker):
         self.documents.append((source.source_type, status, metadata))
         return "rag-document-1"
 
-    def _replace_source_chunks(self, rag_document_id, source, chunks) -> None:
+    def _replace_source_chunks(self, rag_document_id, source, chunks, job_id=None) -> None:
         self.replaced_chunks[
             (source.user_id, source.source_type, source.source_id)
         ] = chunks
 
-    def _mark_job_completed(self, job_id: str) -> None:
+    def _write_stage(self, job_id: str, stage: str, error: str | None = None) -> None:
+        self.stage_writes.append((job_id, stage, error))
+
+    def _mark_job_completed(self, job_id: str, metadata: dict[str, Any] | None = None) -> None:
+        self.stage_writes.append((job_id, "completed", None))
         self.completed_jobs.append(job_id)
 
     def _mark_job_failed(self, job: dict[str, Any] | str, error_message: str) -> None:
@@ -315,6 +320,11 @@ class FakeRpcSupabase:
         return FakeRetryTable(self, name)
 
 
+class FailingStageSupabase(FakeRpcSupabase):
+    def table(self, name: str):
+        return FailingStageTable(self, name)
+
+
 class FakeRetryTable:
     def __init__(self, supabase: FakeRpcSupabase, name: str) -> None:
         self.supabase = supabase
@@ -335,6 +345,11 @@ class FakeRetryTable:
             (self.name, self.pending_update, dict(self.filters))
         )
         return FakeResponse([])
+
+
+class FailingStageTable(FakeRetryTable):
+    def execute(self):
+        raise RuntimeError("stage write failed")
 
 
 class LoopWorker(RagWorker):
@@ -681,6 +696,40 @@ def test_mark_job_failed_retries_until_max_attempts() -> None:
     assert updates[2]["status"] == "failed"
     assert "completed_at" not in updates[0]
     assert "completed_at" in updates[2]
+    assert updates[0]["processing_stage"] == "failed"
+    assert updates[0]["stage_error"] == "boom"
+    assert updates[2]["processing_stage"] == "failed"
+
+
+def test_mark_job_failed_truncates_stage_error_to_500_chars() -> None:
+    worker = object.__new__(RagWorker)
+    worker._config = SimpleNamespace(worker_max_attempts=1)
+    worker._supabase = FakeRpcSupabase([])
+
+    worker._mark_job_failed({"id": "job-1", "attempts": 1}, "x" * 800)
+
+    update = worker._supabase.updates[-1][1]
+    assert update["processing_stage"] == "failed"
+    assert len(update["stage_error"]) == 500
+
+
+def test_write_stage_failure_does_not_abort_job() -> None:
+    worker = object.__new__(RagWorker)
+    worker._supabase = FailingStageSupabase([])
+
+    worker._write_stage("job-1", "indexing_dense")
+
+
+def test_mark_job_completed_writes_completed_stage() -> None:
+    worker = object.__new__(RagWorker)
+    worker._supabase = FakeRpcSupabase([])
+
+    worker._mark_job_completed("job-1")
+
+    update = worker._supabase.updates[-1][1]
+    assert update["status"] == "completed"
+    assert update["processing_stage"] == "completed"
+    assert update["stage_error"] is None
 
 
 def test_claim_job_passes_worker_max_attempts_to_rpc() -> None:
@@ -694,6 +743,16 @@ def test_claim_job_passes_worker_max_attempts_to_rpc() -> None:
     ]
     # Stale reclaim remains covered at the RPC layer in
     # supabase/migrations/20260406000006_rag_pipeline.sql.
+
+
+def test_claim_job_relies_on_rpc_for_retry_stage_reset() -> None:
+    worker = RecordingWorker()
+    worker._config.worker_max_attempts = 5
+    worker._supabase = FakeRpcSupabase([{"id": "job-1"}])
+
+    worker._claim_job()
+
+    assert worker._supabase.updates == []
 
 
 def test_worker_skips_claiming_jobs_when_beta_frozen(monkeypatch) -> None:
@@ -786,6 +845,36 @@ def test_worker_embeds_and_upserts_chunks_to_qdrant() -> None:
     assert upserted["source_type"] == "note"
 
 
+def test_worker_writes_dense_stage_before_embedding() -> None:
+    worker = ChunkWorker()
+
+    worker._upsert_chunks("document-1", [_chunk()], job_id="job-1")
+
+    stage_updates = [
+        update
+        for _table, _operation, update, filters in worker._supabase.operations
+        if filters.get("id") == "job-1"
+    ]
+    assert stage_updates[0]["processing_stage"] == "indexing_dense"
+    assert all(update["processing_stage"] != "indexing_sparse" for update in stage_updates)
+
+
+def test_worker_writes_sparse_stage_only_when_sparse_enabled() -> None:
+    worker = ChunkWorker(sparse_enabled=True)
+
+    worker._upsert_chunks("document-1", [_chunk()], job_id="job-1")
+
+    stage_updates = [
+        update
+        for _table, _operation, update, filters in worker._supabase.operations
+        if filters.get("id") == "job-1"
+    ]
+    assert [update["processing_stage"] for update in stage_updates[:2]] == [
+        "indexing_dense",
+        "indexing_sparse",
+    ]
+
+
 def test_note_reindex_deletes_old_qdrant_points_before_upsert() -> None:
     worker = ChunkWorker()
     source = _chunk().source
@@ -852,6 +941,7 @@ def test_deleted_note_triggers_qdrant_cleanup() -> None:
         {"skipped": "source_deleted"},
     )
     assert worker.completed_jobs == ["job-1"]
+    assert worker.stage_writes[-1][1] == "completed"
 
 
 def test_deleted_annotation_triggers_qdrant_cleanup() -> None:
@@ -877,12 +967,13 @@ def test_deleted_annotation_triggers_qdrant_cleanup() -> None:
         {"skipped": "source_deleted"},
     )
     assert worker.completed_jobs == ["job-1"]
+    assert worker.stage_writes[-1][1] == "completed"
 
 
 def test_worker_does_not_mark_job_completed_when_embedding_fails() -> None:
     worker = RecordingWorker()
 
-    def fail_replace(_document_id, _source, _chunks) -> None:
+    def fail_replace(_document_id, _source, _chunks, **_kwargs) -> None:
         raise RuntimeError("embedding failed")
 
     worker._replace_source_chunks = fail_replace
@@ -954,7 +1045,7 @@ def test_worker_marks_sparse_embedding_failed_when_sparse_embedder_fails() -> No
 def test_worker_does_not_mark_job_completed_when_sparse_fails() -> None:
     worker = RecordingWorker()
 
-    def fail_replace(_document_id, _source, _chunks) -> None:
+    def fail_replace(_document_id, _source, _chunks, **_kwargs) -> None:
         raise RuntimeError("sparse failed")
 
     worker._replace_source_chunks = fail_replace
@@ -1134,6 +1225,7 @@ def test_worker_dispatches_learning_graph_job_kind_for_pdf() -> None:
 
     assert worker.loaded_learning_chunks == [("user-1", "pdf", "pdf-1")]
     assert worker.learning_completed[0][0] == "job-1"
+    assert worker.stage_writes[0][1] == "graph_extracting"
     assert worker.learning_completed[0][1]["learning_graph_extraction_report"]["total_groups"] == 0
 
 

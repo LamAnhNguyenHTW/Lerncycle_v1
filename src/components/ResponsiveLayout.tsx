@@ -13,7 +13,7 @@ export function ResponsiveLayout({sidebar, children}: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-var(--bg-soft) text-var(--text)">
+    <div className="flex h-full min-h-dvh w-full overflow-hidden bg-var(--bg-soft) text-var(--text)">
       {/* Desktop Sidebar (hidden on mobile) */}
       <div className="hidden md:flex h-full">
         {sidebar}
@@ -30,11 +30,12 @@ export function ResponsiveLayout({sidebar, children}: Props) {
           {/* Sidebar container */}
           <div className="relative z-50 flex h-full w-4/5 max-w-sm flex-col bg-background shadow-xl transition-transform animate-in slide-in-from-left duration-200">
             {sidebar}
-            <button 
+            <button
               onClick={() => setMobileOpen(false)}
-              className="absolute right-4 top-6 rounded-full bg-foreground/5 p-2 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+              aria-label="Close menu"
+              className="absolute right-3 top-4 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
             >
-              <NotionIcon name="ni-x" className="w-[24px] h-[24px]" />
+              <NotionIcon name="ni-chevron-left-circle" className="w-[24px] h-[24px]" />
             </button>
           </div>
         </div>
@@ -44,9 +45,10 @@ export function ResponsiveLayout({sidebar, children}: Props) {
       <div className="flex flex-1 flex-col overflow-hidden relative">
         {/* Mobile Header */}
         <header className="md:hidden flex h-14 shrink-0 items-center border-b border-border bg-background px-4">
-          <button 
+          <button
             onClick={() => setMobileOpen(true)}
-            className="rounded-md p-2 -ml-2 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+            aria-label="Open menu"
+            className="flex min-h-[44px] min-w-[44px] -ml-2 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
           >
             <NotionIcon name="ni-list" className="w-[24px] h-[24px]" />
           </button>

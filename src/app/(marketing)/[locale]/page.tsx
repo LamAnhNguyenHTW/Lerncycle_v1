@@ -22,7 +22,7 @@ export default async function LandingPage({params}: PageProps) {
   const dict = getDictionary(locale);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col overflow-x-clip">
       <MarketingTopNav locale={locale} dict={dict} />
       <main className="flex-1">
         <Hero dict={dict} />

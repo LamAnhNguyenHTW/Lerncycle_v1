@@ -30,7 +30,7 @@ export default function AppRootLayout({children}: {children: React.ReactNode}) {
       suppressHydrationWarning
       className={`${inter.variable} h-full antialiased`}
     >
-      <body className="h-full flex flex-col font-sans">
+      <body className="min-h-dvh h-full flex flex-col font-sans">
         <ThemeProvider>
           <LanguageProvider>{children}</LanguageProvider>
         </ThemeProvider>

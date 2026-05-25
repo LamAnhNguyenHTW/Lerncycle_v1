@@ -107,6 +107,9 @@
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Reserve symmetric space on both sides so the vertical scrollbar
+       doesn't visually offset centered content. */
+    scrollbar-gutter: stable both-edges;
   }
 
   body {
@@ -117,6 +120,15 @@
     font-size: var(--text-md);
     line-height: var(--lh-relaxed);
     letter-spacing: -0.011em;
+  }
+
+  /* Utility: hide scrollbar while keeping scroll behavior */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   /* Typography */
@@ -322,8 +334,14 @@
 .study-interface-wrap {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 56px); /* subtract header */
+  height: calc(100dvh - 56px); /* subtract header; dvh avoids mobile chrome jumps */
   overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .study-interface-wrap {
+    height: 100dvh;
+  }
 }
 
 /* Top bar */
@@ -724,6 +742,157 @@
 .pdf-viewer-container .rpv-core__page-layer {
   background: #fff;
   outline: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+/* Mobile-only trigger to open highlights as a bottom sheet (hidden on desktop) */
+.pdf-highlights-mobile-trigger {
+  display: none;
+}
+
+.pdf-highlights-backdrop {
+  display: none;
+}
+
+/* ─── Mobile PDF Viewer ─────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Annotations sidebar becomes a bottom sheet, hidden until opened */
+  .pdf-annotations-sidebar {
+    display: none;
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 50;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: 70dvh;
+    border-right: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
+    background: var(--surface);
+    animation: pdf-highlights-slide-up 200ms ease-out;
+  }
+  .pdf-annotations-sidebar.is-open {
+    display: flex;
+  }
+  /* Reset desktop "collapsed" appearance — on mobile the sheet is only ever fully open or hidden */
+  .pdf-annotations-sidebar.is-collapsed {
+    display: none;
+  }
+  .pdf-annotations-sidebar.is-open .pdf-annotations-toggle-icon {
+    display: none;
+  }
+  .pdf-annotations-sidebar.is-open .pdf-annotations-toggle-chevron {
+    display: none;
+  }
+  .pdf-annotations-sidebar.is-open .pdf-annotations-label::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 8px;
+    border-radius: 2px;
+    background: var(--border-strong);
+  }
+  .pdf-annotations-sidebar.is-open .pdf-annotations-toggle {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    text-align: center;
+  }
+  .pdf-annotations-list {
+    flex: 1;
+  }
+
+  .pdf-highlights-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+    background: rgba(0, 0, 0, 0.4);
+    animation: fade-in 150ms ease-out;
+  }
+
+  /* Mobile trigger button in the PDF toolbar */
+  .pdf-highlights-mobile-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-soft);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .pdf-highlights-mobile-trigger:hover {
+    background: var(--bg-soft);
+  }
+
+  /* Compact highlight toggle: only the icon */
+  .pdf-highlight-toggle-label {
+    display: none;
+  }
+
+  /* Hide react-pdf-viewer's left thumbnail/bookmark sidebar by default */
+  .pdf-viewer-container .rpv-default-layout__sidebar {
+    display: none;
+  }
+  .pdf-viewer-container .rpv-default-layout__sidebar-tabs {
+    display: none;
+  }
+
+  /* Tighten toolbar and page padding for narrow screens */
+  .pdf-viewer-container .rpv-core__inner-pages {
+    padding: 8px 8px 16px;
+  }
+  .pdf-viewer-toolbar {
+    padding: 6px 8px;
+    overflow-x: auto;
+  }
+  .pdf-viewer-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Default-layout toolbar: allow horizontal scroll instead of overflow */
+  .pdf-viewer-container .rpv-default-layout__toolbar {
+    overflow-x: auto;
+  }
+  .pdf-viewer-container .rpv-default-layout__toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Annotation expand actions: equal-width Save/Delete; "Einklappen" hidden
+     (drawer is dismissed via backdrop tap or grab handle anyway). */
+  .pdf-annotation-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    justify-content: stretch;
+  }
+  .pdf-annotation-inline-edit {
+    display: none;
+  }
+  .pdf-annotation-inline-save,
+  .pdf-annotation-inline-delete {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+}
+
+@keyframes pdf-highlights-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .pdf-loading {

@@ -289,7 +289,7 @@ class RagWorker:
                 chunking_version=self._config.chunking_version,
             )
 
-        self._replace_source_chunks(document_id, source, chunks)
+        self._replace_source_chunks(document_id, source, chunks, job_id=str(job["id"]))
         self._upsert_document(
             source,
             status="completed",
@@ -342,7 +342,7 @@ class RagWorker:
             chunking_strategy=self._config.chunking_strategy,
             chunking_version=self._config.chunking_version,
         )
-        self._replace_source_chunks(document_id, source, chunks)
+        self._replace_source_chunks(document_id, source, chunks, job_id=str(job["id"]))
         self._upsert_document(
             source,
             status="completed",
@@ -399,7 +399,7 @@ class RagWorker:
             chunking_strategy=self._config.chunking_strategy,
             chunking_version=self._config.chunking_version,
         )
-        self._replace_source_chunks(document_id, source, chunks)
+        self._replace_source_chunks(document_id, source, chunks, job_id=str(job["id"]))
         self._upsert_document(
             source,
             status="completed",
@@ -451,7 +451,7 @@ class RagWorker:
             chunking_version=self._config.chunking_version,
         )
         try:
-            self._replace_source_chunks(document_id, source, [chunk])
+            self._replace_source_chunks(document_id, source, [chunk], job_id=str(job["id"]))
             row = self._fetch_latest_chunk_row(user_id, "chat_memory", session_id)
             self._update_chat_memory_summary(
                 user_id,
@@ -755,6 +755,7 @@ class RagWorker:
             LOGGER.warning("Failed to enqueue learning graph job.", exc_info=True)
 
     def _process_learning_graph_job(self, job: dict[str, Any]) -> None:
+        self._write_stage(str(job["id"]), "graph_extracting")
         source_type = str(job.get("source_type") or "")
         if source_type != "pdf":
             self._mark_job_completed(
@@ -1007,6 +1008,7 @@ class RagWorker:
         self,
         rag_document_id: str,
         chunks: list[RagChunk],
+        job_id: str | None = None,
     ) -> None:
         if not chunks:
             return
@@ -1058,6 +1060,8 @@ class RagWorker:
         indexed_rows = _match_chunk_rows(chunks, returned_rows)
 
         try:
+            if job_id is not None:
+                self._write_stage(job_id, "indexing_dense")
             embedder = self._get_embedder()
             embeddings = embedder.embed([chunk.content for chunk in chunks])
             dim = embedder.dimension
@@ -1070,6 +1074,8 @@ class RagWorker:
             )
             sparse_embeddings: list[SparseVectorData | None] = [None] * len(chunks)
             if sparse_enabled:
+                if job_id is not None:
+                    self._write_stage(job_id, "indexing_sparse")
                 sparse_embeddings = self._get_sparse_embedder().embed(
                     [chunk.content for chunk in chunks]
                 )
@@ -1111,6 +1117,7 @@ class RagWorker:
         rag_document_id: str,
         source: SourceRef,
         chunks: list[RagChunk],
+        job_id: str | None = None,
     ) -> None:
         self._get_qdrant_store().delete_points_by_source(
             source.user_id,
@@ -1128,7 +1135,7 @@ class RagWorker:
             self._config.chunking_version,
         ).execute()
 
-        self._upsert_chunks(rag_document_id, chunks)
+        self._upsert_chunks(rag_document_id, chunks, job_id=job_id)
 
     def _delete_source_chunks(self, source: SourceRef) -> None:
         self._get_qdrant_store().delete_points_by_source(
@@ -1202,6 +1209,34 @@ class RagWorker:
                 chunk_id,
             ).execute()
 
+    def _write_stage(
+        self,
+        job_id: str,
+        stage: str,
+        error: str | None = None,
+    ) -> None:
+        update = {
+            "processing_stage": stage,
+            "stage_updated_at": _utc_now(),
+        }
+        if error is not None:
+            update["stage_error"] = error[:500]
+        elif stage in {"parsing", "completed"}:
+            update["stage_error"] = None
+
+        try:
+            self._supabase.table("rag_index_jobs").update(update).eq(
+                "id",
+                job_id,
+            ).execute()
+        except Exception:
+            LOGGER.warning(
+                "stage_write_failed job_id=%s stage=%s",
+                job_id,
+                stage,
+                exc_info=True,
+            )
+
 
     def _mark_job_completed(
         self,
@@ -1214,6 +1249,9 @@ class RagWorker:
                 "completed_at": _utc_now(),
                 "updated_at": _utc_now(),
                 "error_message": None,
+                "processing_stage": "completed",
+                "stage_updated_at": _utc_now(),
+                "stage_error": None,
         }
         if metadata is not None:
             update["metadata"] = metadata
@@ -1228,6 +1266,9 @@ class RagWorker:
             "locked_at": None,
             "updated_at": _utc_now(),
             "error_message": error_message[:4000],
+            "processing_stage": "failed",
+            "stage_updated_at": _utc_now(),
+            "stage_error": error_message[:500],
         }
         if not will_retry:
             update["completed_at"] = _utc_now()

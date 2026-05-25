@@ -27,3 +27,8 @@ create policy "beta_signups_insert_public"
   for insert
   to anon, authenticated
   with check (true);
+
+-- RLS policies don't override base table privileges — anon/authenticated
+-- also need the raw INSERT grant, otherwise Postgres returns 42501
+-- (permission denied) before RLS is even evaluated.
+grant insert on public.beta_signups to anon, authenticated;

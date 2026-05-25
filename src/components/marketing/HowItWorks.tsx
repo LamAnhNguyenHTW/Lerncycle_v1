@@ -8,7 +8,7 @@ interface Props {
 export function HowItWorks({dict}: Props) {
   return (
     <section className="w-full bg-background relative overflow-hidden">
-      <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:py-32 relative z-10">
+      <div className="mx-auto w-full max-w-6xl px-3 py-20 sm:px-6 sm:py-28 lg:py-32 relative z-10">
         <ScrollReveal className="text-center max-w-3xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
             {dict.howItWorks.sectionTitle}

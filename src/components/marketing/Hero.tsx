@@ -14,7 +14,7 @@ interface Props {
 export function Hero({dict}: Props) {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-background via-background to-muted">
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-4 py-20 sm:px-6 md:py-28 lg:grid-cols-2 lg:gap-16 lg:py-32">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-3 py-20 sm:px-6 md:py-28 lg:grid-cols-2 lg:gap-16 lg:py-32">
         <div className="text-center lg:text-left">
           <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
             {dict.hero.h1}
@@ -73,7 +73,7 @@ function HeroFunnel({dict}: {dict: Dictionary}) {
   ];
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-md sm:max-w-lg">
+    <div className="relative mx-auto aspect-square w-full max-w-md sm:max-w-lg overflow-hidden">
       <div className="absolute inset-[12%] rounded-full bg-[radial-gradient(circle,var(--bg-soft)_0%,var(--bg)_60%,transparent_100%)] opacity-80" />
 
       <svg

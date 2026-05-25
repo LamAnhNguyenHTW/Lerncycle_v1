@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChevronDown, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2, Square } from 'lucide-react';
+import { ChevronDown, ChevronLeft, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2, Square, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SourceCard } from '@/components/learn/SourceCard';
 import type { Course } from '@/lib/data';
@@ -12,6 +12,7 @@ import { NotionIcon } from '@/components/NotionIcon';
 import { Logo } from '@/components/Logo';
 import { deleteChatSession, renameChatSession } from '@/actions/chat';
 import { useLanguage } from '@/lib/i18n';
+import {useProcessingStatus} from '@/hooks/useProcessingStatus';
 
 type ChatMessage = {
   id: string;
@@ -160,7 +161,13 @@ export function ChatInterface({
   const [pendingConversationKeys, setPendingConversationKeys] = useState<string[]>([]);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [activeLearningState, setActiveLearningState] = useState<ActiveLearningState>({});
+  const processingStatus = useProcessingStatus(selectedPdfIds);
+  const selectedPdfNames = new Map(allPdfs.map((pdf) => [pdf.id, pdf.name]));
+  const failedPdfNames = processingStatus.statuses
+    .filter((status) => status.overallStage === 'failed')
+    .map((status) => selectedPdfNames.get(status.sourceId) ?? status.sourceId);
   const isActiveLearning = chatMode === 'guided_learning' || chatMode === 'feynman';
   const activeModeLabel = chatMode === 'guided_learning' ? t('active.guided') : chatMode === 'feynman' ? t('active.feynman') : t('nav.learn');
   const emptyTitle = chatMode === 'guided_learning'
@@ -566,16 +573,51 @@ export function ChatInterface({
 
   return (
     <div className="flex flex-1 w-full h-full bg-background overflow-hidden relative">
-      {/* Left Sidebar */}
-      <div className="hidden md:flex w-[280px] shrink-0 border-r border-border bg-muted/30 flex-col h-full">
+      {/* Backdrop for mobile sidebar */}
+      {mobileSidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/40 animate-in fade-in duration-200"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Left Sidebar — desktop static, mobile drawer overlay */}
+      <div
+        className={`
+          ${mobileSidebarOpen ? 'fixed inset-y-0 left-0 z-50 flex w-[85%] max-w-sm bg-background shadow-xl animate-in slide-in-from-left duration-200' : 'hidden'}
+          md:static md:flex md:w-[280px] md:max-w-none md:bg-muted/30 md:shadow-none md:animate-none
+          shrink-0 border-r border-border flex-col h-full
+        `}
+      >
         <div className="p-5 flex items-center justify-between border-b border-border/50">
-          <div className="font-semibold text-sm flex items-center gap-2">
-            <NotionIcon name={isActiveLearning ? 'ni-rocket' : 'ni-comment-text'} className="w-[20px] h-[20px]" />
-            {showActiveLearningModes ? 'Active Learning' : 'Learn & Research'}
+          <div className="min-w-0 space-y-2">
+            <div className="font-semibold text-sm flex items-center gap-2">
+              <NotionIcon name={isActiveLearning ? 'ni-rocket' : 'ni-comment-text'} className="w-[20px] h-[20px]" />
+              {showActiveLearningModes ? 'Active Learning' : 'Learn & Research'}
+            </div>
+            <ChatReadinessChip
+              language={language}
+              totalCount={processingStatus.totalCount}
+              ragReadyCount={processingStatus.ragReadyCount}
+              allReady={processingStatus.allReady}
+              allRagReady={processingStatus.allRagReady}
+              anyFailed={processingStatus.anyFailed}
+              failedPdfNames={failedPdfNames}
+            />
           </div>
-          <button onClick={startNewChat} className="text-muted-foreground hover:text-foreground transition-colors" title={t('chat.newChat')}>
-            <Plus className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={startNewChat} className="text-muted-foreground hover:text-foreground transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center rounded-md" title={t('chat.newChat')}>
+              <Plus className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setMobileSidebarOpen(false)}
+              className="md:hidden text-muted-foreground hover:text-foreground min-h-[36px] min-w-[36px] flex items-center justify-center rounded-md"
+              aria-label="Close"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-8 scrollbar-thin">
@@ -746,7 +788,7 @@ export function ChatInterface({
                             </span>
                           )}
                         </button>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -787,8 +829,30 @@ export function ChatInterface({
 
       {/* Right Area */}
       <div className="flex-1 flex flex-col h-full bg-background relative overflow-hidden">
+        {/* Mobile-only chat toolbar */}
+        <div className="md:hidden flex items-center gap-2 border-b border-border/40 px-3 h-12 shrink-0 bg-background">
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="flex items-center justify-center min-h-[40px] min-w-[40px] rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+            aria-label={t('chat.courseMaterials')}
+          >
+            <PanelLeftOpen className="w-5 h-5" />
+          </button>
+          <span className="text-sm font-medium truncate">
+            {showActiveLearningModes ? activeModeLabel : t('nav.learn')}
+          </span>
+          <button
+            type="button"
+            onClick={startNewChat}
+            className="ml-auto flex items-center justify-center min-h-[40px] min-w-[40px] rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+            aria-label={t('chat.newChat')}
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto w-full px-4 md:px-8 pt-8 pb-40">
+          <div className="max-w-3xl mx-auto w-full px-4 md:px-8 pt-6 md:pt-8 pb-44 md:pb-40">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4 animate-in fade-in duration-700">
                 <Logo variant="mark" className="w-10 h-10 mb-2 opacity-40" />
@@ -965,6 +1029,65 @@ function SourceReferences({ sources }: { sources: ChatSource[] }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ChatReadinessChip({
+  language,
+  totalCount,
+  ragReadyCount,
+  allReady,
+  allRagReady,
+  anyFailed,
+  failedPdfNames,
+}: {
+  language: 'de' | 'en';
+  totalCount: number;
+  ragReadyCount: number;
+  allReady: boolean;
+  allRagReady: boolean;
+  anyFailed: boolean;
+  failedPdfNames: string[];
+}) {
+  if (totalCount === 0) {
+    return null;
+  }
+
+  let label = language === 'de' ? 'Dokumente werden verarbeitet ...' : 'Documents are processing...';
+  let detail = '';
+  let className = 'border-border bg-muted text-muted-foreground';
+
+  if (allReady) {
+    label = language === 'de' ? 'Chat startklar' : 'Chat ready';
+    className = 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  } else if (allRagReady) {
+    label = language === 'de' ? 'Chat bereit - Graph laeuft' : 'Chat ready - Graph running';
+    className = 'border-amber-200 bg-amber-50 text-amber-800';
+  } else if (ragReadyCount > 0) {
+    label = language === 'de'
+      ? `${ragReadyCount} von ${totalCount} Dokumenten bereit`
+      : `${ragReadyCount} of ${totalCount} documents ready`;
+    detail = language === 'de'
+      ? 'Du kannst schon mit den fertigen Dokumenten chatten.'
+      : 'You can already chat with the finished documents.';
+    className = 'border-amber-200 bg-amber-50 text-amber-800';
+  }
+
+  const failedTitle = failedPdfNames.length > 0
+    ? `${language === 'de' ? 'Fehlgeschlagen' : 'Failed'}: ${failedPdfNames.join(', ')}`
+    : undefined;
+
+  return (
+    <div className="space-y-1">
+      <span
+        className={`inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium ${className}`}
+        title={failedTitle}
+      >
+        {anyFailed && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />}
+        <span className="truncate">{label}</span>
+      </span>
+      {detail && <p className="text-xs leading-snug text-muted-foreground">{detail}</p>}
     </div>
   );
 }

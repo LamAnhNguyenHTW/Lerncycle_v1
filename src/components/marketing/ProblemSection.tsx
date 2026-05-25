@@ -10,7 +10,7 @@ interface Props {
 export function ProblemSection({dict}: Props) {
   return (
     <section className="bg-muted/30 w-full border-y border-border/40">
-      <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:py-32">
+      <div className="mx-auto w-full max-w-6xl px-3 py-20 sm:px-6 sm:py-28 lg:py-32">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <ScrollReveal animation="slide-right" className="order-2 lg:order-1 relative rounded-2xl overflow-hidden shadow-2xl border border-border aspect-[4/3]">
             <Image

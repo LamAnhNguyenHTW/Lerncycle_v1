@@ -12,6 +12,8 @@ import {NotionIcon} from '@/components/NotionIcon';
 import {PdfPicker} from './PdfPicker';
 import {useLanguage} from '@/lib/i18n';
 import type {TranslationKey} from '@/lib/i18n';
+import {useProcessingStatus} from '@/hooks/useProcessingStatus';
+import {ProcessingStatusPill} from '@/components/ProcessingStatusPill';
 
 function StudyLoadingFallback({labelKey, spinner = false}: {labelKey: TranslationKey; spinner?: boolean}) {
   const {t} = useLanguage();
@@ -60,7 +62,10 @@ export function StudyInterface({course, initialPdfId}: StudyInterfaceProps) {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [noteContent, setNoteContent] = useState<JSONContent | null>(null);
   const [loading, setLoading] = useState(Boolean(initialPdf));
+  const [mobileView, setMobileView] = useState<'pdf' | 'notes'>('pdf');
   const activePdfId = activePdf?.id;
+  const {statuses} = useProcessingStatus(activePdfId ? [activePdfId] : []);
+  const activePdfStatus = statuses[0];
 
   // When the active PDF changes, load its annotations and note
   useEffect(() => {
@@ -121,7 +126,7 @@ export function StudyInterface({course, initialPdfId}: StudyInterfaceProps) {
     );
   }
 
-  // ── PDF selected: split-pane layout ──────────────────────────────────────
+  // ── PDF selected: split-pane layout (desktop) / tab-switch (mobile) ────
   return (
     <div className="study-interface-wrap">
       {/* Top bar */}
@@ -132,16 +137,62 @@ export function StudyInterface({course, initialPdfId}: StudyInterfaceProps) {
           title={t('study.chooseDifferentPdf')}
         >
           <NotionIcon name="ni-arrow-left" className="w-[18px] h-[18px]" />
-          <span>{t('study.allPdfs')}</span>
+          <span className="hidden sm:inline">{t('study.allPdfs')}</span>
         </button>
         <span className="study-pdf-name">{activePdf.name}</span>
+        {activePdfStatus && (
+          <ProcessingStatusPill
+            stage={activePdfStatus.overallStage}
+            userSafeError={activePdfStatus.userSafeError}
+          />
+        )}
         {loading && <span className="study-loading-badge">{t('study.loading')}</span>}
+
+        {/* Mobile-only PDF/Notes toggle */}
+        <div className="md:hidden ml-auto flex shrink-0 items-center rounded-md border border-border bg-muted/50 p-0.5 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => setMobileView('pdf')}
+            className={`rounded px-2.5 py-1 min-h-[28px] transition-colors ${mobileView === 'pdf' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+          >
+            {t('study.viewPdf')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileView('notes')}
+            className={`rounded px-2.5 py-1 min-h-[28px] transition-colors ${mobileView === 'notes' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+          >
+            {t('study.viewNotes')}
+          </button>
+        </div>
       </div>
 
-      {/* Resizable panels */}
+      {/* Desktop: resizable split. Mobile: single active pane. */}
       <div className="study-panels-wrap">
+        {/* Mobile single-pane view */}
+        <div className="flex flex-1 md:hidden min-h-0">
+          <div className={`flex-1 min-h-0 ${mobileView === 'pdf' ? 'block' : 'hidden'}`}>
+            <PDFViewer
+              storagePath={activePdf.storage_path}
+              pdfId={activePdf.id}
+              pdfName={activePdf.name}
+              annotations={annotations}
+              onAnnotationCreated={handleAnnotationCreated}
+              onAnnotationDeleted={handleAnnotationDeleted}
+              onAnnotationUpdated={handleAnnotationUpdated}
+              onJumpRequested={() => setMobileView('pdf')}
+            />
+          </div>
+          <div className={`flex-1 min-h-0 ${mobileView === 'notes' ? 'block' : 'hidden'}`}>
+            {!loading && (
+              <NoteEditor pdfId={activePdf.id} initialContent={noteContent} />
+            )}
+          </div>
+        </div>
+
+        {/* Desktop split-pane (wrapper hides on mobile — react-resizable-panels sets display:flex inline) */}
+        <div className="hidden md:flex flex-1 min-h-0">
         <Group orientation="horizontal" className="study-panel-group">
-          {/* Left: PDF Viewer */}
           <Panel id="pdf-panel" defaultSize="72%" minSize="40%" className="study-panel">
             <PDFViewer
               storagePath={activePdf.storage_path}
@@ -151,19 +202,17 @@ export function StudyInterface({course, initialPdfId}: StudyInterfaceProps) {
               onAnnotationCreated={handleAnnotationCreated}
               onAnnotationDeleted={handleAnnotationDeleted}
               onAnnotationUpdated={handleAnnotationUpdated}
+              onJumpRequested={() => setMobileView('pdf')}
             />
           </Panel>
-
-          {/* Drag handle */}
           <Separator className="study-separator" />
-
-          {/* Right: Note Editor */}
           <Panel id="note-panel" defaultSize="28%" minSize="20%" className="study-panel">
             {!loading && (
               <NoteEditor pdfId={activePdf.id} initialContent={noteContent} />
             )}
           </Panel>
         </Group>
+        </div>
       </div>
     </div>
   );

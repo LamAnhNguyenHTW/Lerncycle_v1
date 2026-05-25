@@ -15,7 +15,7 @@ export function BetaSignupSection({ locale, dict }: Props) {
   return (
     <section
       id="beta"
-      className="w-full px-4 py-24 sm:px-6 sm:py-32"
+      className="w-full px-3 py-24 sm:px-6 sm:py-32"
     >
       <ScrollReveal className="mx-auto w-full max-w-3xl text-center">
         <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">

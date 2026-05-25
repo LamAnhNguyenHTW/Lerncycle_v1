@@ -16,7 +16,7 @@ const iconMap: Record<FeatureIcon, typeof FileText> = {
 export function FeatureGrid({dict}: Props) {
   return (
     <section className="bg-muted/30 w-full border-y border-border/40">
-      <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:py-32">
+      <div className="mx-auto w-full max-w-6xl px-3 py-20 sm:px-6 sm:py-28 lg:py-32">
         <ScrollReveal className="text-center max-w-3xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
             {dict.features.sectionTitle}
@@ -27,17 +27,14 @@ export function FeatureGrid({dict}: Props) {
           {dict.features.items.map((item, idx) => {
             const Icon = iconMap[item.icon];
             return (
-              <ScrollReveal
-                key={idx}
-                animation="fade-up"
-                delay={idx * 0.1}
-                className="group rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
-              >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
-                  <Icon className="h-5 w-5" strokeWidth={2} />
+              <ScrollReveal key={idx} animation="fade-up" delay={idx * 0.1}>
+                <div className="group h-full rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
+                    <Icon className="h-5 w-5" strokeWidth={2} />
+                  </div>
+                  <h3 className="mt-5 text-base font-medium text-foreground">{item.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.body}</p>
                 </div>
-                <h3 className="mt-5 text-base font-medium text-foreground">{item.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.body}</p>
               </ScrollReveal>
             );
           })}

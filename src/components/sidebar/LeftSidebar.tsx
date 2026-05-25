@@ -29,7 +29,16 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
   const router = useRouter();
   const {language, setLanguage, t} = useLanguage();
   const collapsingTabs = ['notetaking', 'learn', 'feynman', 'revision'];
-  const [collapsed, setCollapsed] = useState(collapsingTabs.includes(activeTab));
+  const [collapsedRaw, setCollapsed] = useState(collapsingTabs.includes(activeTab));
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     if (collapsingTabs.includes(activeTab)) {
@@ -37,6 +46,9 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  // On mobile (inside the drawer), always show the expanded layout.
+  const collapsed = isDesktop && collapsedRaw;
   const displayName = profile?.display_name || 'User';
   const avatarName = profile?.avatar_name || 'ni-avatar-male-2';
   const avatarUrl = profile?.avatar_url ?? null;
@@ -44,8 +56,9 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
   return (
     <aside
       className={cn(
-        'relative flex h-full shrink-0 flex-col justify-between border-r border-border bg-muted py-8 overflow-y-auto transition-[width,padding] duration-200',
-        collapsed ? 'w-20 px-3' : 'w-72 px-5',
+        'relative flex h-full shrink-0 flex-col justify-between border-r border-border bg-muted py-8 overflow-y-auto no-scrollbar transition-[width,padding] duration-200',
+        'w-full px-5',
+        collapsed ? 'md:w-20 md:px-3' : 'md:w-72 md:px-5',
       )}
     >
       <div className="space-y-8">
@@ -57,7 +70,7 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
           )}
           <button
             onClick={() => setCollapsed((prev) => !prev)}
-            className="rounded-lg p-2 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+            className="hidden md:inline-flex rounded-lg p-2 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
             title={collapsed ? t('nav.openSidebar') : t('nav.collapseSidebar')}
             aria-label={collapsed ? t('nav.openSidebar') : t('nav.collapseSidebar')}
           >
@@ -168,7 +181,7 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
               <button
                 type="submit"
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center text-muted-foreground hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                className="flex items-center justify-center text-muted-foreground hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
                 title={t('nav.logout')}
               >
                 <NotionIcon name="ni-power-off" className="w-[20px] h-[20px]" />

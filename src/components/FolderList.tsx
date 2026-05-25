@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import {useMemo, useState} from 'react';
 import { useRouter } from 'next/navigation';
 import { Course, Folder, PdfFile } from '@/lib/data';
 import { NotionIcon } from './NotionIcon';
@@ -18,11 +18,23 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {useLanguage} from '@/lib/i18n';
+import {ProcessingStatusPill} from '@/components/ProcessingStatusPill';
+import {useProcessingStatus} from '@/hooks/useProcessingStatus';
+import type {SourceStatus} from '@/lib/processing-status';
 
 export function FolderList({ course }: { course: Course }) {
   const {t} = useLanguage();
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const pdfIds = useMemo(() => [
+    ...course.loose_pdfs.map((pdf) => pdf.id),
+    ...course.folders.flatMap((folder) => folder.pdfs.map((pdf) => pdf.id)),
+  ], [course]);
+  const {statuses} = useProcessingStatus(pdfIds);
+  const statusByPdfId = useMemo(
+    () => new Map(statuses.map((status) => [status.sourceId, status])),
+    [statuses],
+  );
 
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +61,11 @@ export function FolderList({ course }: { course: Course }) {
       </div>
 
       {/* Direct uploads (no folder) */}
-      <LoosePdfsSection courseId={course.id} pdfs={course.loose_pdfs} />
+      <LoosePdfsSection
+        courseId={course.id}
+        pdfs={course.loose_pdfs}
+        statusByPdfId={statusByPdfId}
+      />
 
       {isCreating && (
         <form onSubmit={handleCreateFolder} className="mb-6 p-4 rounded-xl border border-border bg-card shadow-sm flex items-center gap-3">
@@ -80,7 +96,12 @@ export function FolderList({ course }: { course: Course }) {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {course.folders.map((folder) => (
-            <FolderView key={folder.id} folder={folder} courseId={course.id} />
+            <FolderView
+              key={folder.id}
+              folder={folder}
+              courseId={course.id}
+              statusByPdfId={statusByPdfId}
+            />
           ))}
         </div>
       )}
@@ -90,7 +111,15 @@ export function FolderList({ course }: { course: Course }) {
 
 // ─── Direct uploads section ───────────────────────────────────────────────────
 
-function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[] }) {
+function LoosePdfsSection({
+  courseId,
+  pdfs,
+  statusByPdfId,
+}: {
+  courseId: string;
+  pdfs: PdfFile[];
+  statusByPdfId: Map<string, SourceStatus>;
+}) {
   const {t} = useLanguage();
   const [isUploading, setIsUploading] = useState(false);
 
@@ -108,7 +137,12 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
         {pdfs.length > 0 && (
           <div className="flex flex-col gap-2 mb-3">
             {pdfs.map((pdf) => (
-              <PdfRow key={pdf.id} pdf={pdf} courseId={courseId} />
+              <PdfRow
+                key={pdf.id}
+                pdf={pdf}
+                courseId={courseId}
+                status={statusByPdfId.get(pdf.id)}
+              />
             ))}
           </div>
         )}
@@ -142,7 +176,15 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
 
 // ─── Folder view ──────────────────────────────────────────────────────────────
 
-function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) {
+function FolderView({
+  folder,
+  courseId,
+  statusByPdfId,
+}: {
+  folder: Folder;
+  courseId: string;
+  statusByPdfId: Map<string, SourceStatus>;
+}) {
   const {t} = useLanguage();
   const [isUploading, setIsUploading] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -208,7 +250,12 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
         {folder.pdfs.length > 0 && (
           <div className="flex flex-col gap-2 mb-3">
             {folder.pdfs.map((pdf) => (
-              <PdfRow key={pdf.id} pdf={pdf} courseId={courseId} />
+              <PdfRow
+                key={pdf.id}
+                pdf={pdf}
+                courseId={courseId}
+                status={statusByPdfId.get(pdf.id)}
+              />
             ))}
           </div>
         )}
@@ -242,7 +289,15 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
 
 // ─── Shared PDF row ───────────────────────────────────────────────────────────
 
-function PdfRow({ pdf, courseId }: { pdf: PdfFile; courseId: string }) {
+function PdfRow({
+  pdf,
+  courseId,
+  status,
+}: {
+  pdf: PdfFile;
+  courseId: string;
+  status?: SourceStatus;
+}) {
   const router = useRouter();
   const {t} = useLanguage();
 
@@ -257,15 +312,21 @@ function PdfRow({ pdf, courseId }: { pdf: PdfFile; courseId: string }) {
       <div className="flex min-w-0 items-center gap-2.5">
         <NotionIcon name="ni-file-text" className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
         <span className="truncate">{pdf.name}</span>
+        {status && (
+          <ProcessingStatusPill
+            stage={status.overallStage}
+            userSafeError={status.userSafeError}
+          />
+        )}
       </div>
-      <div className="flex shrink-0 items-center gap-4 text-muted-foreground">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-4 text-muted-foreground">
         <span className="hidden text-sm sm:inline">{(pdf.size_bytes / 1024 / 1024).toFixed(2)} MB</span>
         <button
           onClick={(e) => {
             e.stopPropagation();
             router.push(`/app?courseId=${courseId}&tab=learn&pdfId=${pdf.id}`);
           }}
-          className="opacity-0 group-hover:opacity-100 hover:text-foreground transition-all text-sm"
+          className="opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-foreground transition-all text-sm min-h-[36px] px-2 rounded-md"
         >
           {t('materials.chat')}
         </button>
@@ -274,7 +335,8 @@ function PdfRow({ pdf, courseId }: { pdf: PdfFile; courseId: string }) {
             e.stopPropagation();
             deletePdf(pdf.id, pdf.storage_path);
           }}
-          className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all"
+          className="opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-red-500 transition-all min-h-[36px] min-w-[36px] flex items-center justify-center rounded-md"
+          aria-label="Delete"
         >
           <NotionIcon name="ni-x" className="w-[18px] h-[18px]" />
         </button>

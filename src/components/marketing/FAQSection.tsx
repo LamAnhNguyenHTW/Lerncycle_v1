@@ -12,7 +12,7 @@ interface Props {
 export function FAQSection({dict}: Props) {
   return (
     <section className="bg-muted/30 w-full border-y border-border/40">
-      <div className="mx-auto w-full max-w-3xl px-4 py-20 sm:px-6 sm:py-28 lg:py-32">
+      <div className="mx-auto w-full max-w-3xl px-3 py-20 sm:px-6 sm:py-28 lg:py-32">
         <ScrollReveal className="text-center">
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
             {dict.faq.sectionTitle}

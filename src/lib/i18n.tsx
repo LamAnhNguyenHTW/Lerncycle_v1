@@ -103,6 +103,8 @@ export type TranslationKey =
   | 'study.noPdfs'
   | 'study.available'
   | 'study.unfiled'
+  | 'study.viewPdf'
+  | 'study.viewNotes'
   | 'note.placeholder'
   | 'note.saving'
   | 'note.saved'
@@ -335,6 +337,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'study.noPdfs': 'No PDFs uploaded yet. Go to the Home tab to upload your first file.',
     'study.available': '{count} PDF{plural} available in {course}',
     'study.unfiled': 'Unfiled',
+    'study.viewPdf': 'PDF',
+    'study.viewNotes': 'Notes',
     'note.placeholder': "Start writing, or type '/' for commands...",
     'note.saving': 'Saving...',
     'note.saved': 'Saved',
@@ -566,6 +570,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'study.noPdfs': 'Noch keine PDFs hochgeladen. Lade im Home-Tab deine erste Datei hoch.',
     'study.available': '{count} PDF{plural} verfügbar in {course}',
     'study.unfiled': 'Nicht einsortiert',
+    'study.viewPdf': 'PDF',
+    'study.viewNotes': 'Notizen',
     'note.placeholder': "Schreibe los oder tippe '/' für Befehle...",
     'note.saving': 'Speichert...',
     'note.saved': 'Gespeichert',

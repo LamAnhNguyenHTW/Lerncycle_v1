@@ -33,6 +33,8 @@ interface PDFViewerProps {
   onAnnotationCreated: (annotation: Annotation) => void;
   onAnnotationDeleted: (annotationId: string) => void;
   onAnnotationUpdated: (annotation: Annotation) => void;
+  /** Fired when user requests to jump to a highlight (used by mobile to switch back to the PDF view). */
+  onJumpRequested?: () => void;
 }
 
 type AnnotationColor = 'yellow' | 'green' | 'blue' | 'pink';
@@ -59,6 +61,7 @@ export function PDFViewer({
   onAnnotationCreated,
   onAnnotationDeleted,
   onAnnotationUpdated,
+  onJumpRequested,
 }: PDFViewerProps) {
   const {t} = useLanguage();
   const [fileUrl, setFileUrl] = useState<string | null>(null);
@@ -201,6 +204,8 @@ export function PDFViewer({
     const firstArea = (annotation.highlight_areas as HighlightArea[])[0];
     if (!firstArea) return;
     highlightPluginInstance.jumpToHighlightArea(firstArea);
+    onJumpRequested?.();
+    setIsHighlightsOpen(false);
   };
 
   const saveExpandedAnnotation = async (annotationId: string) => {
@@ -245,6 +250,14 @@ export function PDFViewer({
 
   return (
     <div className="pdf-viewer-container">
+      {/* Mobile backdrop for highlights drawer */}
+      {isHighlightsOpen && (
+        <div
+          className="pdf-highlights-backdrop"
+          onClick={() => setIsHighlightsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       <div className="pdf-viewer-layout">
         <aside className={`pdf-annotations-sidebar ${isHighlightsOpen ? 'is-open' : 'is-collapsed'}`}>
           <div className="pdf-annotations-header">
@@ -359,6 +372,11 @@ export function PDFViewer({
             <button
               className={`pdf-highlight-toggle ${isHighlightMode ? 'active' : ''}`}
               onClick={() => setIsHighlightMode((prev) => !prev)}
+              aria-label={
+                isHighlightMode
+                  ? t('pdf.highlightOnTitle')
+                  : t('pdf.highlightOffTitle')
+              }
               title={
                 isHighlightMode
                   ? t('pdf.highlightOnTitle')
@@ -366,7 +384,21 @@ export function PDFViewer({
               }
             >
               <NotionIcon name="ni-pen-line" className="w-[14px] h-[14px]" />
-              <span>{isHighlightMode ? t('pdf.highlightOn') : t('pdf.highlightOff')}</span>
+              <span className="pdf-highlight-toggle-label">
+                {isHighlightMode ? t('pdf.highlightOn') : t('pdf.highlightOff')}
+              </span>
+            </button>
+
+            {/* Mobile-only: open highlights as bottom-sheet */}
+            <button
+              type="button"
+              className="pdf-highlights-mobile-trigger"
+              onClick={() => setIsHighlightsOpen(true)}
+              aria-label={t('pdf.expandHighlights')}
+              title={t('pdf.expandHighlights')}
+            >
+              <NotionIcon name="ni-sidebar-text" className="w-[14px] h-[14px]" />
+              <span>{annotations.length}</span>
             </button>
           </div>
           <Worker workerUrl="/pdf.worker.min.js">
