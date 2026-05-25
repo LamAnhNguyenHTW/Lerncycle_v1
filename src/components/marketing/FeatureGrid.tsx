@@ -33,8 +33,8 @@ export function FeatureGrid({dict}: Props) {
                 delay={idx * 0.1}
                 className="group rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
-                  <Icon className="h-5 w-5" strokeWidth={1.75} />
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
+                  <Icon className="h-5 w-5" strokeWidth={2} />
                 </div>
                 <h3 className="mt-5 text-base font-medium text-foreground">{item.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.body}</p>

@@ -41,7 +41,7 @@ export function FolderList({ course }: { course: Course }) {
         </div>
         <button
           onClick={() => setIsCreating(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-black px-3 py-2 text-sm font-medium text-white hover:bg-black/80 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-colors"
         >
           <NotionIcon name="ni-plus" className="w-[18px] h-[18px]" />
           {t('materials.newFolder')}
@@ -52,7 +52,7 @@ export function FolderList({ course }: { course: Course }) {
       <LoosePdfsSection courseId={course.id} pdfs={course.loose_pdfs} />
 
       {isCreating && (
-        <form onSubmit={handleCreateFolder} className="mb-6 p-4 rounded-xl border border-border bg-white shadow-sm flex items-center gap-3">
+        <form onSubmit={handleCreateFolder} className="mb-6 p-4 rounded-xl border border-border bg-card shadow-sm flex items-center gap-3">
           <input
             autoFocus
             type="text"
@@ -61,10 +61,10 @@ export function FolderList({ course }: { course: Course }) {
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
           />
-          <button type="submit" className="text-sm font-medium bg-black text-white px-4 py-2 rounded-md">
+          <button type="submit" className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-md">
             {t('materials.save')}
           </button>
-          <button type="button" onClick={() => setIsCreating(false)} className="text-sm font-medium px-4 py-2 hover:bg-black/5 rounded-md">
+          <button type="button" onClick={() => setIsCreating(false)} className="text-sm font-medium px-4 py-2 hover:bg-foreground/5 rounded-md">
             {t('materials.cancel')}
           </button>
         </form>
@@ -95,8 +95,8 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
   const [isUploading, setIsUploading] = useState(false);
 
   return (
-    <div className="mb-6 rounded-xl border border-border bg-white shadow-sm overflow-hidden">
-      <div className="flex items-center gap-2.5 border-b border-border bg-gray-50/50 px-5 py-3 font-medium text-sm">
+    <div className="mb-6 rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="flex items-center gap-2.5 border-b border-border bg-muted/40 px-5 py-3 font-medium text-sm">
         <NotionIcon name="ni-file-text" className="w-[20px] h-[20px] text-muted-foreground" />
         <span>{t('materials.directUploads')}</span>
         <span className="ml-auto text-xs text-muted-foreground font-normal">
@@ -130,7 +130,7 @@ function LoosePdfsSection({ courseId, pdfs }: { courseId: string; pdfs: PdfFile[
         ) : (
           <button
             onClick={() => setIsUploading(true)}
-            className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-4 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-4 rounded-lg border border-dashed border-border bg-muted/40 hover:bg-foreground/5 transition-colors"
           >
             {t('materials.uploadDirect')}
           </button>
@@ -157,8 +157,8 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
   };
 
   return (
-    <div className="rounded-xl border border-border bg-white shadow-sm overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between border-b border-border bg-gray-50/50 px-5 py-3">
+    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden flex flex-col">
+      <div className="flex items-center justify-between border-b border-border bg-muted/40 px-5 py-3">
         <div className="flex items-center gap-2.5 font-medium text-sm">
           <div className="text-foreground"><NotionIcon name="ni-folder" className="w-[20px] h-[20px]" /></div>
           {folder.name}
@@ -230,7 +230,7 @@ function FolderView({ folder, courseId }: { folder: Folder; courseId: string }) 
         ) : (
           <button
             onClick={() => setIsUploading(true)}
-            className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-4 rounded-lg border border-dashed border-border bg-gray-50/50 hover:bg-black/5 transition-colors"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 w-full justify-center py-4 rounded-lg border border-dashed border-border bg-muted/40 hover:bg-foreground/5 transition-colors"
           >
             {t('materials.uploadPdf')}
           </button>

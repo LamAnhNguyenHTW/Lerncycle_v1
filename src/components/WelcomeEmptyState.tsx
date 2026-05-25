@@ -46,12 +46,12 @@ export function WelcomeEmptyState({displayName}: Props) {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-4 pt-10 pb-16 md:pt-20">
-      <div className="w-full rounded-2xl border border-border bg-white p-8 text-center shadow-sm md:p-12">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50">
+      <div className="w-full rounded-2xl border border-border bg-card p-8 text-center shadow-sm md:p-12">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
           <Logo variant="mark" className="h-9 w-9" />
         </div>
 
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
           {t('welcome.headline', {name: displayName})}
         </h1>
         <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground md:text-base">
@@ -75,12 +75,12 @@ export function WelcomeEmptyState({displayName}: Props) {
             onChange={(e) => setName(e.target.value)}
             placeholder={t('welcome.placeholder')}
             disabled={isPending}
-            className="h-11 flex-1 rounded-lg border border-border bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:opacity-60"
+            className="h-11 flex-1 rounded-lg border border-border bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
           />
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-slate-900 px-5 text-sm font-medium text-white transition-colors duration-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition-opacity duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? t('welcome.creating') : t('welcome.create')}
           </button>
@@ -103,7 +103,7 @@ export function WelcomeEmptyState({displayName}: Props) {
                 handleCreate(sample);
               }}
               disabled={isPending}
-              className="cursor-pointer rounded-full border border-border bg-white px-3 py-1 text-xs text-slate-600 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="cursor-pointer rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground transition-colors duration-200 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
             >
               {sample}
             </button>
@@ -115,15 +115,15 @@ export function WelcomeEmptyState({displayName}: Props) {
         {steps.map((step, i) => (
           <div
             key={step.title}
-            className="rounded-xl border border-border bg-white p-5 text-left shadow-sm"
+            className="rounded-xl border border-border bg-card p-5 text-left shadow-sm"
           >
             <div className="mb-3 flex items-center gap-2">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
                 {i + 1}
               </span>
-              <NotionIcon name={step.icon} className="h-4 w-4 text-slate-500" />
+              <NotionIcon name={step.icon} className="h-4 w-4 text-muted-foreground" />
             </div>
-            <h3 className="text-sm font-medium text-slate-900">{step.title}</h3>
+            <h3 className="text-sm font-medium text-foreground">{step.title}</h3>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {step.body}
             </p>

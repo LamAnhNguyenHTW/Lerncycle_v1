@@ -567,7 +567,7 @@ export function ChatInterface({
   return (
     <div className="flex flex-1 w-full h-full bg-background overflow-hidden relative">
       {/* Left Sidebar */}
-      <div className="hidden md:flex w-[280px] shrink-0 border-r border-border bg-gray-50/30 flex-col h-full">
+      <div className="hidden md:flex w-[280px] shrink-0 border-r border-border bg-muted/30 flex-col h-full">
         <div className="p-5 flex items-center justify-between border-b border-border/50">
           <div className="font-semibold text-sm flex items-center gap-2">
             <NotionIcon name={isActiveLearning ? 'ni-rocket' : 'ni-comment-text'} className="w-[20px] h-[20px]" />
@@ -584,7 +584,7 @@ export function ChatInterface({
               <button
                 type="button"
                 onClick={() => onChatModeChange?.('guided_learning')}
-                className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-medium transition-colors ${chatMode === 'guided_learning' ? 'bg-black/5 text-foreground' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'
+                className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-medium transition-colors ${chatMode === 'guided_learning' ? 'bg-foreground/5 text-foreground' : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'
                   }`}
               >
                 <span>{t('active.guided')}</span>
@@ -593,7 +593,7 @@ export function ChatInterface({
               <button
                 type="button"
                 onClick={() => onChatModeChange?.('feynman')}
-                className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-medium transition-colors ${chatMode === 'feynman' ? 'bg-black/5 text-foreground' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'
+                className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-sm font-medium transition-colors ${chatMode === 'feynman' ? 'bg-foreground/5 text-foreground' : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'
                   }`}
               >
                 <span>{t('active.feynman')}</span>
@@ -610,7 +610,7 @@ export function ChatInterface({
                   value={activeLearningTopic}
                   onChange={(event) => onActiveLearningTopicChange?.(event.target.value)}
                   placeholder={t('active.topicPlaceholder')}
-                  className="h-8 w-full rounded-md border border-border bg-white px-2 text-sm outline-none focus:border-foreground/30"
+                  className="h-8 w-full rounded-md border border-border bg-card px-2 text-sm outline-none focus:border-foreground/30"
                 />
               </div>
 
@@ -623,7 +623,7 @@ export function ChatInterface({
                         key={topic}
                         type="button"
                         onClick={() => onActiveLearningTopicChange?.(topic)}
-                        className="max-w-full truncate rounded-md border border-border bg-white px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                        className="max-w-full truncate rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                         title={topic}
                       >
                         {topic}
@@ -692,7 +692,7 @@ export function ChatInterface({
                 {sessions.map((session) => (
                   <div
                     key={session.id}
-                    className={`group w-full flex items-center justify-between gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${sessionId === session.id ? 'bg-black/5 text-foreground font-medium' : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'}`}
+                    className={`group w-full flex items-center justify-between gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${sessionId === session.id ? 'bg-foreground/5 text-foreground font-medium' : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'}`}
                   >
                     {editingSessionId === session.id ? (
                       <form
@@ -710,7 +710,7 @@ export function ChatInterface({
                       >
                         <input
                           autoFocus
-                          className="flex-1 bg-white border border-border rounded px-1.5 py-0.5 text-xs text-foreground outline-none w-full"
+                          className="flex-1 bg-card border border-border rounded px-1.5 py-0.5 text-xs text-foreground outline-none w-full"
                           value={editingTitle}
                           onChange={(e) => setEditingTitle(e.target.value)}
                           onBlur={() => {
@@ -741,7 +741,7 @@ export function ChatInterface({
                           <MessageSquare className="h-[14px] w-[14px] shrink-0" />
                           <span className="truncate">{session.title ?? 'Untitled chat'}</span>
                           {session.mode !== 'normal' && (
-                            <span className="shrink-0 rounded bg-black/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                            <span className="shrink-0 rounded bg-foreground/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
                               {session.mode === 'guided_learning' ? 'Guided' : 'Feynman'}
                             </span>
                           )}
@@ -753,7 +753,7 @@ export function ChatInterface({
                               setEditingSessionId(session.id);
                               setEditingTitle(session.title ?? 'Untitled chat');
                             }}
-                            className="p-1 hover:bg-black/10 rounded text-muted-foreground hover:text-foreground"
+                            className="p-1 hover:bg-foreground/10 rounded text-muted-foreground hover:text-foreground"
                           >
                             <Edit2 className="h-3 w-3" />
                           </button>
@@ -802,11 +802,11 @@ export function ChatInterface({
                 {messages.map((chatMessage) => (
                   <div
                     key={chatMessage.id}
-                    className={`flex gap-4 p-5 rounded-2xl group animate-in fade-in duration-300 ${chatMessage.role === 'user' ? 'bg-white border border-border/60 shadow-sm' : 'bg-[#F7F7F5] border border-transparent'}`}
+                    className={`flex gap-4 p-5 rounded-2xl group animate-in fade-in duration-300 ${chatMessage.role === 'user' ? 'bg-card border border-border/60 shadow-sm' : 'bg-muted border border-transparent'}`}
                   >
                     <div className="mt-1 shrink-0 flex items-center justify-center">
                       {chatMessage.role === 'user' ? (
-                        <div className="h-8 w-8 rounded-md bg-white shadow-sm border border-border overflow-hidden flex items-center justify-center">
+                        <div className="h-8 w-8 rounded-md bg-card shadow-sm border border-border overflow-hidden flex items-center justify-center">
                           {avatarUrl ? (
                             <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
                           ) : (
@@ -816,7 +816,7 @@ export function ChatInterface({
                           )}
                         </div>
                       ) : (
-                        <div className="h-8 w-8 rounded-md bg-white shadow-sm border border-border flex items-center justify-center">
+                        <div className="h-8 w-8 rounded-md bg-card shadow-sm border border-border flex items-center justify-center">
                           <Logo variant="mark" className="h-6 w-6" />
                         </div>
                       )}
@@ -862,7 +862,7 @@ export function ChatInterface({
         </div>
 
         {/* Input Area */}
-        <div className="absolute bottom-0 inset-x-0 bg-white pt-6 pb-6 px-4 md:px-8 border-t border-border/40 pointer-events-none">
+        <div className="absolute bottom-0 inset-x-0 bg-card pt-6 pb-6 px-4 md:px-8 border-t border-border/40 pointer-events-none">
           <div className="max-w-3xl mx-auto w-full pointer-events-auto space-y-2">
             {chatMode === 'feynman' && activeLearningState.exercise_status !== 'completed' && (
               <FeynmanCompletionPanel
@@ -873,11 +873,11 @@ export function ChatInterface({
                 onClickFinish={() => sendMessage('/fertig')}
               />
             )}
-            <form onSubmit={onSubmit} className="relative flex items-end gap-2 bg-white border border-border shadow-sm rounded-xl px-3 py-2 focus-within:border-black/30 transition-all">
+            <form onSubmit={onSubmit} className="relative flex items-end gap-2 bg-card border border-border shadow-sm rounded-xl px-3 py-2 focus-within:border-foreground/30 transition-all">
               <button
                 type="button"
                 onClick={() => setEnableWebSearch((value) => !value)}
-                className={`mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${enableWebSearch ? 'border-black bg-black text-white' : 'border-border bg-white text-muted-foreground hover:text-foreground'
+                className={`mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${enableWebSearch ? 'border-foreground bg-foreground text-background' : 'border-border bg-card text-muted-foreground hover:text-foreground'
                   }`}
                 title="Use web search"
               >
@@ -899,7 +899,7 @@ export function ChatInterface({
                 <button
                   type="button"
                   onClick={() => activeAbortControllerRef.current?.abort()}
-                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-black hover:bg-black/80 transition-all mb-0.5"
+                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-primaryhover:opacity-90 transition-all mb-0.5"
                   title="Stop"
                 >
                   <Square className="h-3.5 w-3.5 fill-white text-white" />
@@ -908,7 +908,7 @@ export function ChatInterface({
                 <button
                   type="submit"
                   disabled={!message.trim() || selectedPdfIds.length === 0 || (chatMode === 'feynman' && activeLearningState.exercise_status === 'completed')}
-                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-black hover:bg-black/80 transition-all mb-0.5 disabled:opacity-30 disabled:hover:bg-black"
+                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-primaryhover:opacity-90 transition-all mb-0.5 disabled:opacity-30 disabled:hover:bg-primary"
                   title="Send"
                 >
                   <Send className="h-3.5 w-3.5 text-white" />
@@ -995,7 +995,7 @@ function SourceChip({ source }: { source: ChatSource }) {
           : source.source_type.replace('_', ' ');
 
   return (
-    <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-white px-2 text-xs text-muted-foreground shadow-sm">
+    <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-card px-2 text-xs text-muted-foreground shadow-sm">
       {source.source_type === 'web' ? <Globe className="h-3 w-3 shrink-0" /> : source.source_type === 'general_knowledge' ? <Sparkles className="h-3 w-3 shrink-0" /> : <FileText className="h-3 w-3 shrink-0" />}
       <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-semibold uppercase leading-none text-foreground">
         {sourceType}
@@ -1091,7 +1091,7 @@ function DifficultySelect({
         onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex h-8 w-full items-center justify-between rounded-md border border-border bg-white px-2 text-xs font-medium text-foreground outline-none transition-colors hover:bg-muted/60 focus:border-foreground/30"
+        className="flex h-8 w-full items-center justify-between rounded-md border border-border bg-card px-2 text-xs font-medium text-foreground outline-none transition-colors hover:bg-muted/60 focus:border-foreground/30"
       >
         <span className="truncate">{selected.label}</span>
         <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -1099,7 +1099,7 @@ function DifficultySelect({
       {open && (
         <ul
           role="listbox"
-          className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border bg-white py-1 shadow-md"
+          className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border bg-card py-1 shadow-md"
         >
           {options.map((option) => {
             const active = option.value === value;

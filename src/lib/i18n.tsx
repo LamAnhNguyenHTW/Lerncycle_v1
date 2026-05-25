@@ -17,6 +17,11 @@ export type TranslationKey =
   | 'language.label'
   | 'language.de'
   | 'language.en'
+  | 'theme.label'
+  | 'theme.light'
+  | 'theme.dark'
+  | 'theme.system'
+  | 'theme.cycle'
   | 'dashboard.headline'
   | 'dashboard.subtitle'
   | 'dashboard.upload'
@@ -244,6 +249,11 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'language.label': 'Language',
     'language.de': 'Deutsch',
     'language.en': 'English',
+    'theme.label': 'Theme',
+    'theme.light': 'Light',
+    'theme.dark': 'Dark',
+    'theme.system': 'System',
+    'theme.cycle': 'Switch theme',
     'dashboard.headline': 'Hello {name}, what do you want to master in {course}?',
     'dashboard.subtitle': 'Upload everything and get interactive notes, flashcards, quizzes, and more',
     'dashboard.upload': 'Upload',
@@ -470,6 +480,11 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'language.label': 'Sprache',
     'language.de': 'Deutsch',
     'language.en': 'English',
+    'theme.label': 'Design',
+    'theme.light': 'Hell',
+    'theme.dark': 'Dunkel',
+    'theme.system': 'System',
+    'theme.cycle': 'Design wechseln',
     'dashboard.headline': 'Hallo {name}, was möchtest du in {course} meistern?',
     'dashboard.subtitle': 'Lade Materialien hoch und nutze interaktive Notizen, Karteikarten, Quizze und mehr',
     'dashboard.upload': 'Hochladen',

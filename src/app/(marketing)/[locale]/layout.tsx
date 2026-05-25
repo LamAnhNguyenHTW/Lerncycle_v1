@@ -3,6 +3,7 @@ import {Inter} from 'next/font/google';
 import {notFound} from 'next/navigation';
 import {isLocale, SUPPORTED_LOCALES, type Locale} from '@/lib/locale';
 import {siteUrl} from '@/lib/site';
+import {ThemeProvider} from '@/components/theme/ThemeProvider';
 import '../../globals.css';
 
 const inter = Inter({
@@ -26,8 +27,10 @@ export default async function MarketingLayout({children, params}: LayoutProps) {
   if (!isLocale(locale)) notFound();
 
   return (
-    <html lang={locale} className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full bg-background text-foreground font-sans">{children}</body>
+    <html lang={locale} suppressHydrationWarning className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full bg-background text-foreground font-sans">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

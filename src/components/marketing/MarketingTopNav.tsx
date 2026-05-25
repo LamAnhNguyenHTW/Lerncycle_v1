@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type {Locale} from '@/lib/locale';
 import type {Dictionary} from '@/locales/types';
 import {Logo} from '@/components/Logo';
+import {ThemeToggle} from '@/components/theme/ThemeToggle';
 import {LocaleSwitcher} from './LocaleSwitcher';
 
 interface Props {
@@ -18,6 +19,15 @@ export function MarketingTopNav({locale, dict}: Props) {
         </Link>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle
+            labels={{
+              label: dict.theme.label,
+              light: dict.theme.light,
+              dark: dict.theme.dark,
+              system: dict.theme.system,
+              cycle: dict.theme.cycle,
+            }}
+          />
           <LocaleSwitcher
             currentLocale={locale}
             routeKey="landing"

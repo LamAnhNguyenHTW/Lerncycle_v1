@@ -35,7 +35,7 @@ export function SourceCard({source}: {source: ChatSource}) {
   const webUrl = source.source_type === 'web' ? source.metadata.url : undefined;
   const title = getSourceTitle(source);
   return (
-    <article className="rounded-lg border border-border bg-white p-3 shadow-sm">
+    <article className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className="mb-2 flex items-center gap-2">
         <span className="rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
           {SOURCE_LABELS[source.source_type]}

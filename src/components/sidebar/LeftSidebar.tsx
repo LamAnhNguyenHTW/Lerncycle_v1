@@ -11,6 +11,7 @@ import Link from 'next/link';
 import {Globe} from 'lucide-react';
 import {useLanguage} from '@/lib/i18n';
 import {Logo} from '../Logo';
+import {ThemeToggle} from '../theme/ThemeToggle';
 
 interface Props {
   courses: Course[];
@@ -43,7 +44,7 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
   return (
     <aside
       className={cn(
-        'relative flex h-full shrink-0 flex-col justify-between border-r border-border bg-[#F7F7F5] py-8 overflow-y-auto transition-[width,padding] duration-200',
+        'relative flex h-full shrink-0 flex-col justify-between border-r border-border bg-muted py-8 overflow-y-auto transition-[width,padding] duration-200',
         collapsed ? 'w-20 px-3' : 'w-72 px-5',
       )}
     >
@@ -56,7 +57,7 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
           )}
           <button
             onClick={() => setCollapsed((prev) => !prev)}
-            className="rounded-lg p-2 text-muted-foreground hover:bg-black/5 hover:text-foreground"
+            className="rounded-lg p-2 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
             title={collapsed ? t('nav.openSidebar') : t('nav.collapseSidebar')}
             aria-label={collapsed ? t('nav.openSidebar') : t('nav.collapseSidebar')}
           >
@@ -114,13 +115,27 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
           <button
             type="button"
             onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
-            className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-muted-foreground hover:bg-black/5 hover:text-foreground"
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
             title={language === 'de' ? t('language.en') : t('language.de')}
             aria-label={t('language.label')}
           >
             <Globe className="h-4 w-4" />
             {!collapsed && <span>{language.toUpperCase()}</span>}
           </button>
+        </div>
+
+        <div className={cn('mb-2 flex items-center rounded-xl px-3 py-2', collapsed ? 'justify-center' : 'justify-between')}>
+          {!collapsed && <span className="text-xs font-medium text-muted-foreground">{t('theme.label')}</span>}
+          <ThemeToggle
+            variant={collapsed ? 'compact' : 'full'}
+            labels={{
+              label: t('theme.label'),
+              light: t('theme.light'),
+              dark: t('theme.dark'),
+              system: t('theme.system'),
+              cycle: t('theme.cycle'),
+            }}
+          />
         </div>
 
         <div
@@ -132,12 +147,12 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
           className={cn(
             'flex items-center rounded-xl px-3 py-3 transition-colors cursor-pointer group mb-1',
             collapsed ? 'justify-center' : 'justify-between',
-            activeTab === 'profile' ? 'bg-white shadow-sm ring-1 ring-black/5' : 'hover:bg-black/5',
+            activeTab === 'profile' ? 'bg-card shadow-sm ring-1 ring-foreground/5' : 'hover:bg-foreground/5',
           )}
           title={displayName}
         >
           <div className={cn('flex items-center', collapsed ? 'justify-center' : 'gap-3')}>
-            <div className="flex size-10 items-center justify-center rounded-xl bg-white shadow-sm border border-border overflow-hidden">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-card shadow-sm border border-border overflow-hidden">
               {avatarUrl ? (
                 <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
               ) : (
@@ -200,8 +215,8 @@ function NavItem({
         collapsed ? 'justify-center' : 'gap-3'
       } ${
         active
-          ? 'bg-white text-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-black/5 hover:text-foreground'
+          ? 'bg-card text-foreground shadow-sm'
+          : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'
       }`}
     >
       {icon}

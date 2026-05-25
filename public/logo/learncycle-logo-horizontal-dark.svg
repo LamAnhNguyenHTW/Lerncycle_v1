@@ -1,7 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="180" viewBox="0 0 800 180" role="img" aria-label="LearnCycle logo">
   
   
-<rect x="0" y="0" width="800" height="180" rx="32" fill="#111827"/>
 <g transform="translate(24,22) scale(0.72)">
 <g fill="none" stroke-linecap="round" stroke-linejoin="round">
   <path d="M54 126a74 74 0 0 1 124-55" stroke="#FFFFFF" stroke-width="10" opacity="0.92"/>

@@ -72,6 +72,26 @@
   --lh-relaxed: 1.65;
 }
 
+.dark {
+  --bg: #191919;
+  --bg-soft: #202020;
+  --surface: #252525;
+  --surface-hover: #2d2d2d;
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --text: #e9e9e7;
+  --text-soft: rgba(233, 233, 231, 0.65);
+  --text-faint: rgba(233, 233, 231, 0.45);
+
+  --link: #6ab8d9;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 3px 12px rgba(0, 0, 0, 0.5);
+
+  --color-primary: #e9e9e7;
+  --color-primary-foreground: #191919;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -285,9 +305,9 @@
   }
 
   .button-notion-primary {
-    background: #37352f;
-    color: white;
-    border-color: #37352f;
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
   }
 
   .button-notion-primary:hover {
@@ -389,7 +409,7 @@
 }
 .study-separator:hover,
 .study-separator[data-active] {
-  background: #37352f;
+  background: var(--text);
 }
 
 /* ─── PDF Viewer ───────────────────────────────────────────────────── */
@@ -415,7 +435,7 @@
   min-width: 220px;
   max-width: 340px;
   border-right: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -443,7 +463,7 @@
 .pdf-annotations-toggle {
   width: 100%;
   border: 1px solid transparent;
-  background: #fff;
+  background: var(--surface);
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
@@ -484,7 +504,7 @@
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 12px;
@@ -509,14 +529,14 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px;
-  background: #fff;
+  background: var(--surface);
   transition: border-color 120ms, background 120ms, box-shadow 120ms;
 }
 
 .pdf-annotation-item.is-hovered {
-  border-color: #37352f;
-  background: #fcfcfb;
-  box-shadow: 0 4px 14px rgba(15, 15, 15, 0.06);
+  border-color: var(--text);
+  background: var(--surface-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .pdf-annotation-jump {
@@ -564,7 +584,7 @@
 
 .pdf-annotation-inline-edit {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 6px;
   font-size: 12px;
   padding: 2px 8px;
@@ -609,14 +629,14 @@
 }
 
 .pdf-annotation-comment-editor:focus {
-  border-color: #37352f;
-  box-shadow: 0 0 0 2px rgba(55, 53, 47, 0.14);
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--border-strong);
 }
 
 .pdf-annotation-expand-btn {
   margin-top: 8px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 8px;
   font-size: 12px;
   padding: 4px 10px;
@@ -648,7 +668,7 @@
   gap: 8px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   flex-shrink: 0;
 }
 
@@ -657,7 +677,7 @@
   align-items: center;
   gap: 8px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   color: var(--text-soft);
   border-radius: 8px;
   padding: 5px 10px;
@@ -721,7 +741,7 @@
   width: 28px;
   height: 28px;
   border: 3px solid var(--border);
-  border-top-color: #37352f;
+  border-top-color: var(--text);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -747,7 +767,7 @@
 
 /* ─── Annotation UI ────────────────────────────────────────────────── */
 .annotation-popup {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
@@ -764,7 +784,7 @@
   align-items: center;
   gap: 6px;
   border: 1px solid var(--border-strong);
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   border-radius: 999px;
   font-size: 12px;
@@ -796,7 +816,7 @@
   transform: scale(1.15);
 }
 .annotation-color-btn.selected {
-  border-color: #37352f;
+  border-color: var(--text);
 }
 
 .annotation-comment-input {
@@ -811,7 +831,7 @@
   transition: border-color 100ms;
 }
 .annotation-comment-input:focus {
-  border-color: #37352f;
+  border-color: var(--text);
 }
 
 .annotation-popup-actions {
@@ -821,8 +841,8 @@
 
 .annotation-btn-save {
   flex: 1;
-  background: #37352f;
-  color: #fff;
+  background: var(--text);
+  color: var(--bg);
   border: none;
   border-radius: 6px;
   font-size: 13px;
@@ -870,8 +890,8 @@
   position: absolute;
   width: 18px;
   height: 18px;
-  background: #37352f;
-  color: #fff;
+  background: var(--text);
+  color: var(--bg);
   border: none;
   border-radius: 50%;
   font-size: 12px;
@@ -895,7 +915,7 @@
   transform: translateY(4px);
   min-width: 180px;
   max-width: 260px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
@@ -913,7 +933,7 @@
 
 .annotation-hover-edit-btn {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 6px;
   font-size: 12px;
   padding: 3px 8px;
@@ -933,7 +953,7 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: #fff;
+  background: var(--surface);
 }
 
 .note-editor-toolbar {
@@ -972,7 +992,7 @@
   color: var(--text);
 }
 .note-toolbar-btn.active {
-  background: rgba(55, 53, 47, 0.08);
+  background: var(--bg-soft);
   color: var(--text);
 }
 .note-toolbar-btn.wide {
@@ -1059,14 +1079,14 @@
   color: var(--text-soft);
 }
 .note-editor-content code {
-  background: rgba(135, 131, 120, 0.15);
+  background: var(--bg-soft);
   padding: 0.1em 0.35em;
   border-radius: 4px;
   font-size: 0.88em;
   font-family: var(--font-mono);
 }
 .note-editor-content pre {
-  background: rgba(135, 131, 120, 0.1);
+  background: var(--bg-soft);
   border-radius: 6px;
   padding: 0.75em 1em;
   margin: 0.8em 0;
@@ -1082,7 +1102,7 @@
 }
 .note-editor-content mark {
   background: #fef08a;
-  color: inherit;
+  color: #37352f;
   border-radius: 2px;
   padding: 0 1px;
 }

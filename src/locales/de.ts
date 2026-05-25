@@ -127,6 +127,13 @@ export const de: Dictionary = {
     copyright: '© 2026 LearnCycle',
     languageLabel: 'Sprache',
   },
+  theme: {
+    label: 'Design',
+    light: 'Hell',
+    dark: 'Dunkel',
+    system: 'System',
+    cycle: 'Design wechseln',
+  },
   legal: {
     draftBanner: 'Diese Version ist ein Beta-Entwurf und ersetzt keine Rechtsberatung.',
     privacy: {

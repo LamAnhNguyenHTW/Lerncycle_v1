@@ -4,6 +4,7 @@ import {signInWithPassword} from '@/actions/auth';
 import {useSearchParams} from 'next/navigation';
 import {useActionState, useState} from 'react';
 import {Logo} from '@/components/Logo';
+import {ThemeToggle} from '@/components/theme/ThemeToggle';
 
 type State = {error?: string} | undefined;
 type LoginLanguage = 'de' | 'en';
@@ -45,13 +46,16 @@ export function LoginForm() {
   );
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-[#F7F7F5]">
+    <div className="flex h-screen w-full items-center justify-center bg-muted">
       <div className="card-notion w-full max-w-md mx-4 p-12 flex flex-col items-center">
-        <LanguageToggle
-          language={language}
-          label={text.languageLabel}
-          onToggle={() => setLanguage(language === 'de' ? 'en' : 'de')}
-        />
+        <div className="self-end flex items-center gap-1">
+          <ThemeToggle />
+          <LanguageToggle
+            language={language}
+            label={text.languageLabel}
+            onToggle={() => setLanguage(language === 'de' ? 'en' : 'de')}
+          />
+        </div>
         <div className="mb-12 flex items-center justify-center">
           <Logo variant="horizontal" priority className="h-14 w-auto" />
         </div>
@@ -85,7 +89,7 @@ export function LoginForm() {
           />
 
           {(state?.error ?? callbackError) && (
-            <p className="text-sm text-red-500 font-medium text-center bg-red-50 py-2 rounded-md" role="alert">
+            <p className="text-sm font-medium text-center rounded-md py-2 text-red-600 bg-red-50 dark:text-red-300 dark:bg-red-950/30" role="alert">
               {state?.error ?? text.authFailed}
             </p>
           )}
@@ -112,7 +116,7 @@ function LanguageToggle({
     <button
       type="button"
       onClick={onToggle}
-      className="self-end rounded-md px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-black/5 hover:text-foreground"
+      className="h-8 rounded-md px-2 text-xs font-semibold text-muted-foreground hover:bg-foreground/5 hover:text-foreground cursor-pointer"
       aria-label={label}
     >
       {language === 'de' ? 'EN' : 'DE'}

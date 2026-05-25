@@ -13,25 +13,25 @@ interface Props {
 
 export function Hero({dict}: Props) {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-white via-white to-slate-50">
+    <section className="relative overflow-hidden bg-gradient-to-b from-background via-background to-muted">
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-4 py-20 sm:px-6 md:py-28 lg:grid-cols-2 lg:gap-16 lg:py-32">
         <div className="text-center lg:text-left">
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
             {dict.hero.h1}
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg lg:mx-0">
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg lg:mx-0">
             {dict.hero.subhead}
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
             <Link
               href="#beta"
-              className="inline-flex h-11 cursor-pointer items-center justify-center rounded-full bg-slate-900 px-6 text-sm font-medium text-white shadow-sm transition-colors duration-200 hover:bg-slate-800"
+              className="inline-flex h-11 cursor-pointer items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground shadow-sm transition-opacity duration-200 hover:opacity-90"
             >
               {dict.hero.ctaPrimary}
             </Link>
             <Link
               href="/login"
-              className="inline-flex h-11 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white px-6 text-sm font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50"
+              className="inline-flex h-11 cursor-pointer items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted"
             >
               {dict.hero.ctaSecondary}
             </Link>
@@ -74,16 +74,10 @@ function HeroFunnel({dict}: {dict: Dictionary}) {
 
   return (
     <div className="relative mx-auto aspect-square w-full max-w-md sm:max-w-lg">
-      <div
-        className="absolute inset-[12%] rounded-full"
-        style={{
-          background:
-            'radial-gradient(circle, rgba(241,245,249,0.8) 0%, rgba(255,255,255,1) 60%, rgba(255,255,255,0) 100%)',
-        }}
-      />
+      <div className="absolute inset-[12%] rounded-full bg-[radial-gradient(circle,var(--bg-soft)_0%,var(--bg)_60%,transparent_100%)] opacity-80" />
 
       <svg
-        className="absolute inset-0 h-full w-full text-slate-200"
+        className="absolute inset-0 h-full w-full text-border"
         viewBox="0 0 100 100"
         fill="none"
         aria-hidden="true"
@@ -114,11 +108,11 @@ function HeroFunnel({dict}: {dict: Dictionary}) {
       >
         <div className="relative">
           <motion.div
-            className="absolute inset-0 rounded-2xl bg-slate-900/10"
+            className="absolute inset-0 rounded-2xl bg-foreground/10"
             animate={{scale: [1, 1.6, 1.6], opacity: [0.5, 0, 0]}}
             transition={{duration: 2.4, repeat: Infinity, ease: 'easeOut'}}
           />
-          <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-xl sm:h-24 sm:w-24">
+          <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-border bg-card shadow-xl sm:h-24 sm:w-24">
             <Logo variant="mark" className="h-12 w-12 sm:h-14 sm:w-14" />
           </div>
         </div>
@@ -155,9 +149,9 @@ function InputParticle({node}: {node: InputNode}) {
         ease: 'easeInOut',
       }}
     >
-      <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-md">
-        <Icon className="h-3.5 w-3.5 text-slate-700" strokeWidth={2} />
-        <span className="text-[11px] font-medium text-slate-700">{node.label}</span>
+      <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 shadow-md">
+        <Icon className="h-3.5 w-3.5 text-foreground" strokeWidth={2} />
+        <span className="text-[11px] font-medium text-foreground">{node.label}</span>
       </div>
     </motion.div>
   );
@@ -183,11 +177,11 @@ function OutputCard({node}: {node: OutputNode}) {
         ease: 'easeOut',
       }}
     >
-      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-lg">
-        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-lg">
+        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
           <Icon className="h-3.5 w-3.5" strokeWidth={2} />
         </span>
-        <span className="text-xs font-medium text-slate-900">{node.label}</span>
+        <span className="text-xs font-medium text-foreground">{node.label}</span>
       </div>
     </motion.div>
   );

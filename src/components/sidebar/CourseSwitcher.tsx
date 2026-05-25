@@ -82,11 +82,11 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
     <div className="relative w-full">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-base font-medium hover:bg-black/5"
+        className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-base font-medium hover:bg-foreground/5"
         title={activeCourse?.name || 'Select Course'}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-black/5 text-foreground">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-foreground/5 text-foreground">
             <NotionIcon name="ni-folders" className="w-[24px] h-[24px]" />
           </div>
           {!collapsed && <span className="truncate pr-2">{activeCourse?.name || 'Select Course'}</span>}
@@ -103,7 +103,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
             onClick={() => setIsOpen(false)}
           ></div>
           <div
-            className={`absolute top-full z-50 mt-2 rounded-xl border border-border bg-white p-1.5 shadow-lg ${
+            className={`absolute top-full z-50 mt-2 rounded-xl border border-border bg-card p-1.5 shadow-lg ${
               collapsed ? 'left-full ml-2 w-72' : 'left-0 w-full'
             }`}
           >
@@ -119,7 +119,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
               <div
                 key={course.id}
                 className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-base ${
-                  course.id === activeCourse?.id ? 'bg-black/5' : 'hover:bg-black/5'
+                  course.id === activeCourse?.id ? 'bg-foreground/5' : 'hover:bg-foreground/5'
                 }`}
               >
                 {editingCourseId === course.id ? (
@@ -133,7 +133,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
                     />
                     <button
                       type="submit"
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-black/5 hover:text-foreground"
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
                       title="Save"
                     >
                       <NotionIcon name="ni-check" className="w-[18px] h-[18px]" />
@@ -141,7 +141,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
                     <button
                       type="button"
                       onClick={() => setEditingCourseId(null)}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-black/5 hover:text-foreground"
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
                       title="Cancel"
                     >
                       <NotionIcon name="ni-x" className="w-[18px] h-[18px]" />
@@ -156,7 +156,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
                       }}
                       className="flex min-w-0 flex-1 items-center gap-3 text-left"
                     >
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-black/5 text-foreground">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-foreground/5 text-foreground">
                         <NotionIcon name="ni-folders" className="w-[20px] h-[20px]" />
                       </div>
                       <span className="truncate">{course.name}</span>
@@ -165,7 +165,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
                       <button
                         type="button"
                         onClick={() => handleStartEdit(course)}
-                        className="rounded-md p-1.5 text-muted-foreground hover:bg-black/5 hover:text-foreground"
+                        className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
                         title="Edit course"
                       >
                         <NotionIcon name="ni-pencil" className="w-[18px] h-[18px]" />
@@ -200,7 +200,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
             ) : (
               <button
                 onClick={() => setIsCreating(true)}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-base text-muted-foreground hover:bg-black/5 hover:text-foreground mt-1"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-base text-muted-foreground hover:bg-foreground/5 hover:text-foreground mt-1"
               >
                 <NotionIcon name="ni-plus" className="w-[22px] h-[22px]" />
                 Create a Course
@@ -212,8 +212,8 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
 
       {courseToDelete && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/35" onClick={() => setCourseToDelete(null)} />
-          <div className="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl">
+          <div className="absolute inset-0 bg-black/35 dark:bg-black/60" onClick={() => setCourseToDelete(null)} />
+          <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-foreground">Delete course?</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               This will remove <span className="font-medium text-foreground">{courseToDelete.name}</span> and all
@@ -223,7 +223,7 @@ export function CourseSwitcher({courses, activeCourseId, collapsed = false}: Pro
               <button
                 type="button"
                 onClick={() => setCourseToDelete(null)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-black/5"
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-foreground/5"
               >
                 Cancel
               </button>

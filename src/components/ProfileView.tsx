@@ -115,7 +115,7 @@ export function ProfileView({ profile }: { profile: Profile }) {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto bg-white p-8 md:p-16">
+    <div className="flex flex-1 flex-col overflow-y-auto bg-background p-8 md:p-16">
       <div className="max-w-2xl mx-auto w-full">
         <header className="mb-12">
           <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">Account Settings</h1>
@@ -137,13 +137,13 @@ export function ProfileView({ profile }: { profile: Profile }) {
                     className="w-20 h-20 rounded-2xl object-cover border border-border shadow-sm"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-2xl bg-gray-100 border border-border shadow-sm flex items-center justify-center p-2">
+                  <div className="w-20 h-20 rounded-2xl bg-muted border border-border shadow-sm flex items-center justify-center p-2">
                     <NotionIcon name={selectedAvatar} className="w-full h-full" />
                   </div>
                 )}
                 {uploading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-2xl">
-                    <div className="w-6 h-6 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm rounded-2xl">
+                    <div className="w-6 h-6 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
                   </div>
                 )}
               </div>
@@ -153,7 +153,7 @@ export function ProfileView({ profile }: { profile: Profile }) {
                   type="button"
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
-                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-black/5 transition-colors disabled:opacity-50"
+                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-foreground/5 transition-colors disabled:opacity-50"
                 >
                   {uploading ? 'Uploading…' : 'Upload photo'}
                 </button>
@@ -180,14 +180,14 @@ export function ProfileView({ profile }: { profile: Profile }) {
                       key={avatar}
                       type="button"
                       onClick={() => handlePresetClick(avatar)}
-                      className={`relative p-3 rounded-2xl border-2 transition-all hover:bg-black/5 ${active
-                        ? 'border-black bg-black/5 scale-110 shadow-md'
+                      className={`relative p-3 rounded-2xl border-2 transition-all hover:bg-foreground/5 ${active
+                        ? 'border-foreground bg-foreground/5 scale-110 shadow-md'
                         : 'border-transparent'
                         }`}
                     >
                       <NotionIcon name={avatar} className="w-[56px] h-[56px]" />
                       {active && (
-                        <div className="absolute -top-2 -right-2 bg-black text-white rounded-full p-1 border-2 border-white">
+                        <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full p-1 border-2 border-background">
                           <NotionIcon name="ni-check" className="w-[10px] h-[10px]" />
                         </div>
                       )}
@@ -199,7 +199,7 @@ export function ProfileView({ profile }: { profile: Profile }) {
                 href="https://faces.notion.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-5 inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-black/5 transition-colors"
+                className="mt-5 inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-foreground/5 transition-colors"
               >
                 Create your own Notion avatar
                 <NotionIcon name="ni-arrow-up-right" className="w-[16px] h-[16px]" />
@@ -221,7 +221,7 @@ export function ProfileView({ profile }: { profile: Profile }) {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
-                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-black transition-all bg-gray-50/50"
+                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-foreground transition-all bg-muted/40"
                 required
               />
             </div>
@@ -271,7 +271,7 @@ export function ProfileView({ profile }: { profile: Profile }) {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter your current password"
-                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-black transition-all bg-gray-50/50"
+                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-foreground transition-all bg-muted/40"
                 required
               />
             </div>
@@ -289,7 +289,7 @@ export function ProfileView({ profile }: { profile: Profile }) {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="At least 8 characters"
-                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-black transition-all bg-gray-50/50"
+                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-foreground transition-all bg-muted/40"
                 required
               />
             </div>
@@ -307,7 +307,7 @@ export function ProfileView({ profile }: { profile: Profile }) {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repeat new password"
-                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-black transition-all bg-gray-50/50"
+                className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-foreground transition-all bg-muted/40"
                 required
               />
             </div>

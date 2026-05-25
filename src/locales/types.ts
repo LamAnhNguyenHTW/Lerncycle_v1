@@ -60,6 +60,13 @@ export interface Dictionary {
     copyright: string;
     languageLabel: string;
   };
+  theme: {
+    label: string;
+    light: string;
+    dark: string;
+    system: string;
+    cycle: string;
+  };
   legal: {
     draftBanner: string;
     privacy: LegalPageCopy;
