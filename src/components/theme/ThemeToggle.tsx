@@ -2,7 +2,7 @@
 
 import {useEffect, useState} from 'react';
 import {useTheme} from 'next-themes';
-import {Sun, Moon, MonitorSmartphone} from 'lucide-react';
+import {Sun, Moon} from 'lucide-react';
 import {cn} from '@/lib/utils';
 
 interface Props {
@@ -17,7 +17,7 @@ interface Props {
   };
 }
 
-const ORDER = ['light', 'dark', 'system'] as const;
+const ORDER = ['light', 'dark'] as const;
 type ThemeChoice = (typeof ORDER)[number];
 
 export function ThemeToggle({variant = 'compact', className, labels}: Props) {
@@ -29,17 +29,11 @@ export function ThemeToggle({variant = 'compact', className, labels}: Props) {
     setMounted(true);
   }, []);
 
-  const current = (mounted ? (theme as ThemeChoice) : 'system') ?? 'system';
-  const next = ORDER[(ORDER.indexOf(current) + 1) % ORDER.length];
+  const current: ThemeChoice = mounted && theme === 'dark' ? 'dark' : 'light';
+  const next: ThemeChoice = current === 'light' ? 'dark' : 'light';
 
-  const Icon = current === 'light' ? Sun : current === 'dark' ? Moon : MonitorSmartphone;
-  const currentLabel = labels
-    ? current === 'light'
-      ? labels.light
-      : current === 'dark'
-        ? labels.dark
-        : labels.system
-    : current;
+  const Icon = current === 'light' ? Sun : Moon;
+  const currentLabel = labels ? (current === 'light' ? labels.light : labels.dark) : current;
 
   return (
     <button
