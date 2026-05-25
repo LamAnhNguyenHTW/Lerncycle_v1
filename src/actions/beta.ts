@@ -96,6 +96,12 @@ export async function subscribeBeta(formData: FormData): Promise<SubscribeBetaRe
     if (error.code === '23505') {
       return {ok: true, alreadySubscribed: true};
     }
+    console.error('[subscribeBeta] insert failed', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     return {ok: false, error: NEUTRAL_ERROR_DE};
   }
 
