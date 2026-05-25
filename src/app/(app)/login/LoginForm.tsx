@@ -3,7 +3,7 @@
 import {signInWithPassword} from '@/actions/auth';
 import {useSearchParams} from 'next/navigation';
 import {useActionState, useState} from 'react';
-import {BookOpen} from 'lucide-react';
+import {Logo} from '@/components/Logo';
 
 type State = {error?: string} | undefined;
 type LoginLanguage = 'de' | 'en';
@@ -52,11 +52,8 @@ export function LoginForm() {
           label={text.languageLabel}
           onToggle={() => setLanguage(language === 'de' ? 'en' : 'de')}
         />
-        <div className="flex items-center gap-3 mb-12">
-           <div className="flex size-12 items-center justify-center rounded-xl bg-black/5 text-foreground">
-             <BookOpen className="w-[24px] h-[24px]" strokeWidth={1.75} />
-           </div>
-           <span className="font-bold text-2xl tracking-tight text-foreground">Learncycle</span>
+        <div className="mb-12 flex items-center justify-center">
+          <Logo variant="horizontal" priority className="h-14 w-auto" />
         </div>
 
         <h1 className="text-3xl font-bold mb-4 text-center text-foreground">

@@ -10,6 +10,7 @@ import {cn} from '@/lib/utils';
 import Link from 'next/link';
 import {Globe} from 'lucide-react';
 import {useLanguage} from '@/lib/i18n';
+import {Logo} from '../Logo';
 
 interface Props {
   courses: Course[];
@@ -49,9 +50,9 @@ export function LeftSidebar({courses, activeCourseId, activeTab = 'home', active
       <div className="space-y-8">
         <div className={cn('flex items-center', collapsed ? 'justify-center' : 'justify-between')}>
           {!collapsed && (
-            <div className="px-2 text-lg font-semibold tracking-wide text-foreground">
-              Learncycle
-            </div>
+            <Link href="/app" aria-label="Learncycle" className="inline-flex items-center">
+              <Logo variant="horizontal" className="h-10 w-auto" />
+            </Link>
           )}
           <button
             onClick={() => setCollapsed((prev) => !prev)}

@@ -9,6 +9,7 @@ import { SourceCard } from '@/components/learn/SourceCard';
 import type { Course } from '@/lib/data';
 import type { ActiveLearningState, ChatMode, ChatResponse, ChatSource, StoredChatMessage, StoredChatSession } from '@/types/chat';
 import { NotionIcon } from '@/components/NotionIcon';
+import { Logo } from '@/components/Logo';
 import { deleteChatSession, renameChatSession } from '@/actions/chat';
 import { useLanguage } from '@/lib/i18n';
 
@@ -790,7 +791,7 @@ export function ChatInterface({
           <div className="max-w-3xl mx-auto w-full px-4 md:px-8 pt-8 pb-40">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4 animate-in fade-in duration-700">
-                <Sparkles className="w-8 h-8 text-muted-foreground/40 mb-2" />
+                <Logo variant="mark" className="w-10 h-10 mb-2 opacity-40" />
                 <h2 className="text-xl font-medium tracking-tight">{emptyTitle}</h2>
                 <p className="text-muted-foreground max-w-sm mx-auto text-sm">
                   {emptyDescription}
@@ -805,7 +806,7 @@ export function ChatInterface({
                   >
                     <div className="mt-1 shrink-0 flex items-center justify-center">
                       {chatMessage.role === 'user' ? (
-                        <div className="h-6 w-6 rounded-md bg-white shadow-sm border border-border overflow-hidden flex items-center justify-center">
+                        <div className="h-8 w-8 rounded-md bg-white shadow-sm border border-border overflow-hidden flex items-center justify-center">
                           {avatarUrl ? (
                             <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
                           ) : (
@@ -815,7 +816,9 @@ export function ChatInterface({
                           )}
                         </div>
                       ) : (
-                        <Sparkles className="h-5 w-5 text-black" />
+                        <div className="h-8 w-8 rounded-md bg-white shadow-sm border border-border flex items-center justify-center">
+                          <Logo variant="mark" className="h-6 w-6" />
+                        </div>
                       )}
                     </div>
                     <div className="flex-1 space-y-1.5 overflow-hidden">

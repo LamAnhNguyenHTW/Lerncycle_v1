@@ -12,7 +12,6 @@ export interface Dictionary {
     subhead: string;
     ctaPrimary: string;
     ctaSecondary: string;
-    mockupCoreLabel: string;
     mockupInputPdf: string;
     mockupInputNote: string;
     mockupInputHighlight: string;

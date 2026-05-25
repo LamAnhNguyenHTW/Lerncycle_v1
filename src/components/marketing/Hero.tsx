@@ -5,6 +5,7 @@ import {motion} from 'framer-motion';
 import {FileText, PenLine, Highlighter, Mic, MessageSquare, Layers, Brain} from 'lucide-react';
 import type {LucideIcon} from 'lucide-react';
 import type {Dictionary} from '@/locales/types';
+import {Logo} from '@/components/Logo';
 
 interface Props {
   dict: Dictionary;
@@ -118,9 +119,7 @@ function HeroFunnel({dict}: {dict: Dictionary}) {
             transition={{duration: 2.4, repeat: Infinity, ease: 'easeOut'}}
           />
           <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-xl sm:h-24 sm:w-24">
-            <span className="text-xs font-semibold tracking-tight text-slate-900 sm:text-sm">
-              {dict.hero.mockupCoreLabel}
-            </span>
+            <Logo variant="mark" className="h-12 w-12 sm:h-14 sm:w-14" />
           </div>
         </div>
       </motion.div>

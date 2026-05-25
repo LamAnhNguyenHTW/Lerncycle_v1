@@ -10,7 +10,6 @@ export const de: Dictionary = {
       'LearnCycle verbindet deine Studienmaterialien, deine Notizen und einen KI-Tutor, der wirklich versteht, was du gerade liest.',
     ctaPrimary: 'Beta-Zugang sichern',
     ctaSecondary: 'Schon eingeladen? Anmelden',
-    mockupCoreLabel: 'Lerncycle',
     mockupInputPdf: 'PDFs',
     mockupInputNote: 'Notizen',
     mockupInputHighlight: 'Markierungen',

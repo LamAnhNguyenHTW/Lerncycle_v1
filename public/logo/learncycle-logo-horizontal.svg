@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="180" viewBox="0 0 800 180" role="img" aria-label="LearnCycle logo">
+  
+  
+<g transform="translate(24,22) scale(0.72)">
+<g id="learncycle-mark" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- cycle arcs -->
+  <path d="M54 126a74 74 0 0 1 124-55" stroke="#5C6F82" stroke-width="10"/>
+  <path d="M202 131a74 74 0 0 1-124 55" stroke="#111827" stroke-width="10"/>
+  <!-- arrow heads -->
+  <path d="M178 50l5 25-25-5" fill="#5C6F82" stroke="none"/>
+  <path d="M78 206l-5-25 25 5" fill="#111827" stroke="none"/>
+  <!-- open book: intentionally book-like, not bird-like -->
+  <path d="M82 97c18-7 36-3 48 10v65c-13-12-31-17-48-10z" fill="#F6F4F1" stroke="#111827" stroke-width="8"/>
+  <path d="M174 97c-18-7-36-3-48 10v65c13-12 31-17 48-10z" fill="#F6F4F1" stroke="#111827" stroke-width="8"/>
+  <path d="M126 107v67" stroke="#111827" stroke-width="8"/>
+  <path d="M94 116c9-2 18 0 26 6" stroke="#5C6F82" stroke-width="5"/>
+  <path d="M94 134c9-2 18 0 26 6" stroke="#5C6F82" stroke-width="5"/>
+  <path d="M162 116c-9-2-18 0-26 6" stroke="#5C6F82" stroke-width="5"/>
+  <path d="M162 134c-9-2-18 0-26 6" stroke="#5C6F82" stroke-width="5"/>
+  <path d="M74 171c21-6 39-3 52 7" stroke="#111827" stroke-width="7"/>
+  <path d="M182 171c-21-6-39-3-52 7" stroke="#111827" stroke-width="7"/>
+  <!-- spark -->
+  <path d="M184 79l7 16 16 7-16 7-7 16-7-16-16-7 16-7z" fill="#D9D3C5" stroke="none"/>
+  <circle cx="203" cy="62" r="8" fill="#111827" stroke="none"/>
+</g>
+</g>
+<text x="225" y="121" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="82" font-weight="600" letter-spacing="-3" fill="#111827">LearnCycle</text>
+
+</svg>

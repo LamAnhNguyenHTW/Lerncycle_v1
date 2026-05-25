@@ -10,7 +10,6 @@ export const en: Dictionary = {
       "LearnCycle connects your study materials, your notes, and an AI tutor that actually understands what you're reading.",
     ctaPrimary: 'Get beta access',
     ctaSecondary: 'Already invited? Sign in',
-    mockupCoreLabel: 'Lerncycle',
     mockupInputPdf: 'PDFs',
     mockupInputNote: 'Notes',
     mockupInputHighlight: 'Highlights',

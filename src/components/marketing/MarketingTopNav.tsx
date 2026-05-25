@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type {Locale} from '@/lib/locale';
 import type {Dictionary} from '@/locales/types';
+import {Logo} from '@/components/Logo';
 import {LocaleSwitcher} from './LocaleSwitcher';
 
 interface Props {
@@ -11,9 +12,9 @@ interface Props {
 export function MarketingTopNav({locale, dict}: Props) {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href={`/${locale}`} className="text-lg font-semibold tracking-tight text-foreground">
-          LearnCycle
+      <div className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+        <Link href={`/${locale}`} aria-label="LearnCycle" className="inline-flex items-center">
+          <Logo variant="horizontal" priority className="h-10 w-auto sm:h-11" />
         </Link>
 
         <div className="flex items-center gap-2">

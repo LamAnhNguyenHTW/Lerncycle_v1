@@ -5,6 +5,7 @@ import {useRouter} from 'next/navigation';
 import {createCourse} from '@/actions/courses';
 import {useLanguage} from '@/lib/i18n';
 import {NotionIcon} from './NotionIcon';
+import {Logo} from './Logo';
 
 interface Props {
   displayName: string;
@@ -46,8 +47,8 @@ export function WelcomeEmptyState({displayName}: Props) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-4 pt-10 pb-16 md:pt-20">
       <div className="w-full rounded-2xl border border-border bg-white p-8 text-center shadow-sm md:p-12">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-700">
-          <NotionIcon name="ni-rocket" className="h-7 w-7" />
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50">
+          <Logo variant="mark" className="h-9 w-9" />
         </div>
 
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">

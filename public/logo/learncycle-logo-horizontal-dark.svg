@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="180" viewBox="0 0 800 180" role="img" aria-label="LearnCycle logo">
+  
+  
+<rect x="0" y="0" width="800" height="180" rx="32" fill="#111827"/>
+<g transform="translate(24,22) scale(0.72)">
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M54 126a74 74 0 0 1 124-55" stroke="#FFFFFF" stroke-width="10" opacity="0.92"/>
+  <path d="M202 131a74 74 0 0 1-124 55" stroke="#FFFFFF" stroke-width="10" opacity="0.92"/>
+  <path d="M178 50l5 25-25-5" fill="#FFFFFF" stroke="none"/>
+  <path d="M78 206l-5-25 25 5" fill="#FFFFFF" stroke="none"/>
+  <path d="M82 97c18-7 36-3 48 10v65c-13-12-31-17-48-10z" fill="none" stroke="#FFFFFF" stroke-width="8"/>
+  <path d="M174 97c-18-7-36-3-48 10v65c13-12 31-17 48-10z" fill="none" stroke="#FFFFFF" stroke-width="8"/>
+  <path d="M126 107v67" stroke="#FFFFFF" stroke-width="8"/>
+  <path d="M74 171c21-6 39-3 52 7" stroke="#FFFFFF" stroke-width="7"/>
+  <path d="M182 171c-21-6-39-3-52 7" stroke="#FFFFFF" stroke-width="7"/>
+  <path d="M184 79l7 16 16 7-16 7-7 16-7-16-16-7 16-7z" fill="#D9D3C5" stroke="none"/>
+  <circle cx="203" cy="62" r="8" fill="#FFFFFF" stroke="none"/>
+</g>
+</g>
+<text x="225" y="121" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="82" font-weight="600" letter-spacing="-3" fill="#FFFFFF">LearnCycle</text>
+
+</svg>
