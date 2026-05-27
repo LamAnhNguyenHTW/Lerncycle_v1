@@ -100,6 +100,24 @@ function validateBody(body: Partial<ChatRequest>) {
   if (body.learner_name !== undefined && typeof body.learner_name !== 'string') {
     return 'learner_name must be a string.';
   }
+  if (body.input_metadata !== undefined) {
+    const metadata = body.input_metadata;
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return 'input_metadata must be an object.';
+    }
+    if (metadata.input_type !== undefined && metadata.input_type !== 'voice') {
+      return 'input_metadata.input_type is unsupported.';
+    }
+    if (metadata.transcription_model !== undefined && typeof metadata.transcription_model !== 'string') {
+      return 'input_metadata.transcription_model must be a string.';
+    }
+    if (
+      metadata.recording_seconds !== undefined &&
+      (!Number.isFinite(metadata.recording_seconds) || metadata.recording_seconds < 0)
+    ) {
+      return 'input_metadata.recording_seconds must be a non-negative number.';
+    }
+  }
   return null;
 }
 
@@ -1127,6 +1145,7 @@ export async function POST(request: Request) {
       role: 'user',
       content: trimmedMessage,
       pdf_ids: pdfIds,
+      input_metadata: body.input_metadata ?? null,
     }).select('id').single();
 
     if (wantsStreaming(request, rawBody)) {
@@ -1303,7 +1322,7 @@ export async function GET(request: Request) {
 
   const {data: messages, error: messagesError} = await supabase
     .from('chat_messages')
-    .select('id, session_id, role, content, sources, pdf_ids, created_at')
+    .select('id, session_id, role, content, sources, pdf_ids, input_metadata, created_at')
     .eq('user_id', user.id)
     .in('session_id', sessionIds)
     .order('created_at', {ascending: true});

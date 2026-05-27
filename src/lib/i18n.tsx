@@ -50,6 +50,11 @@ export type TranslationKey =
   | 'chat.hideDetails'
   | 'chat.showLess'
   | 'chat.more'
+  | 'voice.startRecording'
+  | 'voice.stopRecording'
+  | 'voice.transcribing'
+  | 'voice.recording'
+  | 'voice.understood'
   | 'active.settings'
   | 'active.suggestions'
   | 'active.topicPlaceholder'
@@ -284,6 +289,11 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'chat.hideDetails': 'Hide details',
     'chat.showLess': 'Show less',
     'chat.more': 'more',
+    'voice.startRecording': 'Hold to speak',
+    'voice.stopRecording': 'Release to stop',
+    'voice.transcribing': 'Transcribing voice...',
+    'voice.recording': 'Recording',
+    'voice.understood': 'I understood:',
     'active.settings': 'Settings',
     'active.suggestions': 'Suggestions',
     'active.topicPlaceholder': 'Optional topic',
@@ -517,6 +527,11 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'chat.hideDetails': 'Details ausblenden',
     'chat.showLess': 'Weniger anzeigen',
     'chat.more': 'weitere',
+    'voice.startRecording': 'Zum Sprechen halten',
+    'voice.stopRecording': 'Loslassen zum Stoppen',
+    'voice.transcribing': 'Stimme wird transkribiert...',
+    'voice.recording': 'Aufnahme',
+    'voice.understood': 'Ich habe verstanden:',
     'active.settings': 'Einstellungen',
     'active.suggestions': 'Vorschläge',
     'active.topicPlaceholder': 'Thema optional eingeben',

@@ -156,12 +156,25 @@ async def stream_answer_with_rag(
         "stage": "llm_first_token",
     }
 
+    if not prompt_capture.system_prompt and not prompt_capture.user_prompt:
+        yield {"event_type": "token", "content": response.get("answer", "")}
+        yield {
+            "event_type": "sources",
+            "sources": response.get("sources", []),
+        }
+        done_event: dict[str, Any] = {"event_type": "done"}
+        if "updated_active_learning_state" in response:
+            done_event["updated_active_learning_state"] = response["updated_active_learning_state"]
+        yield done_event
+        return
+
     stream_llm = original_llm or OpenAILlmClient()
     stream_answer = getattr(stream_llm, "stream_answer", None)
     if stream_answer is None:
         yield {"event_type": "token", "content": response.get("answer", "")}
         yield {"event_type": "done"}
         return
+
 
     if _is_active_learning_mode(str(kwargs.get("chat_mode", "normal"))):
         accumulated_answer = ""
@@ -883,19 +896,41 @@ def answer_with_rag(
         query=query,
         web_allowed=web_allowed_bool,
         has_results=bool(results or graph_context.get("context_text")),
+        chat_mode=chat_mode,
     ):
-        active_llm = llm_client or OpenAILlmClient()
+        active_llm = generation_llm_client or llm_client or OpenAILlmClient()
         user_prompt = _no_retrieval_prompt(
             query=query,
             retrieval_query=retrieval_query,
             recent_messages=recent_messages,
             query_understanding=query_understanding,
             web_allowed=web_allowed_bool,
+            chat_mode=chat_mode,
         )
+        system_prompt = _select_system_prompt(
+            chat_mode,
+            has_recent_messages=bool(recent_messages),
+            has_graph=False,
+            has_web=False,
+            no_info_instruction=no_info_instruction,
+            generate_final_result=_should_generate_final_result(chat_mode, active_learning_control),
+        ) + _language_instruction(chat_language)
+
+        if _is_active_learning_mode(chat_mode):
+            state_for_prompt = _state_with_nudge(active_learning_state, active_learning_control)
+            user_prompt = _append_active_learning_state(user_prompt, state_for_prompt)
+
         answer = active_llm.complete(
-            system_prompt=CONVERSATION_SYSTEM_PROMPT + no_info_instruction + _language_instruction(chat_language),
+            system_prompt=system_prompt,
             user_prompt=user_prompt,
         )
+        
+        updated_active_learning_state = None
+        if _is_active_learning_mode(chat_mode):
+            answer, updated_active_learning_state = extract_al_state_update(
+                answer,
+                active_learning_state or {},
+            )
         
         synthetic_sources = []
         if answer.strip().startswith("[NO_INFO]"):
@@ -908,8 +943,8 @@ def answer_with_rag(
                 from rag_pipeline.query_understanding import synthetic_general_knowledge_source
                 synthetic_sources.append(synthetic_general_knowledge_source())
 
-        return {
-            "answer": answer,
+        response = {
+            "answer": _strip_source_markers(answer),
             "sources": synthetic_sources,
             "web_search": _web_metadata(web_outcome, web_search_enabled, effective_web_mode),
             "intent": _intent_metadata(active_intent, classifier_used, fallback_used, graph_requested, web_search_enabled, session_id, chat_memory_retrieval_enabled),
@@ -917,6 +952,9 @@ def answer_with_rag(
             "retrieval_tools": _retrieval_tools_metadata(_registry_used, _tool_outcomes),
             "agentic_retriever": agentic_metadata,
         }
+        if updated_active_learning_state is not None:
+            response["updated_active_learning_state"] = updated_active_learning_state
+        return response
 
     if not results and not graph_context.get("context_text"):
         return {
@@ -1246,9 +1284,12 @@ def _should_answer_without_retrieval(
     query: str,
     web_allowed: bool,
     has_results: bool,
+    chat_mode: str = "normal",
 ) -> bool:
     if has_results:
         return False
+    if chat_mode == "feynman":
+        return True
     if understanding is not None:
         if understanding.route in {
             QueryRoute.CONVERSATION_ONLY,
@@ -1268,11 +1309,20 @@ def _no_retrieval_prompt(
     recent_messages: list[dict] | None,
     query_understanding: QueryUnderstanding | None,
     web_allowed: bool,
+    chat_mode: str = "normal",
 ) -> str:
-    parts = [
-        "Answer the current question without uploaded-material citations.",
-        "Do not cite PDF, note, annotation, or chat-memory sources because no retrieval context is used.",
-    ]
+    if _is_active_learning_mode(chat_mode):
+        parts = [
+            "Continue the active-learning session from the latest learner message.",
+            "Respond to the learner's latest explanation or question directly.",
+            "Do not greet the user, do not restart the session, and do not ask how you can assist.",
+            "Do not cite PDF, note, annotation, or chat-memory sources because no retrieval context is used.",
+        ]
+    else:
+        parts = [
+            "Answer the current question without uploaded-material citations.",
+            "Do not cite PDF, note, annotation, or chat-memory sources because no retrieval context is used.",
+        ]
     if query_understanding is not None:
         parts.append(f"Route: {query_understanding.route.value}.")
         parts.append(f"Resolved query: {query_understanding.resolved_query}")

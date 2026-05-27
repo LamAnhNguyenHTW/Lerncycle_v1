@@ -3,16 +3,19 @@
 import { useEffect, useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChevronDown, ChevronLeft, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2, Square, PanelLeftOpen } from 'lucide-react';
+import { ChevronDown, ChevronLeft, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2, Square, PanelLeftOpen, Mic, Loader2, Play, Pause, RotateCcw, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SourceCard } from '@/components/learn/SourceCard';
 import type { Course } from '@/lib/data';
 import type { ActiveLearningState, ChatMode, ChatResponse, ChatSource, StoredChatMessage, StoredChatSession } from '@/types/chat';
+import type {PublicVoiceConfig} from '@/types/voice';
 import { NotionIcon } from '@/components/NotionIcon';
 import { Logo } from '@/components/Logo';
 import { deleteChatSession, renameChatSession } from '@/actions/chat';
 import { useLanguage } from '@/lib/i18n';
 import {useProcessingStatus} from '@/hooks/useProcessingStatus';
+import {useVoiceRecorder} from '@/hooks/useVoiceRecorder';
+import {normalizeVoiceTranscriptForChat} from '@/lib/voice/transcript';
 
 type ChatMessage = {
   id: string;
@@ -21,6 +24,34 @@ type ChatMessage = {
   sources?: ChatSource[];
   streamStatus?: 'retrieval_started' | 'retrieval_completed' | 'reranking_started' | 'generation_started';
   sourcesPending?: boolean;
+  inputMetadata?: VoiceInputMetadata;
+  responseToVoice?: boolean;
+};
+
+type VoiceInputMetadata = {
+  input_type: 'voice';
+  transcription_model?: string;
+  recording_seconds?: number;
+};
+
+type VoiceTranscript = {
+  text: string;
+  metadata: VoiceInputMetadata;
+};
+
+type TranscribeResponse = {
+  text: string;
+  durationSeconds: number;
+  language?: string;
+  model: string;
+};
+
+const DISABLED_VOICE_CONFIG: PublicVoiceConfig = {
+  enabled: false,
+  maxRecordingSeconds: 60,
+  maxUploadBytes: 5_242_880,
+  enabledModes: [],
+  ttsMaxChars: 1000,
 };
 
 type ChatStreamEvent =
@@ -118,6 +149,7 @@ export function ChatInterface({
   topicSuggestions = [],
   onActiveLearningTopicChange,
   onActiveLearningDifficultyChange,
+  voiceConfig = DISABLED_VOICE_CONFIG,
   profile,
 }: {
   course: Course;
@@ -131,6 +163,7 @@ export function ChatInterface({
   topicSuggestions?: string[];
   onActiveLearningTopicChange?: (topic: string) => void;
   onActiveLearningDifficultyChange?: (difficulty: '' | 'beginner' | 'intermediate' | 'advanced') => void;
+  voiceConfig?: PublicVoiceConfig;
   profile?: {
     display_name: string | null;
     avatar_name: string | null;
@@ -157,6 +190,9 @@ export function ChatInterface({
   const [activeTopicSuggestions, setActiveTopicSuggestions] = useState<string[]>(topicSuggestions.slice(0, 5));
   const [enableWebSearch, setEnableWebSearch] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [voiceTranscript, setVoiceTranscript] = useState<VoiceTranscript | null>(null);
+  const [voiceTranscribing, setVoiceTranscribing] = useState(false);
+  const [mutedVoiceOutput, setMutedVoiceOutput] = useState(false);
   const [activeConversationKey, setActiveConversationKey] = useState(() => crypto.randomUUID());
   const [pendingConversationKeys, setPendingConversationKeys] = useState<string[]>([]);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -170,6 +206,9 @@ export function ChatInterface({
     .map((status) => selectedPdfNames.get(status.sourceId) ?? status.sourceId);
   const isActiveLearning = chatMode === 'guided_learning' || chatMode === 'feynman';
   const activeModeLabel = chatMode === 'guided_learning' ? t('active.guided') : chatMode === 'feynman' ? t('active.feynman') : t('nav.learn');
+  const voiceEnabledForMode = voiceConfig.enabled && voiceConfig.enabledModes.includes(chatMode);
+  const voiceRecorder = useVoiceRecorder(voiceConfig.maxRecordingSeconds);
+  const autoSendVoice = false;
   const emptyTitle = chatMode === 'guided_learning'
     ? t('active.guidedEmptyTitle')
     : chatMode === 'feynman'
@@ -191,11 +230,25 @@ export function ChatInterface({
   const activeAbortControllerRef = useRef<AbortController | null>(null);
   const activeConversationKeyRef = useRef(activeConversationKey);
   const isCurrentConversationPending = pendingConversationKeys.includes(activeConversationKey);
+  const voiceInputDisabled =
+    !voiceEnabledForMode ||
+    voiceTranscribing ||
+    isCurrentConversationPending ||
+    selectedPdfIds.length === 0 ||
+    (chatMode === 'feynman' && activeLearningState.exercise_status === 'completed');
   const topicSuggestionsRef = useRef(topicSuggestions);
 
   useEffect(() => {
     activeConversationKeyRef.current = activeConversationKey;
   }, [activeConversationKey]);
+
+  useEffect(() => {
+    setMutedVoiceOutput(window.localStorage.getItem('learncycle-voice-muted') === 'true');
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem('learncycle-voice-muted', mutedVoiceOutput ? 'true' : 'false');
+  }, [mutedVoiceOutput]);
 
   useEffect(() => {
     topicSuggestionsRef.current = topicSuggestions;
@@ -337,10 +390,71 @@ export function ChatInterface({
 
   async function onSubmit(event?: React.FormEvent<HTMLFormElement>) {
     if (event) event.preventDefault();
-    await sendMessage(message);
+    await sendMessage(message, voiceTranscript?.metadata);
   }
 
-  async function sendMessage(rawText: string) {
+  function handleVoicePointerDown(event: React.PointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    if (voiceInputDisabled || voiceRecorder.state === 'recording') {
+      return;
+    }
+    void voiceRecorder.start();
+  }
+
+  function handleVoicePointerUp(event: React.PointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    if (voiceRecorder.state === 'recording') {
+      voiceRecorder.stop();
+    }
+  }
+
+  async function transcribeVoiceBlob(audioBlob: Blob, recordingSeconds: number) {
+    setVoiceTranscribing(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      const mimeType = audioBlob.type || 'audio/webm';
+      const extension = mimeType.split('/')[1]?.split(';')[0] || 'webm';
+      formData.set('audio', audioBlob, `recording.${extension}`);
+      formData.set('recording_seconds', String(recordingSeconds));
+      formData.set('language', language);
+      const res = await fetch('/api/voice/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? (language === 'de' ? 'Transkription fehlgeschlagen.' : 'Transcription failed.'));
+      }
+      const transcription = data as TranscribeResponse;
+      const normalizedText = normalizeVoiceTranscriptForChat(transcription.text, chatMode);
+      const metadata: VoiceInputMetadata = {
+        input_type: 'voice',
+        transcription_model: transcription.model,
+        recording_seconds: transcription.durationSeconds,
+      };
+      setVoiceTranscript({text: normalizedText, metadata});
+      setMessage(normalizedText);
+      textareaRef.current?.focus();
+      if (autoSendVoice) {
+        await sendMessage(normalizedText, metadata);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Voice transcription failed.');
+    } finally {
+      setVoiceTranscribing(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!voiceRecorder.audioBlob || !voiceEnabledForMode) {
+      return;
+    }
+    void transcribeVoiceBlob(voiceRecorder.audioBlob, voiceRecorder.recordingSeconds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceRecorder.audioBlob, voiceEnabledForMode]);
+
+  async function sendMessage(rawText: string, inputMetadata?: VoiceInputMetadata) {
     const trimmed = rawText.trim();
     if (!trimmed || pendingConversationKeys.includes(activeConversationKey)) {
       return;
@@ -353,6 +467,7 @@ export function ChatInterface({
       id: crypto.randomUUID(),
       role: 'user',
       content: trimmed,
+      inputMetadata,
     };
     const assistantMessageId = crypto.randomUUID();
     const placeholderAssistant: ChatMessage = {
@@ -362,9 +477,11 @@ export function ChatInterface({
       sources: [],
       streamStatus: 'retrieval_started',
       sourcesPending: true,
+      responseToVoice: inputMetadata?.input_type === 'voice',
     };
     setMessages((current) => [...current, userMessage, placeholderAssistant]);
     setMessage(''); // Clear input early for better UX
+    setVoiceTranscript(null);
 
     try {
       const abortController = new AbortController();
@@ -387,6 +504,7 @@ export function ChatInterface({
           learner_name: displayName,
           pdf_ids: selectedPdfIds,
           enableWebSearch,
+          ...(inputMetadata ? {input_metadata: inputMetadata} : {}),
         }),
         signal: abortController.signal,
       });
@@ -408,6 +526,7 @@ export function ChatInterface({
                 sources: streamResult.sources,
                 streamStatus: undefined,
                 sourcesPending: false,
+                responseToVoice: item.responseToVoice,
               }
               : item,
           ));
@@ -432,6 +551,7 @@ export function ChatInterface({
                   sources: [],
                   pdf_ids: selectedPdfIds,
                   created_at: new Date().toISOString(),
+                  input_metadata: inputMetadata ?? null,
                 },
                 {
                   id: assistantMessageId,
@@ -458,6 +578,7 @@ export function ChatInterface({
         role: 'assistant',
         content: chatResponse.answer,
         sources: chatResponse.sources,
+        responseToVoice: inputMetadata?.input_type === 'voice',
       };
       if (activeConversationKeyRef.current === requestConversationKey) {
         if (chatResponse.session_id) {
@@ -489,6 +610,7 @@ export function ChatInterface({
                 sources: [],
                 pdf_ids: selectedPdfIds,
                 created_at: new Date().toISOString(),
+                input_metadata: inputMetadata ?? null,
               },
               {
                 id: assistantMessage.id,
@@ -890,11 +1012,22 @@ export function ChatInterface({
                         {chatMessage.role === 'user' ? displayName : 'Learncycle'}
                       </div>
                       {chatMessage.role === 'assistant' ? (
-                        <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none break-words text-foreground leading-relaxed">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {chatMessage.content}
-                          </ReactMarkdown>
-                        </div>
+                        <>
+                          <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none break-words text-foreground leading-relaxed">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {chatMessage.content}
+                            </ReactMarkdown>
+                          </div>
+                          {voiceConfig.enabled && chatMessage.responseToVoice && chatMessage.content && (
+                            <AssistantSpeechPlayer
+                              message={chatMessage}
+                              mode={chatMode}
+                              sessionId={sessionId}
+                              muted={mutedVoiceOutput}
+                              onMutedChange={setMutedVoiceOutput}
+                            />
+                          )}
+                        </>
                       ) : (
                         <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none break-words text-foreground leading-relaxed whitespace-pre-wrap">
                           {chatMessage.content}
@@ -937,6 +1070,20 @@ export function ChatInterface({
                 onClickFinish={() => sendMessage('/fertig')}
               />
             )}
+            {voiceTranscript && (
+              <div className="inline-flex max-w-full items-center rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
+                <span className="truncate">
+                  {t('voice.understood')} {voiceTranscript.text}
+                </span>
+              </div>
+            )}
+            {(voiceRecorder.state === 'recording' || voiceTranscribing) && (
+              <div className="text-xs text-muted-foreground">
+                {voiceTranscribing
+                  ? t('voice.transcribing')
+                  : `${t('voice.recording')} ${voiceRecorder.recordingSeconds}s / ${voiceConfig.maxRecordingSeconds}s`}
+              </div>
+            )}
             <form onSubmit={onSubmit} className="relative flex items-end gap-2 bg-card border border-border shadow-sm rounded-xl px-3 py-2 focus-within:border-foreground/30 transition-all">
               <button
                 type="button"
@@ -950,7 +1097,12 @@ export function ChatInterface({
               <textarea
                 ref={textareaRef}
                 value={message}
-                onChange={(event) => setMessage(event.target.value)}
+                onChange={(event) => {
+                  setMessage(event.target.value);
+                  if (voiceTranscript && event.target.value !== voiceTranscript.text) {
+                    setVoiceTranscript(null);
+                  }
+                }}
                 onKeyDown={onKeyDown}
                 maxLength={2000}
                 rows={1}
@@ -959,11 +1111,35 @@ export function ChatInterface({
                 placeholder={chatMode === 'feynman' && activeLearningState.exercise_status === 'completed' ? t('active.sessionCompleted') : inputPlaceholder}
                 style={{ minHeight: '32px' }}
               />
+              {voiceEnabledForMode && (
+                <button
+                  type="button"
+                  aria-label={voiceRecorder.state === 'recording' ? t('voice.stopRecording') : t('voice.startRecording')}
+                  aria-pressed={voiceRecorder.state === 'recording'}
+                  disabled={voiceInputDisabled}
+                  onPointerDown={handleVoicePointerDown}
+                  onPointerUp={handleVoicePointerUp}
+                  onPointerCancel={handleVoicePointerUp}
+                  onPointerLeave={handleVoicePointerUp}
+                  className={`h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border transition-all mb-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-30 ${
+                    voiceRecorder.state === 'recording'
+                      ? 'border-red-300 bg-red-50 text-red-600'
+                      : 'border-border bg-card text-muted-foreground hover:text-foreground'
+                  }`}
+                  title={voiceRecorder.state === 'recording' ? t('voice.stopRecording') : t('voice.startRecording')}
+                >
+                  {voiceTranscribing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Mic className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              )}
               {isCurrentConversationPending ? (
                 <button
                   type="button"
                   onClick={() => activeAbortControllerRef.current?.abort()}
-                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-primaryhover:opacity-90 transition-all mb-0.5"
+                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-primary hover:opacity-90 transition-all mb-0.5"
                   title="Stop"
                 >
                   <Square className="h-3.5 w-3.5 fill-white text-white" />
@@ -972,7 +1148,7 @@ export function ChatInterface({
                 <button
                   type="submit"
                   disabled={!message.trim() || selectedPdfIds.length === 0 || (chatMode === 'feynman' && activeLearningState.exercise_status === 'completed')}
-                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-primaryhover:opacity-90 transition-all mb-0.5 disabled:opacity-30 disabled:hover:bg-primary"
+                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg bg-primary hover:opacity-90 transition-all mb-0.5 disabled:opacity-30 disabled:hover:bg-primary"
                   title="Send"
                 >
                   <Send className="h-3.5 w-3.5 text-white" />
@@ -1088,6 +1264,161 @@ function ChatReadinessChip({
         <span className="truncate">{label}</span>
       </span>
       {detail && <p className="text-xs leading-snug text-muted-foreground">{detail}</p>}
+    </div>
+  );
+}
+
+function AssistantSpeechPlayer({
+  message,
+  mode,
+  sessionId,
+  muted,
+  onMutedChange,
+}: {
+  message: ChatMessage;
+  mode: ChatMode;
+  sessionId?: string;
+  muted: boolean;
+  onMutedChange: (muted: boolean) => void;
+}) {
+  const {language} = useLanguage();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+    };
+  }, []);
+
+  async function ensureAudio() {
+    if (audioRef.current) {
+      return audioRef.current;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/voice/speech', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          text: message.content,
+          mode,
+          sessionId,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? 'Voice playback failed.');
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      objectUrlRef.current = objectUrl;
+      const audio = new Audio(objectUrl);
+      audio.muted = muted;
+      audio.addEventListener('ended', () => setPlaying(false));
+      audio.addEventListener('pause', () => setPlaying(false));
+      audio.addEventListener('play', () => setPlaying(true));
+      audioRef.current = audio;
+      return audio;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function play() {
+    if (muted) {
+      return;
+    }
+    try {
+      const audio = await ensureAudio();
+      await audio.play();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Voice playback failed.');
+    }
+  }
+
+  function pause() {
+    audioRef.current?.pause();
+  }
+
+  async function replay() {
+    const audio = await ensureAudio();
+    audio.currentTime = 0;
+    if (!muted) {
+      await audio.play();
+    }
+  }
+
+  function stop() {
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+    audio.pause();
+    audio.currentTime = 0;
+    setPlaying(false);
+  }
+
+  function toggleMuted() {
+    const nextMuted = !muted;
+    onMutedChange(nextMuted);
+    if (audioRef.current) {
+      audioRef.current.muted = nextMuted;
+      if (nextMuted) {
+        audioRef.current.pause();
+      }
+    }
+  }
+
+  const label = language === 'de' ? 'Antwort vorlesen' : 'Read response aloud';
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      <button
+        type="button"
+        onClick={playing ? pause : play}
+        disabled={loading || muted}
+        className="flex h-7 items-center justify-center rounded-md border border-border bg-card px-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+        title={label}
+      >
+        {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+      </button>
+      <button
+        type="button"
+        onClick={() => void replay()}
+        disabled={loading || muted}
+        className="flex h-7 items-center justify-center rounded-md border border-border bg-card px-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+        title={language === 'de' ? 'Erneut abspielen' : 'Replay'}
+      >
+        <RotateCcw className="h-3 w-3" />
+      </button>
+      <button
+        type="button"
+        onClick={stop}
+        disabled={!playing}
+        className="flex h-7 items-center justify-center rounded-md border border-border bg-card px-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+        title="Stop"
+      >
+        <Square className="h-3 w-3" />
+      </button>
+      <button
+        type="button"
+        onClick={toggleMuted}
+        className={`flex h-7 items-center justify-center rounded-md border px-2 text-xs transition-colors ${
+          muted ? 'border-foreground bg-foreground text-background' : 'border-border bg-card text-muted-foreground hover:text-foreground'
+        }`}
+        title={language === 'de' ? 'Stumm schalten' : 'Mute'}
+      >
+        <VolumeX className="h-3 w-3" />
+      </button>
+      {playing && <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />}
+      {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );
 }

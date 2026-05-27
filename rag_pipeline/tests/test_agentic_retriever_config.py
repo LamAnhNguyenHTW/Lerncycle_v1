@@ -9,6 +9,17 @@ def _base_env(monkeypatch) -> None:
     monkeypatch.setattr("rag_pipeline.config._load_dotenv", lambda: None)
     monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    # Clean up inherited env vars to avoid test pollution
+    for key in [
+        "AGENTIC_RETRIEVER_ENABLED",
+        "AGENTIC_RETRIEVER_MODE",
+        "AGENTIC_RETRIEVER_QUALITY_ASSESSMENT_MODE",
+        "AGENTIC_RETRIEVER_REFINEMENT_MODE",
+        "AGENTIC_RETRIEVER_MAX_REFINEMENT_ROUNDS",
+        "AGENTIC_RETRIEVER_MAX_TOOL_CALLS",
+        "AGENTIC_RETRIEVER_MIN_AVG_SCORE",
+    ]:
+        monkeypatch.delenv(key, raising=False)
 
 
 def test_agentic_retriever_config_defaults(monkeypatch) -> None:

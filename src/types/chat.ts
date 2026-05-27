@@ -62,6 +62,11 @@ export interface ChatRequest {
   recent_messages?: RecentChatMessage[];
   enableWebSearch?: boolean;
   stream?: boolean;
+  input_metadata?: {
+    input_type?: 'voice';
+    transcription_model?: string;
+    recording_seconds?: number;
+  };
 }
 
 export interface ChatSource {
@@ -150,6 +155,11 @@ export interface StoredChatMessage {
   sources: ChatSource[];
   pdf_ids: string[];
   created_at: string;
+  input_metadata?: {
+    input_type?: 'voice';
+    transcription_model?: string;
+    recording_seconds?: number;
+  } | null;
 }
 
 export interface StoredChatSession {
