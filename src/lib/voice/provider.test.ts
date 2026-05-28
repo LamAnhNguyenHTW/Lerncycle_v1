@@ -1,4 +1,5 @@
 import type {RealtimeSessionConfig, VoiceProvider} from './provider';
+import {GeminiVoiceProvider} from './gemini';
 
 export function assertVoiceProviderContractAcceptsCoreMethods() {
   const provider: VoiceProvider = {
@@ -28,9 +29,21 @@ export function assertRealtimeSessionConfigShape() {
     clientSecret: 'ephemeral',
     expiresAt: '2026-05-25T12:00:00.000Z',
     model: 'realtime-model',
+    tools: [],
   };
 
-  if (!config.clientSecret || !config.expiresAt || !config.model) {
-    throw new Error('RealtimeSessionConfig must carry clientSecret, expiresAt, and model.');
+  if (!config.clientSecret || !config.expiresAt || !config.model || !Array.isArray(config.tools)) {
+    throw new Error('RealtimeSessionConfig must carry clientSecret, expiresAt, model, and tools.');
+  }
+}
+
+export function assertGeminiVoiceProviderSatisfiesInterfaceAsStub() {
+  const provider: VoiceProvider = new GeminiVoiceProvider();
+  if (
+    typeof provider.transcribe !== 'function' ||
+    typeof provider.synthesize !== 'function' ||
+    typeof provider.createRealtimeSession !== 'function'
+  ) {
+    throw new Error('GeminiVoiceProvider must satisfy VoiceProvider as a stub.');
   }
 }

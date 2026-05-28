@@ -19,6 +19,11 @@ const AVATARS = [
   'ni-avatar-female-1',
   'ni-avatar-female-5',
 ];
+const VOICE_AUTO_SEND_STORAGE_KEY = 'learncycle-voice-auto-send';
+const VOICE_AUTO_READ_STORAGE_KEY = 'learncycle-voice-auto-read';
+const VOICE_DEFAULT_VOICE_STORAGE_KEY = 'learncycle-voice-default-voice';
+const VOICE_MUTED_STORAGE_KEY = 'learncycle-voice-muted';
+const VOICE_OPTIONS = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer'];
 
 export function ProfileView({ profile }: { profile: Profile }) {
   const router = useRouter();
@@ -40,6 +45,25 @@ export function ProfileView({ profile }: { profile: Profile }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [autoSendVoice, setAutoSendVoice] = useState(() =>
+    typeof window !== 'undefined' && window.localStorage.getItem(VOICE_AUTO_SEND_STORAGE_KEY) === 'true',
+  );
+  const [autoReadAloud, setAutoReadAloud] = useState(() =>
+    typeof window !== 'undefined' && window.localStorage.getItem(VOICE_AUTO_READ_STORAGE_KEY) === 'true',
+  );
+  const [voiceMuted, setVoiceMuted] = useState(() =>
+    typeof window !== 'undefined' && window.localStorage.getItem(VOICE_MUTED_STORAGE_KEY) === 'true',
+  );
+  const [defaultVoice, setDefaultVoice] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.localStorage.getItem(VOICE_DEFAULT_VOICE_STORAGE_KEY) || 'alloy'
+      : 'alloy',
+  );
+
+  const persistVoicePreference = (key: string, value: string) => {
+    window.localStorage.setItem(key, value);
+    window.dispatchEvent(new Event('learncycle:voice-preferences-changed'));
+  };
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -224,6 +248,80 @@ export function ProfileView({ profile }: { profile: Profile }) {
                 className="w-full rounded-xl border border-border px-4 py-3 text-base outline-none focus:border-foreground transition-all bg-muted/40"
                 required
               />
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <h2 className="text-xl font-semibold border-b border-border pb-3">Voice</h2>
+            <div className="space-y-4">
+              <label className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-medium text-foreground">Auto-send transcriptions</span>
+                  <span className="block text-xs text-muted-foreground">Send voice text immediately after transcription.</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={autoSendVoice}
+                  onChange={(event) => {
+                    setAutoSendVoice(event.target.checked);
+                    persistVoicePreference(VOICE_AUTO_SEND_STORAGE_KEY, event.target.checked ? 'true' : 'false');
+                  }}
+                  className="h-4 w-4"
+                />
+              </label>
+
+              <label className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-medium text-foreground">Read answers aloud</span>
+                  <span className="block text-xs text-muted-foreground">Show playback controls for all assistant answers and autoplay new text replies.</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={autoReadAloud}
+                  onChange={(event) => {
+                    setAutoReadAloud(event.target.checked);
+                    persistVoicePreference(VOICE_AUTO_READ_STORAGE_KEY, event.target.checked ? 'true' : 'false');
+                  }}
+                  className="h-4 w-4"
+                />
+              </label>
+
+              <label className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-4 py-3">
+                <span>
+                  <span className="block text-sm font-medium text-foreground">Mute this browser</span>
+                  <span className="block text-xs text-muted-foreground">Keep voice playback muted until you turn it back on.</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={voiceMuted}
+                  onChange={(event) => {
+                    setVoiceMuted(event.target.checked);
+                    persistVoicePreference(VOICE_MUTED_STORAGE_KEY, event.target.checked ? 'true' : 'false');
+                  }}
+                  className="h-4 w-4"
+                />
+              </label>
+
+              <div className="space-y-2">
+                <label htmlFor="default_voice" className="text-sm font-medium text-muted-foreground">
+                  Default voice
+                </label>
+                <select
+                  id="default_voice"
+                  value={defaultVoice}
+                  onChange={(event) => {
+                    setDefaultVoice(event.target.value);
+                    persistVoicePreference(VOICE_DEFAULT_VOICE_STORAGE_KEY, event.target.value);
+                  }}
+                  className="w-full rounded-xl border border-border bg-muted/40 px-4 py-3 text-base capitalize outline-none transition-all focus:border-foreground"
+                >
+                  {VOICE_OPTIONS.map((voice) => (
+                    <option key={voice} value={voice}>
+                      {voice}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </section>
 

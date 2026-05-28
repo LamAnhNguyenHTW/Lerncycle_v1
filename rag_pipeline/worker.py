@@ -16,6 +16,8 @@ from typing import Any
 from uuid import uuid4
 
 from rag_pipeline.config import WorkerConfig
+from rag_pipeline.document_primer import build_document_primer
+from rag_pipeline.document_primer import primer_to_row
 from rag_pipeline.docling_ingestion import process_pdf
 from rag_pipeline.embeddings import Embedder
 from rag_pipeline.graph_extractor import GraphExtractionError
@@ -33,6 +35,7 @@ from rag_pipeline.learning_structure.topic_dedup import dedupe_topics, reattach_
 from rag_pipeline.learning_structure.topic_filter import filter_candidates
 from rag_pipeline.learning_structure.topic_validator import validate_tree
 from rag_pipeline.learning_structure.validator import validate_extraction
+from rag_pipeline.llm_client import OpenAILlmClient
 from rag_pipeline.models import RagChunk, SourceRef
 from rag_pipeline.qdrant_store import QdrantStore
 from rag_pipeline.refinement import SemanticRefiner
@@ -290,6 +293,7 @@ class RagWorker:
             )
 
         self._replace_source_chunks(document_id, source, chunks, job_id=str(job["id"]))
+        self._upsert_document_primer(chunks)
         self._upsert_document(
             source,
             status="completed",
@@ -302,6 +306,26 @@ class RagWorker:
         self._mark_job_completed(str(job["id"]))
         self._maybe_enqueue_graph_job(source)
         self._maybe_enqueue_learning_graph_job(source)
+
+    def _upsert_document_primer(self, chunks: list[RagChunk]) -> None:
+        if not chunks or chunks[0].source.source_type != "pdf":
+            return
+        llm_client = None
+        openai_api_key = getattr(self._config, "openai_api_key", None)
+        if openai_api_key:
+            llm_client = OpenAILlmClient(
+                api_key=openai_api_key,
+                model=getattr(self._config, "document_primer_model", "gpt-4o-mini"),
+            )
+        primer = build_document_primer(chunks, llm_client=llm_client)
+        row = {
+            **primer_to_row(primer, chunks),
+            "updated_at": _utc_now(),
+        }
+        self._supabase.table("rag_document_primers").upsert(
+            row,
+            on_conflict="user_id,source_type,source_id",
+        ).execute()
 
     def _process_note_job(self, job: dict[str, Any]) -> None:
         note_id = str(job.get("note_id") or job["source_id"])

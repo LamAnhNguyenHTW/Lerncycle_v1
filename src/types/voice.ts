@@ -8,6 +8,8 @@ export type VoiceSessionState =
   | 'transcribing'
   | 'thinking'
   | 'speaking'
+  | 'connecting'
+  | 'live'
   | 'error';
 
 export type TranscriptionResult = {
@@ -44,6 +46,8 @@ export type VoiceServerConfig = PublicVoiceConfig & {
   provider: VoiceProviderName;
   sttModel: string;
   ttsModel: string;
+  realtimeModel: string;
+  realtimePrimerMaxChars: number;
   dailyMinutesPerUser: number;
   dailyTtsResponsesPerUser: number;
   openaiApiKey?: string;

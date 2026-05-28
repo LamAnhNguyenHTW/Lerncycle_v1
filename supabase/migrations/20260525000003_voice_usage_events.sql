@@ -15,6 +15,7 @@ create table if not exists public.voice_usage_events (
 );
 
 alter table public.voice_usage_events enable row level security;
+alter table public.voice_usage_events force row level security;
 
 create index if not exists voice_usage_events_user_created_at_idx
   on public.voice_usage_events(user_id, created_at desc);
@@ -26,4 +27,5 @@ create policy "Users can read their own voice usage"
   to authenticated
   using (auth.uid() = user_id);
 
-revoke insert, update, delete on public.voice_usage_events from anon, authenticated;
+revoke all on public.voice_usage_events from anon, authenticated;
+grant select on public.voice_usage_events to authenticated;

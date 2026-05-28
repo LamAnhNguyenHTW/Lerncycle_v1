@@ -47,7 +47,9 @@ export function MindmapTab({pdfOptions}: Props) {
         const response = await fetch(`/api/learning-graph/${selectedPdfId}/tree`);
         if (cancelled) return;
         if (response.status === 404) {
-          setError('empty');
+          const data = (await response.json().catch(() => null)) as {status?: string} | null;
+          if (cancelled) return;
+          setError(data?.status === 'processing' ? 'processing' : 'empty');
           setLoading(false);
           return;
         }
@@ -118,6 +120,16 @@ export function MindmapTab({pdfOptions}: Props) {
           </div>
         )}
 
+        {error === 'processing' && (
+          <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-8 text-center text-sm text-muted-foreground space-y-3">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+            </div>
+            <p className="font-medium text-foreground text-base">{t('revision.mindmap.processing')}</p>
+            <p className="max-w-md mx-auto">{t('revision.mindmap.processingHint')}</p>
+          </div>
+        )}
+
         {error === 'empty' && (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground space-y-3">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
@@ -127,8 +139,8 @@ export function MindmapTab({pdfOptions}: Props) {
             <p className="max-w-md mx-auto">{t('revision.mindmap.generatingHint')}</p>
           </div>
         )}
-        
-        {error && error !== 'empty' && (
+
+        {error && error !== 'empty' && error !== 'processing' && (
           <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
             {error}
           </div>

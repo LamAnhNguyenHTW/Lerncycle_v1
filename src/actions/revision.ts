@@ -1,7 +1,9 @@
 'use server';
 
 import {assertBetaNotFrozen} from '@/lib/beta-guard';
+import {assertUsageQuota, recordUsage, type UsageClient} from '@/lib/limits/guard';
 import {createClient} from '@/lib/supabase/server';
+import {createServiceClient} from '@/lib/supabase/service';
 import {applySm2} from '@/lib/sm2';
 import type {
   Flashcard,
@@ -17,6 +19,27 @@ import type {
 } from '@/types/revision';
 
 const FLASHCARD_GENERATION_TIMEOUT_MS = 90_000;
+
+async function assertRevisionGenerationQuota(userId: string) {
+  const usageClient = createServiceClient() as unknown as UsageClient;
+  await assertUsageQuota({
+    supabase: usageClient,
+    userId,
+    feature: 'revision_generation',
+    requested: 1,
+  });
+  return usageClient;
+}
+
+async function recordRevisionGeneration(usageClient: UsageClient, userId: string) {
+  await recordUsage({
+    supabase: usageClient,
+    userId,
+    feature: 'revision_generation',
+    quantity: 1,
+    model: 'revision-generation',
+  });
+}
 
 type DeckRow = {
   id: string;
@@ -233,10 +256,12 @@ export async function createFlashcardDeck(input: {
   const isManualDeck = input.pdfIds.length === 0;
   const count = Math.max(1, Math.min(Math.floor(input.count || 0), 30));
   const language: RevisionLanguage = input.language === 'en' ? 'en' : 'de';
+  let usageClient: UsageClient | null = null;
 
   if (!isManualDeck) {
     try {
       assertBetaNotFrozen();
+      usageClient = await assertRevisionGenerationQuota(user.id);
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : 'Could not create deck.',
@@ -326,6 +351,9 @@ export async function createFlashcardDeck(input: {
 
   if (updateError || !updated) {
     return {error: updateError?.message ?? 'Could not finalise deck.'};
+  }
+  if (usageClient) {
+    await recordRevisionGeneration(usageClient, user.id);
   }
   return {data: deckFromRow(updated)};
 }
@@ -497,9 +525,11 @@ export async function createMockTest(input: {
   }
   const count = Math.max(1, Math.min(Math.floor(input.count || 0), 20));
   const language: RevisionLanguage = input.language === 'en' ? 'en' : 'de';
+  let usageClient: UsageClient;
 
   try {
     assertBetaNotFrozen();
+    usageClient = await assertRevisionGenerationQuota(user.id);
   } catch (error) {
     return {error: error instanceof Error ? error.message : 'Could not create test.'};
   }
@@ -579,6 +609,7 @@ export async function createMockTest(input: {
   if (updateError || !updated) {
     return {error: updateError?.message ?? 'Could not finalise test.'};
   }
+  await recordRevisionGeneration(usageClient, user.id);
   return {data: mockTestFromRow(updated)};
 }
 

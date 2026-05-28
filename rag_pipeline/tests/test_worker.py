@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import pytest
+import shutil
 import threading
+import time
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -30,6 +33,7 @@ class RecordingWorker(RagWorker):
         self.replaced_chunks: dict[tuple[str, str, str], list[Any]] = {}
         self.failed_jobs: list[tuple[str, str]] = []
         self.stage_writes: list[tuple[str, str, str | None]] = []
+        self.primers: list[dict[str, Any]] = []
 
     def _fetch_note_row(self, note_id: str, user_id: str) -> dict[str, Any]:
         return {
@@ -89,6 +93,9 @@ class RecordingWorker(RagWorker):
     def _mark_job_failed(self, job: dict[str, Any] | str, error_message: str) -> None:
         job_id = str(job["id"] if isinstance(job, dict) else job)
         self.failed_jobs.append((job_id, error_message))
+
+    def _upsert_document_primer(self, chunks) -> None:
+        self.primers.append({"chunk_count": len(chunks)})
 
 
 class FakeGraphExtractor:
@@ -296,6 +303,41 @@ class FakeQdrantStore:
 class FakeResponse:
     def __init__(self, data: Any = None) -> None:
         self.data = data
+
+
+class FakePdfStorageBucket:
+    def download(self, _path: str) -> bytes:
+        return b"%PDF-1.4"
+
+
+class FakePdfStorage:
+    def from_(self, _bucket: str) -> FakePdfStorageBucket:
+        return FakePdfStorageBucket()
+
+
+class FakePdfSupabase:
+    def __init__(self) -> None:
+        self.storage = FakePdfStorage()
+
+
+class StaticTempDirectory:
+    def __init__(self, **_kwargs) -> None:
+        self.path = Path("tmp-primer-worker-test")
+
+    def __enter__(self) -> str:
+        self.path.mkdir(parents=True, exist_ok=True)
+        return str(self.path)
+
+    def __exit__(self, *_args) -> None:
+        for _ in range(5):
+            try:
+                shutil.rmtree(self.path)
+                break
+            except FileNotFoundError:
+                break
+            except PermissionError:
+                time.sleep(0.05)
+        return None
 
 
 class FakeRpc:
@@ -810,6 +852,51 @@ def test_worker_processes_annotation_comment_job() -> None:
     assert chunks[0].page_index == 2
     assert "Highlighted quote" in chunks[0].content
     assert "User comment" in chunks[0].content
+
+
+def test_worker_generates_document_primer_after_successful_pdf_index(monkeypatch) -> None:
+    worker = RecordingWorker()
+    worker._supabase = FakePdfSupabase()
+    chunk = RagChunk(
+        source=SourceRef(user_id="user-1", source_type="pdf", source_id="pdf-1", pdf_id="pdf-1"),
+        content="Process Mining event logs",
+        content_hash="hash-1",
+        page_index=0,
+        heading_path=["Process Mining"],
+        metadata={"filename": "process.pdf"},
+    )
+
+    def fake_process_pdf(**_kwargs):
+        return [chunk], "docling-test", {"coverage": "ok"}
+
+    monkeypatch.setattr(worker_module, "process_pdf", fake_process_pdf)
+    monkeypatch.setattr(worker_module.Path, "write_bytes", lambda _path, data: len(data))
+    monkeypatch.setattr(
+        worker_module.tempfile,
+        "TemporaryDirectory",
+        StaticTempDirectory,
+    )
+    worker._fetch_pdf_row = lambda _pdf_id: {
+        "id": "pdf-1",
+        "user_id": "user-1",
+        "name": "process.pdf",
+        "storage_path": "user-1/process.pdf",
+    }
+    worker._maybe_enqueue_graph_job = lambda _source: None
+    worker._maybe_enqueue_learning_graph_job = lambda _source: None
+
+    worker._process_pdf_job(
+        {
+            "id": "job-1",
+            "user_id": "user-1",
+            "source_type": "pdf",
+            "source_id": "pdf-1",
+            "pdf_id": "pdf-1",
+        }
+    )
+
+    assert worker.primers == [{"chunk_count": 1}]
+    assert worker.completed_jobs == ["job-1"]
 
 
 def test_note_reindex_replaces_chunks_without_duplication() -> None:

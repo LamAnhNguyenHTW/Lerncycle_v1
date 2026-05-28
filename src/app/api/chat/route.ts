@@ -4,7 +4,9 @@ import {
   assertUserChatMessagesUnderDailyLimit,
   BetaGuardError,
 } from '@/lib/beta-guard';
+import {assertUsageQuota, recordUsage, UsageQuotaError, type UsageClient, type UsageFeature} from '@/lib/limits/guard';
 import {createClient} from '@/lib/supabase/server';
+import {createServiceClient} from '@/lib/supabase/service';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import type {ActiveLearningControl, ActiveLearningState, ChatMode, ChatRequest, ChatResponse, ChatRole, ChatSourceType, RecentChatMessage} from '@/types/chat';
 
@@ -793,6 +795,22 @@ async function persistAssistantMessageOnce({
   });
 }
 
+async function recordChatUsageEvent(
+  usageClient: UsageClient,
+  userId: string,
+  feature: UsageFeature,
+  sessionId: string,
+) {
+  await recordUsage({
+    supabase: usageClient,
+    userId,
+    feature,
+    quantity: 1,
+    model: 'rag-chat',
+    sessionId,
+  });
+}
+
 async function fetchNonStreamingRagAnswer({
   ragApiUrl,
   internalApiKey,
@@ -830,6 +848,8 @@ async function streamRagAnswer({
   userId,
   userMessageId,
   pdfIds,
+  usageClient,
+  usageFeature,
 }: {
   request: Request;
   supabase: SupabaseClient;
@@ -840,6 +860,8 @@ async function streamRagAnswer({
   userId: string;
   userMessageId: string;
   pdfIds: string[];
+  usageClient: UsageClient;
+  usageFeature: UsageFeature;
 }) {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
@@ -878,6 +900,7 @@ async function streamRagAnswer({
       sources: fallback.sources ?? [],
       pdfIds,
     });
+    await recordChatUsageEvent(usageClient, userId, usageFeature, sessionId);
     return NextResponse.json({
       session_id: sessionId,
       answer: fallback.answer,
@@ -947,6 +970,7 @@ async function streamRagAnswer({
                 sources,
                 pdfIds,
               });
+              await recordChatUsageEvent(usageClient, userId, usageFeature, sessionId);
             } else if (event.event_type === 'error') {
               await persistAssistantMessageOnce({
                 supabase,
@@ -1068,6 +1092,22 @@ export async function POST(request: Request) {
     const sessionId = session.id;
     const promptContext = await loadSessionPromptContext(supabase, sessionId, user.id);
     const sessionMode: ChatMode = session.mode ?? promptContext.mode;
+    const usageClient = createServiceClient() as unknown as UsageClient;
+    const usageFeature: UsageFeature = sessionMode === 'normal' ? 'chat' : 'active_learning';
+    try {
+      await assertUsageQuota({
+        supabase: usageClient,
+        userId: user.id,
+        feature: usageFeature,
+        requested: 1,
+      });
+    } catch (error) {
+      if (error instanceof UsageQuotaError) {
+        return errorResponse(error.message, error.status);
+      }
+      console.error('Beta cost chat guard failed.', error);
+      return errorResponse('Chat guardrail check failed.', 500);
+    }
     const activeLearningState = Object.keys(session.activeLearningState).length > 0
       ? session.activeLearningState
       : promptContext.activeLearningState;
@@ -1159,6 +1199,8 @@ export async function POST(request: Request) {
         userId: user.id,
         userMessageId: String(userMessage?.id ?? crypto.randomUUID()),
         pdfIds,
+        usageClient,
+        usageFeature,
       });
     }
 
@@ -1212,6 +1254,7 @@ export async function POST(request: Request) {
       .update({updated_at: new Date().toISOString()})
       .eq('id', sessionId)
       .eq('user_id', user.id);
+    await recordChatUsageEvent(usageClient, user.id, usageFeature, sessionId);
     void triggerChatMemorySummary({
       supabase,
       sessionId,

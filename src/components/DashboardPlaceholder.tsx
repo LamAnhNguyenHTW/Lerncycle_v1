@@ -6,16 +6,24 @@ import {NotionIcon} from './NotionIcon';
 import {useLanguage} from '@/lib/i18n';
 import type {BetaLimits} from '@/lib/beta-limits';
 
+export type DashboardVoiceLimits = {
+  realtimeMonthlyMinutes: number;
+  sttDailyMinutes: number;
+  ttsDailyResponses: number;
+};
+
 export function DashboardPlaceholder({
   courseId,
   courseName,
   displayName,
   betaLimits,
+  voiceLimits,
 }: {
   courseId: string;
   courseName: string;
   displayName: string;
   betaLimits: BetaLimits;
+  voiceLimits?: DashboardVoiceLimits;
 }) {
   const [showCourseUpload, setShowCourseUpload] = useState(false);
   const {t} = useLanguage();
@@ -31,7 +39,7 @@ export function DashboardPlaceholder({
         </p>
       </div>
 
-      <BetaLimitsNotice limits={betaLimits} />
+      <BetaLimitsNotice limits={betaLimits} voiceLimits={voiceLimits} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 w-full max-w-3xl mb-8">
         <button 
@@ -66,13 +74,20 @@ export function DashboardPlaceholder({
   );
 }
 
-function BetaLimitsNotice({limits}: {limits: BetaLimits}) {
+function BetaLimitsNotice({limits, voiceLimits}: {limits: BetaLimits; voiceLimits?: DashboardVoiceLimits}) {
   const {t} = useLanguage();
   const items = [
     t('beta.limitPdfSize', {value: String(limits.maxPdfMegabytes)}),
     t('beta.limitPdfCount', {value: String(limits.maxPdfsPerUser)}),
     t('beta.limitChat', {value: String(limits.maxChatMessagesPerDay)}),
     t('beta.limitIndexing', {value: String(limits.maxRagJobsPerDay)}),
+    ...(voiceLimits
+      ? [
+          t('beta.limitVoiceRealtime', {value: String(voiceLimits.realtimeMonthlyMinutes)}),
+          t('beta.limitVoiceInput', {value: String(voiceLimits.sttDailyMinutes)}),
+          t('beta.limitVoicePlayback', {value: String(voiceLimits.ttsDailyResponses)}),
+        ]
+      : []),
   ];
 
   return (

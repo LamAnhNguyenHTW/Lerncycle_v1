@@ -6,11 +6,13 @@ import type {PublicVoiceConfig, VoiceProviderName, VoiceServerConfig} from '@/ty
 const DEFAULT_PROVIDER: VoiceProviderName = 'openai';
 const DEFAULT_STT_MODEL = 'gpt-4o-mini-transcribe';
 const DEFAULT_TTS_MODEL = 'gpt-4o-mini-tts';
+const DEFAULT_REALTIME_MODEL = 'gpt-realtime-2';
 const DEFAULT_MAX_RECORDING_SECONDS = 60;
 const DEFAULT_MAX_UPLOAD_BYTES = 5_242_880;
 const DEFAULT_DAILY_MINUTES_PER_USER = 10;
 const DEFAULT_DAILY_TTS_RESPONSES_PER_USER = 20;
 const DEFAULT_TTS_MAX_CHARS = 1000;
+const DEFAULT_REALTIME_PRIMER_MAX_CHARS = 4000;
 const MVP_ENABLED_MODES: ChatMode[] = ['feynman'];
 
 type VoiceEnv = Record<string, string | undefined>;
@@ -32,6 +34,11 @@ export function getVoiceServerConfig(env: VoiceEnv = process.env): VoiceServerCo
     provider: parseProvider(env.VOICE_PROVIDER),
     sttModel: nonEmpty(env.VOICE_STT_MODEL, DEFAULT_STT_MODEL),
     ttsModel: nonEmpty(env.VOICE_TTS_MODEL, DEFAULT_TTS_MODEL),
+    realtimeModel: nonEmpty(env.VOICE_REALTIME_MODEL, DEFAULT_REALTIME_MODEL),
+    realtimePrimerMaxChars: parsePositiveInt(
+      env.REALTIME_PRIMER_MAX_CHARS,
+      DEFAULT_REALTIME_PRIMER_MAX_CHARS,
+    ),
     maxRecordingSeconds: parsePositiveInt(env.VOICE_MAX_RECORDING_SECONDS, DEFAULT_MAX_RECORDING_SECONDS),
     maxUploadBytes: parsePositiveInt(env.VOICE_MAX_UPLOAD_BYTES, DEFAULT_MAX_UPLOAD_BYTES),
     dailyMinutesPerUser: parsePositiveInt(env.VOICE_DAILY_MINUTES_PER_USER, DEFAULT_DAILY_MINUTES_PER_USER),

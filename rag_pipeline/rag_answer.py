@@ -28,6 +28,7 @@ from rag_pipeline.pedagogical_prompts import FEYNMAN_RESULT_SYSTEM_PROMPT
 from rag_pipeline.pedagogical_prompts import FEYNMAN_SYSTEM_PROMPT
 from rag_pipeline.pedagogical_prompts import GUIDED_LEARNING_SYSTEM_PROMPT
 from rag_pipeline.pedagogical_prompts import extract_al_state_update
+from rag_pipeline.query_understanding import LEARNING_QUESTION_TYPE_VALUES
 from rag_pipeline.query_understanding import QueryRoute, QueryUnderstanding, understand_query
 from rag_pipeline.reranker_cache import default_reranker_cache
 from rag_pipeline.reranker_cache import make_reranker_cache_key
@@ -97,6 +98,11 @@ SOURCE_SELECTION_STOPWORDS = {
     "aber", "about", "also", "and", "auf", "aus", "bei", "das", "der", "die",
     "dies", "ein", "eine", "einer", "eines", "for", "from", "ist", "mit",
     "nicht", "oder", "sich", "the", "und", "von", "was", "werden", "wie", "with",
+}
+GENERAL_KNOWLEDGE_FALLBACK_QUESTION_TYPES = LEARNING_QUESTION_TYPE_VALUES - {
+    "document_grounded",
+    "note_grounded",
+    "conversation_memory",
 }
 
 FALLBACK_ANSWER = (
@@ -933,13 +939,20 @@ def answer_with_rag(
             )
         
         synthetic_sources = []
+        general_knowledge_fallback = _should_use_general_knowledge_fallback(
+            query_understanding,
+            chat_mode=chat_mode,
+        )
         if answer.strip().startswith("[NO_INFO]"):
             answer = answer.replace("[NO_INFO]", "", 1).strip()
         else:
             if answer.strip().startswith("[GENERAL_KNOWLEDGE]"):
                 answer = answer.replace("[GENERAL_KNOWLEDGE]", "", 1).strip()
             
-            if query_understanding and getattr(query_understanding, "route", None) == QueryRoute.GENERAL_KNOWLEDGE and getattr(query_understanding, "should_show_sources", False):
+            if (
+                (query_understanding and getattr(query_understanding, "route", None) == QueryRoute.GENERAL_KNOWLEDGE and getattr(query_understanding, "should_show_sources", False))
+                or general_knowledge_fallback
+            ):
                 from rag_pipeline.query_understanding import synthetic_general_knowledge_source
                 synthetic_sources.append(synthetic_general_knowledge_source())
 
@@ -1297,9 +1310,27 @@ def _should_answer_without_retrieval(
             QueryRoute.CLARIFICATION,
         }:
             return True
+        if _should_use_general_knowledge_fallback(understanding, chat_mode=chat_mode):
+            return True
         if understanding.route == QueryRoute.WEB_SEARCH and not web_allowed:
             return True
     return bool(conversation_only_followup and recent_messages and retrieval_query == query)
+
+
+def _should_use_general_knowledge_fallback(
+    understanding: QueryUnderstanding | None,
+    *,
+    chat_mode: str = "normal",
+) -> bool:
+    if understanding is None:
+        return False
+    if _is_active_learning_mode(chat_mode):
+        return understanding.route == QueryRoute.INTERNAL_RETRIEVAL
+    question_type = getattr(understanding.question_type, "value", str(understanding.question_type))
+    return (
+        understanding.route == QueryRoute.INTERNAL_RETRIEVAL
+        and question_type in GENERAL_KNOWLEDGE_FALLBACK_QUESTION_TYPES
+    )
 
 
 def _no_retrieval_prompt(
@@ -1326,6 +1357,10 @@ def _no_retrieval_prompt(
     if query_understanding is not None:
         parts.append(f"Route: {query_understanding.route.value}.")
         parts.append(f"Resolved query: {query_understanding.resolved_query}")
+        if _should_use_general_knowledge_fallback(query_understanding, chat_mode=chat_mode):
+            parts.append(
+                "No matching uploaded-material context was found. If you can still answer this learning question from general knowledge, start with [GENERAL_KNOWLEDGE] and answer transparently without document citations."
+            )
         if query_understanding.needs_web and not web_allowed:
             parts.append(
                 "Web search is not enabled for this request. Give a cautious general answer or say that current sourced values require enabling web search."

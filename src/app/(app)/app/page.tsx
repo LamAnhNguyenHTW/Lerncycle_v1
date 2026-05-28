@@ -11,7 +11,8 @@ import {StudyInterface} from '@/components/study/StudyInterface';
 import {ChatInterface} from '@/components/learn/ChatInterface';
 import {ActiveLearningSection} from '@/components/active-learning/ActiveLearningSection';
 import {RevisionSection} from '@/components/revision/RevisionSection';
-import {getVoiceConfig} from '@/lib/voice/config';
+import {getVoiceConfig, getVoiceServerConfig} from '@/lib/voice/config';
+import {getUsageLimitsConfig} from '@/lib/limits/config';
 
 interface Props {
   searchParams: Promise<{courseId?: string; tab?: string; pdfId?: string; sessionId?: string}>;
@@ -23,6 +24,13 @@ export default async function Page({searchParams}: Props) {
   const profile = await getProfile();
   const betaLimits = getBetaLimits();
   const voiceConfig = getVoiceConfig();
+  const voiceLimits = voiceConfig.enabled
+    ? {
+        realtimeMonthlyMinutes: getUsageLimitsConfig().features.realtime_voice.perUser.quantity,
+        sttDailyMinutes: getVoiceServerConfig().dailyMinutesPerUser,
+        ttsDailyResponses: getVoiceServerConfig().dailyTtsResponsesPerUser,
+      }
+    : undefined;
 
   const activeCourse = courseId
     ? courses.find(c => c.id === courseId) || courses[0]
@@ -56,6 +64,7 @@ export default async function Page({searchParams}: Props) {
                   courseName={activeCourse.name}
                   displayName={profile?.display_name ?? 'there'}
                   betaLimits={betaLimits}
+                  voiceLimits={voiceLimits}
                 />
                 <FolderList course={activeCourse} />
               </div>

@@ -1,11 +1,12 @@
 import 'server-only';
 
+import {assertUsageQuota, recordUsage, type UsageClient} from '@/lib/limits/guard';
 import type {VoiceProviderName} from '@/types/voice';
 import type {VoiceServerConfig} from '@/types/voice';
 
 export type VoiceQuotaKind = 'stt' | 'tts';
 
-type VoiceUsageRow = {
+export type VoiceUsageRow = {
   input_seconds: number | null;
   output_chars: number | null;
 };
@@ -30,7 +31,7 @@ type VoiceUsageTable = {
   insert: (payload: Record<string, unknown>) => VoiceUsageInsertResult;
 };
 
-export type VoiceUsageClient = {
+export type VoiceUsageClient = UsageClient & {
   from: (table: string) => VoiceUsageTable;
 };
 
@@ -63,21 +64,31 @@ export async function assertVoiceQuota(
   kind: VoiceQuotaKind,
   config: VoiceServerConfig,
 ): Promise<void> {
-  const {data, error} = await supabase
-    .from('voice_usage_events')
-    .select('input_seconds, output_chars')
-    .eq('user_id', userId)
-    .gte('created_at', sinceLast24Hours());
-
-  if (error) {
-    throw new Error('Failed to load voice usage.');
-  }
-
-  const totals = calculateVoiceUsageTotals(data ?? []);
-  if (kind === 'stt' && totals.inputSeconds >= config.dailyMinutesPerUser * 60) {
-    throw new VoiceQuotaError(kind);
-  }
-  if (kind === 'tts' && totals.ttsResponses >= config.dailyTtsResponsesPerUser) {
+  try {
+    await assertUsageQuota({
+      supabase,
+      userId,
+      feature: kind === 'stt' ? 'voice_stt' : 'voice_tts',
+      requested: kind === 'stt' ? 1 / 60 : 1,
+      config: {
+        lockdown: false,
+        features: {
+          voice_stt: {
+            unit: 'minutes',
+            estimatedUnitCostUsd: 0.003,
+            perUser: {quantity: config.dailyMinutesPerUser, window: 'day'},
+            globalMonthly: {quantity: 600},
+          },
+          voice_tts: {
+            unit: 'responses',
+            estimatedUnitCostUsd: 0.015,
+            perUser: {quantity: config.dailyTtsResponsesPerUser, window: 'day'},
+            globalMonthly: {quantity: 400},
+          },
+        },
+      },
+    });
+  } catch {
     throw new VoiceQuotaError(kind);
   }
 }
@@ -86,17 +97,27 @@ export async function recordVoiceUsage(
   supabase: VoiceUsageClient,
   usage: VoiceUsageInsert,
 ): Promise<void> {
-  const {error} = await supabase.from('voice_usage_events').insert({
-    user_id: usage.userId,
-    session_id: usage.sessionId ?? null,
-    input_seconds: Math.max(0, Math.ceil(usage.inputSeconds ?? 0)),
-    output_chars: Math.max(0, Math.ceil(usage.outputChars ?? 0)),
-    provider: usage.provider,
-    stt_model: usage.sttModel ?? null,
-    tts_model: usage.ttsModel ?? null,
-  });
-  if (error) {
-    throw new Error('Failed to write voice usage.');
+  const inputSeconds = Math.max(0, Math.ceil(usage.inputSeconds ?? 0));
+  const outputChars = Math.max(0, Math.ceil(usage.outputChars ?? 0));
+  if (inputSeconds > 0) {
+    await recordUsage({
+      supabase,
+      userId: usage.userId,
+      feature: 'voice_stt',
+      quantity: inputSeconds / 60,
+      model: usage.sttModel ?? null,
+      sessionId: usage.sessionId ?? null,
+    });
+  }
+  if (outputChars > 0) {
+    await recordUsage({
+      supabase,
+      userId: usage.userId,
+      feature: 'voice_tts',
+      quantity: 1,
+      model: usage.ttsModel ?? null,
+      sessionId: usage.sessionId ?? null,
+    });
   }
 }
 
@@ -148,8 +169,4 @@ export function estimateInputSecondsFromAudio(audioBytes: number, maxRecordingSe
     return 0;
   }
   return Math.min(Math.max(1, Math.ceil(audioBytes / NOMINAL_AUDIO_BYTES_PER_SECOND)), maxRecordingSeconds);
-}
-
-function sinceLast24Hours(): string {
-  return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 }

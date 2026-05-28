@@ -106,3 +106,19 @@ def test_query_understanding_prompt_includes_routing_guidance() -> None:
 
     assert "conversation_only" in prompt
     assert "web_search" in prompt
+
+
+def test_query_understanding_prompt_resolves_affirmative_followups() -> None:
+    prompt = build_query_understanding_prompt(
+        "Ja bitte",
+        recent_messages=[
+            {
+                "role": "assistant",
+                "content": "Möchtest du mehr über Nord-Süd- und Ost-West-Verkehr erfahren?",
+            }
+        ],
+    )
+
+    assert "Resolve follow-ups" in prompt
+    assert "Ja bitte" in prompt
+    assert "Nord-Süd- und Ost-West-Verkehr" in prompt

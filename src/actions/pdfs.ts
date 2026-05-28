@@ -7,7 +7,9 @@ import {
   assertUserRagJobsUnderDailyLimit,
   BetaGuardError,
 } from '@/lib/beta-guard';
+import {assertUsageQuota, recordUsage, UsageQuotaError, type UsageClient} from '@/lib/limits/guard';
 import {createClient} from '@/lib/supabase/server';
+import {createServiceClient} from '@/lib/supabase/service';
 import {revalidatePath} from 'next/cache';
 
 const BUCKET = 'pdfs';
@@ -36,6 +38,13 @@ export async function uploadPdf(
     assertPdfWithinLimits(file);
     await assertUserPdfCountBelowLimit(supabase, user.id);
     await assertUserRagJobsUnderDailyLimit(supabase, user.id);
+    const usageClient = createServiceClient() as unknown as UsageClient;
+    await assertUsageQuota({
+      supabase: usageClient,
+      userId: user.id,
+      feature: 'embeddings_upload',
+      requested: 1,
+    });
 
     let courseId: string;
     let folderId: string | null = null;
@@ -121,11 +130,19 @@ export async function uploadPdf(
         error: `PDF uploaded, but indexing could not be queued: ${jobError.message}`,
       };
     }
+    await recordUsage({
+      supabase: usageClient,
+      userId: user.id,
+      feature: 'embeddings_upload',
+      quantity: 1,
+      model: 'text-embedding-3-small',
+      sessionId: null,
+    });
 
     revalidatePath('/');
     return {};
   } catch (error) {
-    if (error instanceof BetaGuardError) {
+    if (error instanceof BetaGuardError || error instanceof UsageQuotaError) {
       return {error: error.message};
     }
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChevronDown, ChevronLeft, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2, Square, PanelLeftOpen, Mic, Loader2, Play, Pause, RotateCcw, VolumeX } from 'lucide-react';
+import { ChevronDown, ChevronLeft, FileText, Globe, Send, Sparkles, Plus, MessageSquare, Trash2, Edit2, Square, PanelLeftOpen, Mic, Loader2, Play, Pause, RotateCcw, VolumeX, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SourceCard } from '@/components/learn/SourceCard';
 import type { Course } from '@/lib/data';
@@ -14,6 +14,7 @@ import { Logo } from '@/components/Logo';
 import { deleteChatSession, renameChatSession } from '@/actions/chat';
 import { useLanguage } from '@/lib/i18n';
 import {useProcessingStatus} from '@/hooks/useProcessingStatus';
+import {useRealtimeVoiceSession, type RealtimeTranscriptEvent} from '@/hooks/useRealtimeVoiceSession';
 import {useVoiceRecorder} from '@/hooks/useVoiceRecorder';
 import {normalizeVoiceTranscriptForChat} from '@/lib/voice/transcript';
 
@@ -26,6 +27,7 @@ type ChatMessage = {
   sourcesPending?: boolean;
   inputMetadata?: VoiceInputMetadata;
   responseToVoice?: boolean;
+  liveVoice?: boolean;
 };
 
 type VoiceInputMetadata = {
@@ -53,6 +55,10 @@ const DISABLED_VOICE_CONFIG: PublicVoiceConfig = {
   enabledModes: [],
   ttsMaxChars: 1000,
 };
+const VOICE_AUTO_SEND_STORAGE_KEY = 'learncycle-voice-auto-send';
+const VOICE_AUTO_READ_STORAGE_KEY = 'learncycle-voice-auto-read';
+const VOICE_DEFAULT_VOICE_STORAGE_KEY = 'learncycle-voice-default-voice';
+const VOICE_MUTED_STORAGE_KEY = 'learncycle-voice-muted';
 
 type ChatStreamEvent =
   | {event_type: 'status'; status: 'retrieval_started' | 'retrieval_completed' | 'reranking_started' | 'generation_started'; stage?: string}
@@ -193,6 +199,9 @@ export function ChatInterface({
   const [voiceTranscript, setVoiceTranscript] = useState<VoiceTranscript | null>(null);
   const [voiceTranscribing, setVoiceTranscribing] = useState(false);
   const [mutedVoiceOutput, setMutedVoiceOutput] = useState(false);
+  const [autoSendVoice, setAutoSendVoice] = useState(false);
+  const [autoReadAloud, setAutoReadAloud] = useState(false);
+  const [defaultVoice, setDefaultVoice] = useState('alloy');
   const [activeConversationKey, setActiveConversationKey] = useState(() => crypto.randomUUID());
   const [pendingConversationKeys, setPendingConversationKeys] = useState<string[]>([]);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -208,7 +217,7 @@ export function ChatInterface({
   const activeModeLabel = chatMode === 'guided_learning' ? t('active.guided') : chatMode === 'feynman' ? t('active.feynman') : t('nav.learn');
   const voiceEnabledForMode = voiceConfig.enabled && voiceConfig.enabledModes.includes(chatMode);
   const voiceRecorder = useVoiceRecorder(voiceConfig.maxRecordingSeconds);
-  const autoSendVoice = false;
+  const realtimeVoice = useRealtimeVoiceSession();
   const emptyTitle = chatMode === 'guided_learning'
     ? t('active.guidedEmptyTitle')
     : chatMode === 'feynman'
@@ -229,11 +238,19 @@ export function ChatInterface({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeAbortControllerRef = useRef<AbortController | null>(null);
   const activeConversationKeyRef = useRef(activeConversationKey);
+  const liveAssistantMessageIdRef = useRef<string | null>(null);
   const isCurrentConversationPending = pendingConversationKeys.includes(activeConversationKey);
   const voiceInputDisabled =
     !voiceEnabledForMode ||
+    realtimeVoice.isConnected ||
     voiceTranscribing ||
     isCurrentConversationPending ||
+    selectedPdfIds.length === 0 ||
+    (chatMode === 'feynman' && activeLearningState.exercise_status === 'completed');
+  const liveVoiceDisabled =
+    !voiceEnabledForMode ||
+    voiceRecorder.state === 'recording' ||
+    voiceTranscribing ||
     selectedPdfIds.length === 0 ||
     (chatMode === 'feynman' && activeLearningState.exercise_status === 'completed');
   const topicSuggestionsRef = useRef(topicSuggestions);
@@ -243,12 +260,44 @@ export function ChatInterface({
   }, [activeConversationKey]);
 
   useEffect(() => {
-    setMutedVoiceOutput(window.localStorage.getItem('learncycle-voice-muted') === 'true');
+    setMutedVoiceOutput(window.localStorage.getItem(VOICE_MUTED_STORAGE_KEY) === 'true');
+    setAutoSendVoice(window.localStorage.getItem(VOICE_AUTO_SEND_STORAGE_KEY) === 'true');
+    setAutoReadAloud(window.localStorage.getItem(VOICE_AUTO_READ_STORAGE_KEY) === 'true');
+    setDefaultVoice(window.localStorage.getItem(VOICE_DEFAULT_VOICE_STORAGE_KEY) || 'alloy');
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem('learncycle-voice-muted', mutedVoiceOutput ? 'true' : 'false');
+    window.localStorage.setItem(VOICE_MUTED_STORAGE_KEY, mutedVoiceOutput ? 'true' : 'false');
   }, [mutedVoiceOutput]);
+
+  useEffect(() => {
+    function handleVoicePreferenceChange() {
+      setAutoSendVoice(window.localStorage.getItem(VOICE_AUTO_SEND_STORAGE_KEY) === 'true');
+      setAutoReadAloud(window.localStorage.getItem(VOICE_AUTO_READ_STORAGE_KEY) === 'true');
+      setDefaultVoice(window.localStorage.getItem(VOICE_DEFAULT_VOICE_STORAGE_KEY) || 'alloy');
+      setMutedVoiceOutput(window.localStorage.getItem(VOICE_MUTED_STORAGE_KEY) === 'true');
+    }
+    window.addEventListener('storage', handleVoicePreferenceChange);
+    window.addEventListener('learncycle:voice-preferences-changed', handleVoicePreferenceChange);
+    return () => {
+      window.removeEventListener('storage', handleVoicePreferenceChange);
+      window.removeEventListener('learncycle:voice-preferences-changed', handleVoicePreferenceChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!voiceEnabledForMode || chatMode !== 'feynman') {
+      realtimeVoice.disconnect();
+    }
+    // realtimeVoice.disconnect is stable via useCallback, but the hook object is not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatMode, voiceEnabledForMode]);
+
+  useEffect(() => {
+    if (realtimeVoice.error && realtimeVoice.error !== 'Peer connection is closed') {
+      setError(realtimeVoice.error);
+    }
+  }, [realtimeVoice.error]);
 
   useEffect(() => {
     topicSuggestionsRef.current = topicSuggestions;
@@ -388,6 +437,13 @@ export function ChatInterface({
     setError(null);
   }
 
+  function openRevisionFlashcards() {
+    const params = new URLSearchParams(window.location.search);
+    params.set('courseId', course.id);
+    params.set('tab', 'revision');
+    window.location.href = `${window.location.pathname}?${params.toString()}`;
+  }
+
   async function onSubmit(event?: React.FormEvent<HTMLFormElement>) {
     if (event) event.preventDefault();
     await sendMessage(message, voiceTranscript?.metadata);
@@ -408,6 +464,124 @@ export function ChatInterface({
     }
   }
 
+  function handleRealtimeTranscript(event: RealtimeTranscriptEvent) {
+    if (event.role === 'user') {
+      liveAssistantMessageIdRef.current = null;
+      const normalizedText = normalizeVoiceTranscriptForChat(event.text, chatMode);
+      if (normalizedText === '/fertig' || normalizedText === '/done' || normalizedText === '/finish') {
+        realtimeVoice.disconnect();
+        void sendMessage(normalizedText, {input_type: 'voice'});
+        return;
+      }
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: 'user',
+          content: normalizedText,
+          inputMetadata: {input_type: 'voice'},
+          liveVoice: true,
+        },
+      ]);
+      return;
+    }
+
+    if (event.final) {
+      setMessages((current) => {
+        const messageId = liveAssistantMessageIdRef.current;
+        liveAssistantMessageIdRef.current = null;
+        if (!messageId) {
+          const normalizedFinal = normalizeLiveTranscript(event.text);
+          const lastAssistant = [...current].reverse().find((item) => item.role === 'assistant' && item.liveVoice);
+          if (
+            normalizedFinal &&
+            lastAssistant &&
+            normalizeLiveTranscript(lastAssistant.content) === normalizedFinal
+          ) {
+            return current;
+          }
+          return event.text.trim()
+            ? [
+              ...current,
+              {
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                content: event.text.trim(),
+                liveVoice: true,
+              },
+            ]
+            : current;
+        }
+        return current.map((item) =>
+          item.id === messageId
+            ? {...item, content: shouldReplaceLiveAssistantContent(item.content, event.text) ? event.text.trim() : item.content}
+            : item,
+        );
+      });
+      return;
+    }
+
+    setMessages((current) => {
+      let messageId = liveAssistantMessageIdRef.current;
+      if (!messageId) {
+        messageId = crypto.randomUUID();
+        liveAssistantMessageIdRef.current = messageId;
+        return [
+          ...current,
+          {
+            id: messageId,
+            role: 'assistant',
+            content: event.text,
+            liveVoice: true,
+          },
+        ];
+      }
+      return current.map((item) =>
+        item.id === messageId
+          ? {...item, content: `${item.content}${event.text}`}
+          : item,
+      );
+    });
+  }
+
+  async function toggleLiveVoice() {
+    if (realtimeVoice.isConnected || realtimeVoice.state === 'connecting') {
+      realtimeVoice.disconnect();
+      liveAssistantMessageIdRef.current = null;
+      return;
+    }
+    if (liveVoiceDisabled) {
+      return;
+    }
+    await realtimeVoice.connect({
+      sessionId,
+      courseId: course.id,
+      selectedPdfIds,
+      selectedPdfNames: selectedPdfIds.map((pdfId) => selectedPdfNames.get(pdfId) ?? pdfId),
+      mode: 'feynman',
+      onTranscript: handleRealtimeTranscript,
+      onSessionCreated: (createdSessionId) => {
+        setSessionId(createdSessionId);
+        setActiveConversationKey(createdSessionId);
+        setSessions((current) => [
+          {
+            id: createdSessionId,
+            title: activeLearningTopic.trim() || 'Live voice',
+            course_id: course.id,
+            updated_at: new Date().toISOString(),
+            mode: 'feynman',
+            active_learning_state: activeLearningState,
+            messages: [],
+          },
+          ...current.filter((session) => session.id !== createdSessionId),
+        ]);
+      },
+    });
+    if (realtimeVoice.error) {
+      setError(realtimeVoice.error);
+    }
+  }
+
   async function transcribeVoiceBlob(audioBlob: Blob, recordingSeconds: number) {
     setVoiceTranscribing(true);
     setError(null);
@@ -424,7 +598,7 @@ export function ChatInterface({
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error ?? (language === 'de' ? 'Transkription fehlgeschlagen.' : 'Transcription failed.'));
+        throw new Error(resolveVoiceErrorMessage(res.status, language, data?.error, 'transcribe'));
       }
       const transcription = data as TranscribeResponse;
       const normalizedText = normalizeVoiceTranscriptForChat(transcription.text, chatMode);
@@ -440,7 +614,7 @@ export function ChatInterface({
         await sendMessage(normalizedText, metadata);
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Voice transcription failed.');
+      setError(caught instanceof Error ? caught.message : resolveVoiceErrorMessage(500, language, undefined, 'transcribe'));
     } finally {
       setVoiceTranscribing(false);
     }
@@ -1018,12 +1192,14 @@ export function ChatInterface({
                               {chatMessage.content}
                             </ReactMarkdown>
                           </div>
-                          {voiceConfig.enabled && chatMessage.responseToVoice && chatMessage.content && (
+                          {voiceConfig.enabled && chatMessage.content && (autoReadAloud || chatMessage.responseToVoice) && (
                             <AssistantSpeechPlayer
                               message={chatMessage}
                               mode={chatMode}
                               sessionId={sessionId}
                               muted={mutedVoiceOutput}
+                              voice={defaultVoice}
+                              autoPlay={autoReadAloud && !chatMessage.responseToVoice}
                               onMutedChange={setMutedVoiceOutput}
                             />
                           )}
@@ -1044,6 +1220,14 @@ export function ChatInterface({
                     </div>
                   </div>
                 ))}
+
+                {chatMode === 'feynman' && activeLearningState.exercise_status === 'completed' && (
+                  <FeynmanResultPanel
+                    language={language}
+                    onCreateFlashcards={openRevisionFlashcards}
+                    onRestart={startNewChat}
+                  />
+                )}
 
                 <div ref={messagesEndRef} className="h-4" />
               </div>
@@ -1084,6 +1268,12 @@ export function ChatInterface({
                   : `${t('voice.recording')} ${voiceRecorder.recordingSeconds}s / ${voiceConfig.maxRecordingSeconds}s`}
               </div>
             )}
+            {(realtimeVoice.state === 'connecting' || realtimeVoice.isConnected) && (
+              <div className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
+                <span className={`h-1.5 w-1.5 rounded-full ${realtimeVoice.isConnected ? 'bg-emerald-600' : 'bg-emerald-400 animate-pulse'}`} />
+                {realtimeVoice.isConnected ? 'Live voice hört zu' : 'Live voice verbindet...'}
+              </div>
+            )}
             <form onSubmit={onSubmit} className="relative flex items-end gap-2 bg-card border border-border shadow-sm rounded-xl px-3 py-2 focus-within:border-foreground/30 transition-all">
               <button
                 type="button"
@@ -1112,28 +1302,49 @@ export function ChatInterface({
                 style={{ minHeight: '32px' }}
               />
               {voiceEnabledForMode && (
-                <button
-                  type="button"
-                  aria-label={voiceRecorder.state === 'recording' ? t('voice.stopRecording') : t('voice.startRecording')}
-                  aria-pressed={voiceRecorder.state === 'recording'}
-                  disabled={voiceInputDisabled}
-                  onPointerDown={handleVoicePointerDown}
-                  onPointerUp={handleVoicePointerUp}
-                  onPointerCancel={handleVoicePointerUp}
-                  onPointerLeave={handleVoicePointerUp}
-                  className={`h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border transition-all mb-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-30 ${
-                    voiceRecorder.state === 'recording'
-                      ? 'border-red-300 bg-red-50 text-red-600'
-                      : 'border-border bg-card text-muted-foreground hover:text-foreground'
-                  }`}
-                  title={voiceRecorder.state === 'recording' ? t('voice.stopRecording') : t('voice.startRecording')}
-                >
-                  {voiceTranscribing ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Mic className="h-3.5 w-3.5" />
-                  )}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    aria-label={realtimeVoice.isConnected ? 'Stop live voice' : 'Start live voice'}
+                    aria-pressed={realtimeVoice.isConnected}
+                    disabled={liveVoiceDisabled && !realtimeVoice.isConnected}
+                    onClick={() => void toggleLiveVoice()}
+                    className={`h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border transition-all mb-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-30 ${
+                      realtimeVoice.isConnected
+                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                        : 'border-border bg-card text-muted-foreground hover:text-foreground'
+                    }`}
+                    title={realtimeVoice.isConnected ? 'Stop live voice' : 'Start live voice'}
+                  >
+                    {realtimeVoice.state === 'connecting' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Radio className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={voiceRecorder.state === 'recording' ? t('voice.stopRecording') : t('voice.startRecording')}
+                    aria-pressed={voiceRecorder.state === 'recording'}
+                    disabled={voiceInputDisabled}
+                    onPointerDown={handleVoicePointerDown}
+                    onPointerUp={handleVoicePointerUp}
+                    onPointerCancel={handleVoicePointerUp}
+                    onPointerLeave={handleVoicePointerUp}
+                    className={`h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border transition-all mb-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-30 ${
+                      voiceRecorder.state === 'recording'
+                        ? 'border-red-300 bg-red-50 text-red-600'
+                        : 'border-border bg-card text-muted-foreground hover:text-foreground'
+                    }`}
+                    title={voiceRecorder.state === 'recording' ? t('voice.stopRecording') : t('voice.startRecording')}
+                  >
+                    {voiceTranscribing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Mic className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </>
               )}
               {isCurrentConversationPending ? (
                 <button
@@ -1163,6 +1374,47 @@ export function ChatInterface({
       </div>
     </div>
   );
+}
+
+function normalizeLiveTranscript(text: string) {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function shouldReplaceLiveAssistantContent(current: string, finalText: string) {
+  const normalizedCurrent = normalizeLiveTranscript(current);
+  const normalizedFinal = normalizeLiveTranscript(finalText);
+  if (!normalizedFinal) {
+    return false;
+  }
+  if (normalizedCurrent === normalizedFinal) {
+    return false;
+  }
+  if (normalizedCurrent && normalizedFinal.includes(normalizedCurrent)) {
+    return true;
+  }
+  return normalizedFinal.length > normalizedCurrent.length + 40;
+}
+
+function resolveVoiceErrorMessage(
+  status: number,
+  language: 'de' | 'en',
+  serverMessage: unknown,
+  kind: 'transcribe' | 'speech',
+) {
+  if (status === 429) {
+    return language === 'de'
+      ? 'Voice-Limit erreicht. Du kannst weiter per Text chatten.'
+      : 'Voice limit reached. You can keep chatting by text.';
+  }
+  if (typeof serverMessage === 'string' && serverMessage.trim()) {
+    return serverMessage;
+  }
+  if (kind === 'transcribe') {
+    return language === 'de' ? 'Transkription fehlgeschlagen.' : 'Transcription failed.';
+  }
+  return language === 'de'
+    ? 'Vorlesen fehlgeschlagen. Die Textantwort bleibt verfügbar.'
+    : 'Voice playback failed. The text response is still available.';
 }
 
 function SourceReferences({ sources }: { sources: ChatSource[] }) {
@@ -1273,12 +1525,16 @@ function AssistantSpeechPlayer({
   mode,
   sessionId,
   muted,
+  voice,
+  autoPlay = false,
   onMutedChange,
 }: {
   message: ChatMessage;
   mode: ChatMode;
   sessionId?: string;
   muted: boolean;
+  voice: string;
+  autoPlay?: boolean;
   onMutedChange: (muted: boolean) => void;
 }) {
   const {language} = useLanguage();
@@ -1296,6 +1552,15 @@ function AssistantSpeechPlayer({
     };
   }, []);
 
+  useEffect(() => {
+    if (autoPlay && !muted) {
+      void play();
+    }
+    // play closes over current message and audio refs; rerunning on every render
+    // would restart playback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlay, muted]);
+
   async function ensureAudio() {
     if (audioRef.current) {
       return audioRef.current;
@@ -1310,11 +1575,12 @@ function AssistantSpeechPlayer({
           text: message.content,
           mode,
           sessionId,
+          voice,
         }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error ?? 'Voice playback failed.');
+        throw new Error(resolveVoiceErrorMessage(res.status, language, data?.error, 'speech'));
       }
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
@@ -1339,7 +1605,7 @@ function AssistantSpeechPlayer({
       const audio = await ensureAudio();
       await audio.play();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Voice playback failed.');
+      setError(caught instanceof Error ? caught.message : resolveVoiceErrorMessage(500, language, undefined, 'speech'));
     }
   }
 
@@ -1457,6 +1723,68 @@ function SourceChip({ source }: { source: ChatSource }) {
       <span className="min-w-0 max-w-[180px] truncate text-foreground">{title}</span>
       {page && <span className="shrink-0 text-muted-foreground">{page}</span>}
     </span>
+  );
+}
+
+function FeynmanResultPanel({
+  language,
+  onCreateFlashcards,
+  onRestart,
+}: {
+  language: 'de' | 'en';
+  onCreateFlashcards: () => void;
+  onRestart: () => void;
+}) {
+  const copy = language === 'de'
+    ? {
+      title: 'Feynman Session beendet',
+      strengths: 'Stärken',
+      gaps: 'Lücken',
+      next: 'Nächste Schritte',
+      strengthsText: 'Nutze die klare Analyse oben als Grundlage für deine Wiederholung.',
+      gapsText: 'Markiere unklare Punkte und frage in einer neuen Runde gezielt nach.',
+      nextText: 'Erstelle Karten aus den wichtigsten Begriffen oder starte eine neue Erklärung.',
+      flashcards: 'Als Flashcards speichern',
+      restart: 'Neue Voice Session starten',
+    }
+    : {
+      title: 'Feynman session completed',
+      strengths: 'Strengths',
+      gaps: 'Gaps',
+      next: 'Next steps',
+      strengthsText: 'Use the analysis above as the basis for review.',
+      gapsText: 'Mark unclear points and ask about them in a focused new round.',
+      nextText: 'Create cards from the key concepts or start a fresh explanation.',
+      flashcards: 'Save as flashcards',
+      restart: 'Start new voice session',
+    };
+
+  return (
+    <section className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-emerald-950 shadow-sm">
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-sm font-semibold">{copy.title}</h3>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={onCreateFlashcards}>
+            {copy.flashcards}
+          </Button>
+          <Button type="button" size="sm" onClick={onRestart}>
+            {copy.restart}
+          </Button>
+        </div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {[
+          [copy.strengths, copy.strengthsText],
+          [copy.gaps, copy.gapsText],
+          [copy.next, copy.nextText],
+        ].map(([title, text]) => (
+          <div key={title} className="rounded-lg border border-emerald-200 bg-background/80 p-3">
+            <p className="text-xs font-semibold uppercase tracking-normal text-emerald-700">{title}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{text}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
