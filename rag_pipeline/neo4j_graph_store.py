@@ -2,11 +2,26 @@
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from typing import Any
 
 from rag_pipeline.graph_schema import GraphExtraction
 from rag_pipeline.graph_schema import normalize_node_name
+
+
+def _transient_error_types() -> tuple[type[Exception], ...]:
+    """Neo4j transient errors worth retrying; empty when neo4j is absent (tests)."""
+    try:
+        from neo4j.exceptions import ServiceUnavailable, SessionExpired
+    except ImportError:
+        return ()
+    return (ServiceUnavailable, SessionExpired)
+
+
+_TRANSIENT_ERRORS = _transient_error_types()
+_MAX_RETRIES = 3
+_RETRY_BACKOFF_SECONDS = 0.5
 
 
 class Neo4jGraphStore:
@@ -24,7 +39,12 @@ class Neo4jGraphStore:
         if driver is None:
             from neo4j import GraphDatabase
 
-            driver = GraphDatabase.driver(uri, auth=(user, password))
+            driver = GraphDatabase.driver(
+                uri,
+                auth=(user, password),
+                max_connection_lifetime=300,
+                keep_alive=True,
+            )
         self.driver = driver
 
     def ensure_constraints(self) -> None:
@@ -246,30 +266,46 @@ class Neo4jGraphStore:
         return {"paths": records}
 
     def _records(self, statement: str, parameters: dict[str, Any]) -> list[dict[str, Any]]:
-        session = self.driver.session(database=self.database)
-        if hasattr(session, "__enter__"):
-            with session as active_session:
-                result = active_session.run(statement, parameters or {})
-                return _materialize_records(result)
-        try:
-            result = session.run(statement, parameters or {})
-            return _materialize_records(result)
-        finally:
-            close = getattr(session, "close", None)
-            if close:
-                close()
+        return self._execute(statement, parameters, materialize=True)
 
     def _run(
         self,
         statement: str,
         parameters: dict[str, Any] | None = None,
     ) -> Any:
+        return self._execute(statement, parameters, materialize=False)
+
+    def _execute(
+        self,
+        statement: str,
+        parameters: dict[str, Any] | None,
+        materialize: bool,
+    ) -> Any:
+        # All statements are idempotent (MERGE / CREATE IF NOT EXISTS / DELETE /
+        # read-only MATCH), so retrying on a dropped connection is safe. A fresh
+        # session per attempt pulls a live connection from the pool.
+        for attempt in range(_MAX_RETRIES):
+            try:
+                return self._run_once(statement, parameters or {}, materialize)
+            except _TRANSIENT_ERRORS:
+                if attempt + 1 >= _MAX_RETRIES:
+                    raise
+                time.sleep(_RETRY_BACKOFF_SECONDS * (attempt + 1))
+
+    def _run_once(
+        self,
+        statement: str,
+        parameters: dict[str, Any],
+        materialize: bool,
+    ) -> Any:
         session = self.driver.session(database=self.database)
         if hasattr(session, "__enter__"):
             with session as active_session:
-                return active_session.run(statement, parameters or {})
+                result = active_session.run(statement, parameters)
+                return _materialize_records(result) if materialize else result
         try:
-            return session.run(statement, parameters or {})
+            result = session.run(statement, parameters)
+            return _materialize_records(result) if materialize else result
         finally:
             close = getattr(session, "close", None)
             if close:

@@ -57,8 +57,12 @@ def process_pdf(
     previous_page_batch_size = settings.perf.page_batch_size
     try:
         settings.perf.page_batch_size = 1
+        LOGGER.info(
+            "docling_convert_start pages=%s file=%s", total_pages, pdf_path.name
+        )
         converter = DocumentConverter()
         document = converter.convert(str(pdf_path)).document
+        LOGGER.info("docling_convert_done file=%s", pdf_path.name)
         final_chunks = _chunks_from_document(
             document=document,
             chunker=chunker,
@@ -75,27 +79,29 @@ def process_pdf(
         fallback_pages: list[int] = []
         retry_errors: dict[str, str] = {}
 
+        full_page_converter = None
+        lightweight_converter = None
         if missing_pages:
             LOGGER.warning(
                 "Docling full conversion missed pages: %s",
                 [page + 1 for page in missing_pages],
             )
 
-        full_page_converter = DocumentConverter()
+            full_page_converter = DocumentConverter()
 
-        lightweight_options = PdfPipelineOptions(
-            do_ocr=False,
-            do_table_structure=False,
-            force_backend_text=True,
-        )
-        lightweight_converter = DocumentConverter(
-            allowed_formats=[InputFormat.PDF],
-            format_options={
-                InputFormat.PDF: PdfFormatOption(
-                    pipeline_options=lightweight_options,
-                )
-            },
-        )
+            lightweight_options = PdfPipelineOptions(
+                do_ocr=False,
+                do_table_structure=False,
+                force_backend_text=True,
+            )
+            lightweight_converter = DocumentConverter(
+                allowed_formats=[InputFormat.PDF],
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(
+                        pipeline_options=lightweight_options,
+                    )
+                },
+            )
 
         for page_index in missing_pages:
             page_no = page_index + 1

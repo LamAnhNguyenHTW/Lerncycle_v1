@@ -10,6 +10,9 @@ from rag_pipeline.source_types import contains_chat_memory, contains_web
 VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
 
+# Payload fields used in retrieval filters; Qdrant requires an index on each.
+INDEXED_PAYLOAD_FIELDS = ("user_id", "source_type", "pdf_id", "source_id")
+
 
 class QdrantStore:
     """Small adapter around qdrant-client for chunk indexing and search."""
@@ -30,8 +33,24 @@ class QdrantStore:
         if self._collection_exists():
             if sparse_enabled:
                 self._ensure_existing_collection_supports_hybrid()
+            self._ensure_payload_indexes()
             return
         self._client.create_collection(**self._collection_config(dim, sparse_enabled))
+        self._ensure_payload_indexes()
+
+    def _ensure_payload_indexes(self) -> None:
+        """Create the keyword payload indexes required for filtered search."""
+        models = _models()
+        for field in INDEXED_PAYLOAD_FIELDS:
+            try:
+                self._client.create_payload_index(
+                    collection_name=self.collection_name,
+                    field_name=field,
+                    field_schema=models.PayloadSchemaType.KEYWORD,
+                )
+            except Exception:
+                # Index already present; Qdrant rejects duplicates. Safe to skip.
+                pass
 
     def recreate_collection_for_hybrid(self, dim: int) -> None:
         """Explicitly recreate the collection for dense+sparse hybrid search."""
