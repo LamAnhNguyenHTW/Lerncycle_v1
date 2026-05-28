@@ -102,7 +102,7 @@ export const de: Dictionary = {
       {
         question: 'Kann ich meine Daten löschen?',
         answer:
-          'Ja, jederzeit. Schreib uns an privacy@lerncycle.app und wir löschen deinen Account inklusive aller PDFs, Notizen und Chats.',
+          'Ja, jederzeit. Schreib uns an info.learncycle@gmail.com und wir löschen deinen Account inklusive aller PDFs, Notizen und Chats.',
       },
     ],
   },
@@ -135,72 +135,94 @@ export const de: Dictionary = {
     cycle: 'Design wechseln',
   },
   legal: {
-    draftBanner: 'Diese Version ist ein Beta-Entwurf und ersetzt keine Rechtsberatung.',
+    draftBanner:
+      'LearnCycle ist ein kostenloses, nicht-kommerzielles Studienprojekt in geschlossener Beta. Diese Hinweise ersetzen keine Rechtsberatung.',
     privacy: {
       title: 'Datenschutzerklärung',
-      lastUpdated: 'Stand: 17. Mai 2026',
+      lastUpdated: 'Stand: 28. Mai 2026',
       sections: [
         {
           heading: 'Verantwortlicher',
-          body: 'Lam Anh Nguyen (Platzhalter — wird vor dem Beta-Launch ersetzt). Kontakt: privacy@lerncycle.app',
+          body:
+            'Verantwortlicher im Sinne der DSGVO ist:\nLam Anh Nguyen\nBerlin, Deutschland\nE-Mail: info.learncycle@gmail.com\n\nLearnCycle wird als privates, nicht-kommerzielles Studienprojekt im Rahmen einer Bachelorarbeit betrieben.',
         },
         {
-          heading: 'Welche Daten wir erheben',
+          heading: 'Welche Daten wir verarbeiten',
           body:
-            'E-Mail-Adresse (Beta-Anmeldung), Supabase-Auth-Daten, hochgeladene PDFs, deine Notizen und Annotationen, Chat-Verläufe, generierte Karteikarten und Mocktests.',
+            'E-Mail-Adresse (Beta-Anmeldung und Login), Supabase-Auth-Daten, von dir hochgeladene PDFs, deine Notizen und Annotationen, Chat-Verläufe sowie generierte Karteikarten und Mocktests. Server- und Zugriffs-Logs (z. B. IP-Adresse, Zeitstempel) fallen technisch bedingt beim Hosting an.',
         },
         {
-          heading: 'Sub-Auftragsverarbeiter',
+          heading: 'Zwecke der Verarbeitung',
           body:
-            'Supabase (Datenbank/Auth/Storage), Vercel (Hosting), OpenAI (Embeddings + Chat), Qdrant Cloud (Retrieval-Index), optional Tavily (Websuche) und Neo4j Aura (Knowledge Graph).',
+            'Bereitstellung und Betrieb des Lerntools, Authentifizierung, Verarbeitung deiner Materialien durch die KI- und Retrieval-Funktionen sowie Sicherheit und Stabilität des Dienstes.',
         },
         {
           heading: 'Rechtsgrundlage und Speicherdauer',
           body:
-            'Verarbeitung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b und f DSGVO (Vertragserfüllung und berechtigtes Interesse am Betrieb des Lerntools). Beta-Daten werden bis zum Widerruf oder bis zum Ende der Beta gespeichert.',
+            'Die Verarbeitung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO (Erfüllung des Nutzungsverhältnisses) und Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse am sicheren Betrieb). Die E-Mail-Anmeldung zur Beta erfolgt auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit widerrufen kannst. Deine Daten werden gespeichert, bis du sie bzw. deinen Account löschst, spätestens jedoch zum Ende der Beta-Phase.',
+        },
+        {
+          heading: 'Empfänger und Sub-Auftragsverarbeiter',
+          body:
+            'Zur Bereitstellung des Dienstes setzen wir folgende Dienstleister ein: Supabase (Datenbank, Auth, Storage), Vercel (Hosting), OpenAI (Embeddings + Chat), Qdrant Cloud (Retrieval-Index), optional Tavily (Websuche) und Neo4j Aura (Knowledge Graph). Dabei kann es zu einer Verarbeitung in Drittländern (insb. USA) kommen; die Übermittlung wird auf geeignete Garantien (z. B. EU-Standardvertragsklauseln) gestützt.',
         },
         {
           heading: 'Deine Rechte',
           body:
-            'Du hast jederzeit Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Anfragen an: privacy@lerncycle.app',
+            'Du hast jederzeit das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit sowie Widerspruch gegen die Verarbeitung. Anfragen richtest du an: info.learncycle@gmail.com',
+        },
+        {
+          heading: 'Beschwerderecht bei einer Aufsichtsbehörde',
+          body:
+            'Du hast das Recht, dich bei einer Datenschutz-Aufsichtsbehörde über die Verarbeitung deiner personenbezogenen Daten zu beschweren. Zuständig ist u. a. die Berliner Beauftragte für Datenschutz und Informationsfreiheit (https://www.datenschutz-berlin.de).',
         },
       ],
     },
     imprint: {
       title: 'Impressum',
-      lastUpdated: 'Stand: 17. Mai 2026',
+      lastUpdated: 'Stand: 28. Mai 2026',
       sections: [
         {
-          heading: 'Angaben gemäß § 5 TMG',
-          body: 'Lam Anh Nguyen\n[Adresse — Platzhalter]\n[PLZ Ort]\nDeutschland',
+          heading: 'Angaben gemäß § 5 DDG',
+          body: 'Lam Anh Nguyen\nBerlin, Deutschland\nPrivates, nicht-kommerzielles Studienprojekt (geschlossene Beta).',
         },
         {
           heading: 'Kontakt',
-          body: 'E-Mail: hello@lerncycle.app',
+          body: 'E-Mail: info.learncycle@gmail.com',
         },
         {
           heading: 'Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV',
-          body: 'Lam Anh Nguyen, Adresse wie oben.',
+          body: 'Lam Anh Nguyen, Berlin (Kontakt wie oben).',
+        },
+        {
+          heading: 'Hinweis',
+          body:
+            'LearnCycle wird ohne Gewinnerzielungsabsicht im Rahmen einer Bachelorarbeit betrieben. Eine vollständige ladungsfähige Anschrift wird vor einem öffentlichen oder kommerziellen Start ergänzt.',
         },
       ],
     },
     terms: {
       title: 'Nutzungshinweis (Beta)',
-      lastUpdated: 'Stand: 17. Mai 2026',
+      lastUpdated: 'Stand: 28. Mai 2026',
       sections: [
         {
           heading: 'Beta-Status',
           body:
-            'LearnCycle befindet sich in einer geschlossenen Beta-Phase. Es besteht kein Anspruch auf Verfügbarkeit, keine zugesicherten Service Levels und keine Garantie auf Datenerhalt — Daten können im Rahmen der Beta zurückgesetzt werden.',
+            'LearnCycle befindet sich in einer geschlossenen Beta-Phase. Es besteht kein Anspruch auf Verfügbarkeit, keine zugesicherten Service Levels und keine Garantie auf Datenerhalt — Daten können im Rahmen der Beta zurückgesetzt oder gelöscht werden. Bitte sichere wichtige Inhalte zusätzlich selbst.',
         },
         {
           heading: 'Keine Gewährleistung',
           body:
-            'Die Beta wird unentgeltlich und ohne Gewährleistung zur Verfügung gestellt. Antworten der KI können fehlerhaft sein und ersetzen keine Fach- oder Rechtsberatung.',
+            'Die Beta wird unentgeltlich und ohne Gewährleistung zur Verfügung gestellt. Eine Haftung besteht nur für Vorsatz und grobe Fahrlässigkeit sowie für Schäden aus der Verletzung von Leben, Körper oder Gesundheit.',
+        },
+        {
+          heading: 'KI-generierte Inhalte',
+          body:
+            'Antworten, Karteikarten und Mocktests werden automatisiert durch KI erzeugt und können fehlerhaft oder unvollständig sein. Sie ersetzen keine Fach-, Rechts- oder sonstige Beratung — prüfe wichtige Inhalte stets anhand deiner Originalquellen.',
         },
         {
           heading: 'Anwendbares Recht',
-          body: 'Es gilt deutsches Recht (Platzhalter — finale Fassung folgt zum Produktivstart).',
+          body: 'Es gilt das Recht der Bundesrepublik Deutschland.',
         },
       ],
     },
