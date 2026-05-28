@@ -37,6 +37,9 @@ export type TranslationKey =
   | 'beta.limitPdfCount'
   | 'beta.limitChat'
   | 'beta.limitIndexing'
+  | 'beta.limitVoiceRealtime'
+  | 'beta.limitVoiceInput'
+  | 'beta.limitVoicePlayback'
   | 'chat.courseMaterials'
   | 'chat.useAllMaterials'
   | 'chat.recentChats'
@@ -50,6 +53,11 @@ export type TranslationKey =
   | 'chat.hideDetails'
   | 'chat.showLess'
   | 'chat.more'
+  | 'voice.startRecording'
+  | 'voice.stopRecording'
+  | 'voice.transcribing'
+  | 'voice.recording'
+  | 'voice.understood'
   | 'active.settings'
   | 'active.suggestions'
   | 'active.topicPlaceholder'
@@ -216,6 +224,8 @@ export type TranslationKey =
   | 'revision.mindmap.selectPdf'
   | 'revision.mindmap.empty'
   | 'revision.mindmap.generatingHint'
+  | 'revision.mindmap.processing'
+  | 'revision.mindmap.processingHint'
   | 'revision.mindmap.loading'
   | 'revision.common.cancel'
   | 'revision.common.create'
@@ -271,6 +281,9 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'beta.limitPdfCount': 'PDF library: up to {value} PDFs per account',
     'beta.limitChat': 'Chat: up to {value} messages per day',
     'beta.limitIndexing': 'Indexing: up to {value} material updates per day',
+    'beta.limitVoiceRealtime': 'Live voice: up to {value} minutes per month',
+    'beta.limitVoiceInput': 'Voice input: up to {value} minutes per day',
+    'beta.limitVoicePlayback': 'Read-aloud: up to {value} responses per day',
     'chat.courseMaterials': 'Course Materials',
     'chat.useAllMaterials': 'Use all materials',
     'chat.recentChats': 'Recent Chats',
@@ -284,6 +297,11 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'chat.hideDetails': 'Hide details',
     'chat.showLess': 'Show less',
     'chat.more': 'more',
+    'voice.startRecording': 'Hold to speak',
+    'voice.stopRecording': 'Release to stop',
+    'voice.transcribing': 'Transcribing voice...',
+    'voice.recording': 'Recording',
+    'voice.understood': 'I understood:',
     'active.settings': 'Settings',
     'active.suggestions': 'Suggestions',
     'active.topicPlaceholder': 'Optional topic',
@@ -326,7 +344,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'upload.onlyPdf': 'Only PDF files are accepted',
     'upload.dropToUpload': 'Drop to upload',
     'upload.dropOrClick': 'Drop a PDF here, or click to select',
-    'upload.pdfOnly': 'PDF only · max 50 MB',
+    'upload.pdfOnly': 'PDF only · max 25 MB',
     'upload.failedUnexpectedly': 'Upload failed unexpectedly.',
     'study.loadingViewer': 'Loading viewer...',
     'study.loadingEditor': 'Loading editor...',
@@ -450,6 +468,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'revision.mindmap.selectPdf': 'Select a PDF to view its mindmap',
     'revision.mindmap.empty': 'No learning structure has been generated for this PDF yet.',
     'revision.mindmap.generatingHint': 'Mindmaps are built from the Learning Graph extracted by the indexing worker. Once your PDF has been processed, its concept hierarchy will appear here.',
+    'revision.mindmap.processing': 'Your mindmap is being prepared.',
+    'revision.mindmap.processingHint': 'We are still building the Learning Graph for this PDF. This is not an error — the concept hierarchy will appear here automatically once processing is done. Check back in a moment.',
     'revision.mindmap.loading': 'Loading mindmap...',
     'revision.common.cancel': 'Cancel',
     'revision.common.create': 'Create',
@@ -504,6 +524,9 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'beta.limitPdfCount': 'PDF-Bibliothek: bis zu {value} PDFs pro Account',
     'beta.limitChat': 'Chat: bis zu {value} Nachrichten pro Tag',
     'beta.limitIndexing': 'Indexierung: bis zu {value} Material-Updates pro Tag',
+    'beta.limitVoiceRealtime': 'Live-Voice: bis zu {value} Minuten pro Monat',
+    'beta.limitVoiceInput': 'Spracheingabe: bis zu {value} Minuten pro Tag',
+    'beta.limitVoicePlayback': 'Vorlesen: bis zu {value} Antworten pro Tag',
     'chat.courseMaterials': 'Kursmaterialien',
     'chat.useAllMaterials': 'Alle Materialien nutzen',
     'chat.recentChats': 'Letzte Chats',
@@ -517,6 +540,11 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'chat.hideDetails': 'Details ausblenden',
     'chat.showLess': 'Weniger anzeigen',
     'chat.more': 'weitere',
+    'voice.startRecording': 'Zum Sprechen halten',
+    'voice.stopRecording': 'Loslassen zum Stoppen',
+    'voice.transcribing': 'Stimme wird transkribiert...',
+    'voice.recording': 'Aufnahme',
+    'voice.understood': 'Ich habe verstanden:',
     'active.settings': 'Einstellungen',
     'active.suggestions': 'Vorschläge',
     'active.topicPlaceholder': 'Thema optional eingeben',
@@ -559,7 +587,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'upload.onlyPdf': 'Nur PDF-Dateien werden akzeptiert',
     'upload.dropToUpload': 'Loslassen zum Hochladen',
     'upload.dropOrClick': 'PDF hier ablegen oder klicken zum Auswählen',
-    'upload.pdfOnly': 'Nur PDF · max. 50 MB',
+    'upload.pdfOnly': 'Nur PDF · max. 25 MB',
     'upload.failedUnexpectedly': 'Upload unerwartet fehlgeschlagen.',
     'study.loadingViewer': 'Viewer wird geladen...',
     'study.loadingEditor': 'Editor wird geladen...',
@@ -683,6 +711,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'revision.mindmap.selectPdf': 'Wähle ein PDF, um die Mindmap anzuzeigen',
     'revision.mindmap.empty': 'Für dieses PDF wurde noch keine Lernstruktur erstellt.',
     'revision.mindmap.generatingHint': 'Mindmaps werden aus dem Learning Graph erzeugt, den der Indexierungs-Worker baut. Sobald dein PDF verarbeitet ist, erscheint hier die Konzepthierarchie.',
+    'revision.mindmap.processing': 'Deine Mindmap wird gerade vorbereitet.',
+    'revision.mindmap.processingHint': 'Der Learning Graph für dieses PDF wird noch erstellt. Das ist kein Fehler — sobald die Verarbeitung fertig ist, erscheint die Konzepthierarchie hier automatisch. Schau gleich nochmal vorbei.',
     'revision.mindmap.loading': 'Mindmap wird geladen...',
     'revision.common.cancel': 'Abbrechen',
     'revision.common.create': 'Erstellen',

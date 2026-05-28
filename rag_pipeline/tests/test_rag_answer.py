@@ -738,6 +738,64 @@ def test_answer_with_rag_handles_no_results() -> None:
     assert llm.calls == []
 
 
+def test_learning_question_without_results_uses_general_knowledge_fallback() -> None:
+    llm = SequenceLlmClient(
+        [
+            _understanding_payload(
+                resolved_query="Nord-Süd- und Ost-West-Verkehr in Netzwerk-Architekturen",
+                question_type="concept_explanation",
+                route="internal_retrieval",
+                needs_pdf=True,
+            ),
+            "[GENERAL_KNOWLEDGE] Nord-Süd-Verkehr läuft zwischen Client und Server.",
+        ]
+    )
+
+    response = answer_with_rag(
+        "Ja bitte",
+        "user-1",
+        recent_messages=[
+            {
+                "role": "assistant",
+                "content": "Möchtest du mehr über Nord-Süd- und Ost-West-Verkehr erfahren?",
+            }
+        ],
+        intent_classifier_enabled=True,
+        llm_client=llm,
+        retrieval_fn=lambda **_: [],
+    )
+
+    assert response["answer"] == "Nord-Süd-Verkehr läuft zwischen Client und Server."
+    assert response["sources"][0]["source_type"] == "general_knowledge"
+    assert "Resolved query: Nord-Süd- und Ost-West-Verkehr" in llm.calls[-1]["user_prompt"]
+
+
+def test_document_grounded_question_without_results_keeps_material_fallback() -> None:
+    llm = SequenceLlmClient(
+        [
+            _understanding_payload(
+                resolved_query="Was steht in meinen Unterlagen über TCP?",
+                question_type="document_grounded",
+                route="internal_retrieval",
+                needs_pdf=True,
+            ),
+            "[GENERAL_KNOWLEDGE] TCP ist ein Transportprotokoll.",
+        ]
+    )
+
+    response = answer_with_rag(
+        "Was steht in meinen Unterlagen über TCP?",
+        "user-1",
+        intent_classifier_enabled=True,
+        llm_client=llm,
+        retrieval_fn=lambda **_: [],
+    )
+
+    assert response["sources"] == []
+    assert "keine passenden Quellen" in response["answer"]
+    assert len(llm.calls) == 1
+
+
 def test_answer_with_rag_does_not_call_llm_when_no_context() -> None:
     llm = FakeLlmClient()
 

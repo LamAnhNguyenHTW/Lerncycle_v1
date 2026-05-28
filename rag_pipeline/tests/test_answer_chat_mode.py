@@ -184,6 +184,40 @@ def test_fallback_answer_unchanged_for_active_learning_without_results() -> None
     assert "updated_active_learning_state" not in response
 
 
+def test_feynman_without_retrieval_continues_session_instead_of_static_fallback() -> None:
+    llm = FakeLlmClient(
+        f"Ohh, also gab es Rework durch viele Abstimmungen.{AL_STATE_OPEN}"
+        '{"current_step":"probe_example","covered_concepts":["Rework"]}'
+        f"{AL_STATE_CLOSE}"
+    )
+
+    response = answer_with_rag(
+        "Rework, also wir mussten mehrmals E-Mail hin- und herschicken.",
+        "user-1",
+        chat_mode="feynman",
+        active_learning_state={"mode": "feynman", "learner_name": "Lam Anh", "language": "de"},
+        recent_messages=[
+            {
+                "role": "assistant",
+                "content": "Hallo Lam Anh! Erzähl mir, wie der Ist-Prozess aussieht.",
+            },
+        ],
+        llm_client=llm,
+        retrieval_fn=lambda **_: [],
+    )
+
+    assert response["answer"].startswith("Ohh, also gab es Rework")
+    assert response["answer"] != FALLBACK_ANSWER
+    assert response["updated_active_learning_state"]["current_step"] == "probe_example"
+
+    system_prompt = llm.calls[-1]["system_prompt"].lower()
+    user_prompt = llm.calls[-1]["user_prompt"]
+    assert "feynman technique" in system_prompt
+    assert "Continue the active-learning session" in user_prompt
+    assert "Do not greet the user" in user_prompt
+    assert "Rework, also wir mussten" in user_prompt
+
+
 def test_feynman_uses_result_prompt_when_generate_final_result_true() -> None:
     llm = FakeLlmClient("Analyse")
 

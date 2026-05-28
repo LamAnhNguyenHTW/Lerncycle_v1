@@ -63,7 +63,18 @@ export async function GET(_request: Request, context: RouteContext<'/api/learnin
     headers: {Authorization: `Bearer ${internalApiKey}`},
   });
   if (response.status === 404) {
-    return errorResponse('Learning graph not found.', 404);
+    const {data: activeJob} = await supabase
+      .from('rag_index_jobs')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('source_id', sourceId)
+      .in('status', ['pending', 'processing'])
+      .limit(1)
+      .maybeSingle();
+    return NextResponse.json(
+      {error: 'Learning graph not found.', status: activeJob ? 'processing' : 'empty'},
+      {status: 404},
+    );
   }
   if (!response.ok) {
     return errorResponse('Learning graph service failed.', 500);

@@ -3,6 +3,7 @@
 import {useState} from 'react';
 import {ChatInterface} from '@/components/learn/ChatInterface';
 import type {ChatMode} from '@/types/chat';
+import type {PublicVoiceConfig} from '@/types/voice';
 import type {Course} from '@/lib/data';
 
 type ActiveMode = Extract<ChatMode, 'guided_learning' | 'feynman'>;
@@ -12,11 +13,13 @@ export function ActiveLearningSection({
   course,
   initialPdfId,
   initialSessionId,
+  voiceConfig,
   profile,
 }: {
   course: Course;
   initialPdfId?: string;
   initialSessionId?: string;
+  voiceConfig?: PublicVoiceConfig;
   profile?: {
     display_name: string | null;
     avatar_name: string | null;
@@ -39,6 +42,7 @@ export function ActiveLearningSection({
       activeLearningDifficulty={difficulty}
       onActiveLearningTopicChange={setTopic}
       onActiveLearningDifficultyChange={setDifficulty}
+      voiceConfig={voiceConfig}
       profile={profile}
     />
   );

@@ -165,6 +165,7 @@ def build_query_understanding_prompt(
         "",
         "Routing guidance:",
         "- internal_retrieval: DEFAULT for LearnCycle learning questions when uploaded PDFs, notes, annotations, chat memory, graph context, or an active document/session scope may be relevant.",
+        "- Resolve follow-ups, including affirmative replies such as 'yes', 'ja', 'ja bitte', or 'more about that', into a concrete resolved_query using the latest assistant question or topic.",
         "- Use internal_retrieval for concept explanations, summaries, comparisons, quiz/flashcard generation, learning paths, and document-grounded questions unless the user clearly asks for general knowledge only.",
         "- web_search: current/external salary, market, tax, legal, news, latest, live, or facts unlikely to be in uploaded learning materials.",
         "- conversation_only: answer can be derived from recent conversation only, such as rewriting, shortening, correcting, translating, formatting, calculating, or continuing the immediately previous answer.",

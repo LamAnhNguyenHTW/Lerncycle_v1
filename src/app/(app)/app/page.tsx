@@ -11,6 +11,8 @@ import {StudyInterface} from '@/components/study/StudyInterface';
 import {ChatInterface} from '@/components/learn/ChatInterface';
 import {ActiveLearningSection} from '@/components/active-learning/ActiveLearningSection';
 import {RevisionSection} from '@/components/revision/RevisionSection';
+import {getVoiceConfig, getVoiceServerConfig} from '@/lib/voice/config';
+import {getUsageLimitsConfig} from '@/lib/limits/config';
 
 interface Props {
   searchParams: Promise<{courseId?: string; tab?: string; pdfId?: string; sessionId?: string}>;
@@ -21,6 +23,14 @@ export default async function Page({searchParams}: Props) {
   const courses = await getCourses();
   const profile = await getProfile();
   const betaLimits = getBetaLimits();
+  const voiceConfig = getVoiceConfig();
+  const voiceLimits = voiceConfig.enabled
+    ? {
+        realtimeMonthlyMinutes: getUsageLimitsConfig().features.realtime_voice.perUser.quantity,
+        sttDailyMinutes: getVoiceServerConfig().dailyMinutesPerUser,
+        ttsDailyResponses: getVoiceServerConfig().dailyTtsResponsesPerUser,
+      }
+    : undefined;
 
   const activeCourse = courseId
     ? courses.find(c => c.id === courseId) || courses[0]
@@ -54,6 +64,7 @@ export default async function Page({searchParams}: Props) {
                   courseName={activeCourse.name}
                   displayName={profile?.display_name ?? 'there'}
                   betaLimits={betaLimits}
+                  voiceLimits={voiceLimits}
                 />
                 <FolderList course={activeCourse} />
               </div>
@@ -64,10 +75,10 @@ export default async function Page({searchParams}: Props) {
             {tab === 'learn' && (
               <>
                 {/* RAG chat: src/app/api/chat/route.ts -> RAG service: rag_pipeline/api.py */}
-                <ChatInterface course={activeCourse} initialPdfId={pdfId} initialSessionId={sessionId} profile={profile} />
+                <ChatInterface course={activeCourse} initialPdfId={pdfId} initialSessionId={sessionId} voiceConfig={voiceConfig} profile={profile} />
               </>
             )}
-            {tab === 'feynman' && <ActiveLearningSection course={activeCourse} initialPdfId={pdfId} initialSessionId={sessionId} profile={profile} />}
+            {tab === 'feynman' && <ActiveLearningSection course={activeCourse} initialPdfId={pdfId} initialSessionId={sessionId} voiceConfig={voiceConfig} profile={profile} />}
             {tab === 'revision' && <RevisionSection course={activeCourse} />}
           </>
         ) : (

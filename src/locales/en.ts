@@ -102,7 +102,7 @@ export const en: Dictionary = {
       {
         question: 'Can I delete my data?',
         answer:
-          'Yes, anytime. Email privacy@lerncycle.app and we delete your account including all PDFs, notes, and chats.',
+          'Yes, anytime. Email info.learncycle@gmail.com and we delete your account including all PDFs, notes, and chats.',
       },
     ],
   },
@@ -135,72 +135,94 @@ export const en: Dictionary = {
     cycle: 'Switch theme',
   },
   legal: {
-    draftBanner: 'This is a beta draft, not legal advice.',
+    draftBanner:
+      'LearnCycle is a free, non-commercial student project in closed beta. These notices are not legal advice.',
     privacy: {
       title: 'Privacy Policy',
-      lastUpdated: 'Last updated: May 17, 2026',
+      lastUpdated: 'Last updated: May 28, 2026',
       sections: [
         {
           heading: 'Data controller',
-          body: 'Lam Anh Nguyen (placeholder — will be replaced before public launch). Contact: privacy@lerncycle.app',
+          body:
+            'The controller under the GDPR is:\nLam Anh Nguyen\nBerlin, Germany\nEmail: info.learncycle@gmail.com\n\nLearnCycle is operated as a private, non-commercial student project as part of a bachelor thesis.',
         },
         {
-          heading: 'Data we collect',
+          heading: 'Data we process',
           body:
-            'Email address (beta signup), Supabase auth identifiers, uploaded PDFs, your notes and annotations, chat history, generated flashcards and mocktests.',
+            'Email address (beta signup and login), Supabase auth identifiers, PDFs you upload, your notes and annotations, chat history, and generated flashcards and mocktests. Server and access logs (e.g. IP address, timestamps) are produced by the hosting infrastructure for technical reasons.',
         },
         {
-          heading: 'Sub-processors',
+          heading: 'Purposes of processing',
           body:
-            'Supabase (database/auth/storage), Vercel (hosting), OpenAI (embeddings + chat), Qdrant Cloud (retrieval index), optionally Tavily (web search) and Neo4j Aura (knowledge graph).',
+            'Providing and operating the learning tool, authentication, processing your materials via the AI and retrieval features, and ensuring the security and stability of the service.',
         },
         {
           heading: 'Legal basis and retention',
           body:
-            'Processing is based on Art. 6(1)(b) and (f) GDPR (contract performance and legitimate interest in operating the tool). Beta data is retained until you withdraw consent or until the beta ends.',
+            'Processing is based on Art. 6(1)(b) GDPR (performance of the usage relationship) and Art. 6(1)(f) GDPR (legitimate interest in secure operation). The beta email signup is based on your consent (Art. 6(1)(a) GDPR), which you may withdraw at any time. Your data is retained until you delete it or your account, and at the latest when the beta ends.',
+        },
+        {
+          heading: 'Recipients and sub-processors',
+          body:
+            'To provide the service we use the following processors: Supabase (database, auth, storage), Vercel (hosting), OpenAI (embeddings + chat), Qdrant Cloud (retrieval index), optionally Tavily (web search) and Neo4j Aura (knowledge graph). This may involve processing in third countries (notably the USA); such transfers are based on appropriate safeguards (e.g. EU Standard Contractual Clauses).',
         },
         {
           heading: 'Your rights',
           body:
-            'You may request access, rectification, deletion, restriction, portability, and object to processing at any time. Requests: privacy@lerncycle.app',
+            'You may request access, rectification, deletion, restriction, and portability, and object to processing at any time. Requests: info.learncycle@gmail.com',
+        },
+        {
+          heading: 'Right to lodge a complaint',
+          body:
+            'You have the right to lodge a complaint about the processing of your personal data with a data protection supervisory authority — for example the Berlin Commissioner for Data Protection and Freedom of Information (https://www.datenschutz-berlin.de).',
         },
       ],
     },
     imprint: {
       title: 'Imprint',
-      lastUpdated: 'Last updated: May 17, 2026',
+      lastUpdated: 'Last updated: May 28, 2026',
       sections: [
         {
-          heading: 'Details per § 5 TMG (German Telemedia Act)',
-          body: 'Lam Anh Nguyen\n[Address — placeholder]\n[Postcode City]\nGermany',
+          heading: 'Details per § 5 DDG (German Digital Services Act)',
+          body: 'Lam Anh Nguyen\nBerlin, Germany\nPrivate, non-commercial student project (closed beta).',
         },
         {
           heading: 'Contact',
-          body: 'Email: hello@lerncycle.app',
+          body: 'Email: info.learncycle@gmail.com',
         },
         {
           heading: 'Responsible for content per § 18(2) MStV',
-          body: 'Lam Anh Nguyen, address as above.',
+          body: 'Lam Anh Nguyen, Berlin (contact as above).',
+        },
+        {
+          heading: 'Note',
+          body:
+            'LearnCycle is operated without intent to make a profit, as part of a bachelor thesis. A full postal address will be added before any public or commercial launch.',
         },
       ],
     },
     terms: {
       title: 'Beta notice',
-      lastUpdated: 'Last updated: May 17, 2026',
+      lastUpdated: 'Last updated: May 28, 2026',
       sections: [
         {
           heading: 'Beta status',
           body:
-            'LearnCycle is in closed beta. There is no SLA, no guaranteed availability, and no guarantee of data retention — data may be reset during the beta.',
+            'LearnCycle is in closed beta. There is no SLA, no guaranteed availability, and no guarantee of data retention — data may be reset or deleted during the beta. Please keep your own backups of important content.',
         },
         {
           heading: 'No warranty',
           body:
-            'The beta is provided free of charge and without warranty. AI responses may be incorrect and do not replace professional or legal advice.',
+            'The beta is provided free of charge and without warranty. Liability is limited to intent and gross negligence, and to damages arising from injury to life, body, or health.',
+        },
+        {
+          heading: 'AI-generated content',
+          body:
+            'Answers, flashcards, and mocktests are generated automatically by AI and may be incorrect or incomplete. They do not replace professional, legal, or other advice — always verify important content against your original sources.',
         },
         {
           heading: 'Governing law',
-          body: 'German law applies (placeholder — final version follows at public launch).',
+          body: 'The law of the Federal Republic of Germany applies.',
         },
       ],
     },

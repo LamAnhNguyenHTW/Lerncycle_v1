@@ -184,3 +184,45 @@ def test_streaming_active_learning_strips_state_from_tokens_and_done_event() -> 
     assert token_events == [{"event_type": "token", "content": "Das ist fast richtig."}]
     assert done_events[0]["updated_active_learning_state"]["current_step"] == "ask_types"
     assert done_events[0]["updated_active_learning_state"]["mode"] == "feynman"
+
+
+def test_streaming_feynman_without_retrieval_streams_from_captured_prompt() -> None:
+    llm = StreamingLlmClient(
+        chunks=[
+            "Ohh, also es gab Rework durch mehrere E-Mails.",
+            '<AL_STATE>{"current_step":"probe_delay","covered_concepts":["Rework"]}</AL_STATE>',
+        ],
+    )
+
+    events = _collect(
+        stream_answer_with_rag(
+            "Rework, also wir mussten mehrmals E-Mail hin- und herschicken.",
+            "user-1",
+            chat_mode="feynman",
+            active_learning_state={"mode": "feynman", "learner_name": "Lam Anh", "language": "de"},
+            recent_messages=[
+                {
+                    "role": "assistant",
+                    "content": "Hallo Lam Anh! Erzähl mir, wie der Ist-Prozess aussieht.",
+                },
+            ],
+            llm_client=llm,
+            retrieval_fn=lambda **_: [],
+        )
+    )
+
+    token_events = [event for event in events if event["event_type"] == "token"]
+    done_events = [event for event in events if event["event_type"] == "done"]
+
+    assert llm.stream_calls
+    assert "Feynman Technique" in llm.stream_calls[-1]["system_prompt"]
+    assert "Continue the active-learning session" in llm.stream_calls[-1]["user_prompt"]
+    assert token_events == [
+        {
+            "event_type": "token",
+            "content": "Ohh, also es gab Rework durch mehrere E-Mails.",
+        }
+    ]
+    assert token_events[0]["content"] != "Hello! How can I assist you today?"
+    assert done_events[0]["updated_active_learning_state"]["current_step"] == "probe_delay"
+    assert done_events[0]["updated_active_learning_state"]["mode"] == "feynman"
