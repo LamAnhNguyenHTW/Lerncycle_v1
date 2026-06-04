@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,13 @@ from rag_pipeline.text import build_content_hash, normalize_content
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def process_pdf(
@@ -57,10 +65,33 @@ def process_pdf(
     previous_page_batch_size = settings.perf.page_batch_size
     try:
         settings.perf.page_batch_size = 1
-        LOGGER.info(
-            "docling_convert_start pages=%s file=%s", total_pages, pdf_path.name
+        ocr_enabled = _env_flag("DOCLING_OCR_ENABLED", default=False)
+        table_structure_enabled = _env_flag(
+            "DOCLING_TABLE_STRUCTURE_ENABLED", default=False
         )
-        converter = DocumentConverter()
+        LOGGER.info(
+            "docling_convert_start pages=%s file=%s ocr=%s tables=%s",
+            total_pages,
+            pdf_path.name,
+            ocr_enabled,
+            table_structure_enabled,
+        )
+        if ocr_enabled and table_structure_enabled:
+            converter = DocumentConverter()
+        else:
+            main_options = PdfPipelineOptions(
+                do_ocr=ocr_enabled,
+                do_table_structure=table_structure_enabled,
+                force_backend_text=True,
+            )
+            converter = DocumentConverter(
+                allowed_formats=[InputFormat.PDF],
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(
+                        pipeline_options=main_options,
+                    )
+                },
+            )
         document = converter.convert(str(pdf_path)).document
         LOGGER.info("docling_convert_done file=%s", pdf_path.name)
         final_chunks = _chunks_from_document(
@@ -87,7 +118,19 @@ def process_pdf(
                 [page + 1 for page in missing_pages],
             )
 
-            full_page_converter = DocumentConverter()
+            full_page_options = PdfPipelineOptions(
+                do_ocr=ocr_enabled,
+                do_table_structure=table_structure_enabled,
+                force_backend_text=True,
+            )
+            full_page_converter = DocumentConverter(
+                allowed_formats=[InputFormat.PDF],
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(
+                        pipeline_options=full_page_options,
+                    )
+                },
+            )
 
             lightweight_options = PdfPipelineOptions(
                 do_ocr=False,
