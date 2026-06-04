@@ -2,6 +2,7 @@ export interface BetaLimits {
   frozen: boolean;
   maxPdfBytes: number;
   maxPdfMegabytes: number;
+  maxPdfPages: number;
   maxPdfsPerUser: number;
   maxChatMessagesPerDay: number;
   maxRagJobsPerDay: number;
@@ -22,6 +23,7 @@ export function getBetaLimits(): BetaLimits {
     frozen: process.env.BETA_FROZEN === 'true',
     maxPdfBytes,
     maxPdfMegabytes: Math.round(maxPdfBytes / 1024 / 1024),
+    maxPdfPages: readPositiveInteger('BETA_MAX_PDF_PAGES', 30),
     maxPdfsPerUser: readPositiveInteger('BETA_MAX_PDFS_PER_USER', 25),
     maxChatMessagesPerDay: readPositiveInteger(
       'BETA_MAX_CHAT_MESSAGES_PER_DAY',

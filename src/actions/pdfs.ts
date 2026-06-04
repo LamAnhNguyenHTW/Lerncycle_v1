@@ -2,6 +2,7 @@
 
 import {
   assertBetaNotFrozen,
+  assertPdfPagesBelowLimit,
   assertPdfWithinLimits,
   assertUserPdfCountBelowLimit,
   assertUserRagJobsUnderDailyLimit,
@@ -36,6 +37,7 @@ export async function uploadPdf(
 
     assertBetaNotFrozen();
     assertPdfWithinLimits(file);
+    await assertPdfPagesBelowLimit(file);
     await assertUserPdfCountBelowLimit(supabase, user.id);
     await assertUserRagJobsUnderDailyLimit(supabase, user.id);
     const usageClient = createServiceClient() as unknown as UsageClient;

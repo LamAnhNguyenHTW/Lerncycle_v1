@@ -78,6 +78,7 @@ function BetaLimitsNotice({limits, voiceLimits}: {limits: BetaLimits; voiceLimit
   const {t} = useLanguage();
   const items = [
     t('beta.limitPdfSize', {value: String(limits.maxPdfMegabytes)}),
+    t('beta.limitPdfPages', {value: String(limits.maxPdfPages)}),
     t('beta.limitPdfCount', {value: String(limits.maxPdfsPerUser)}),
     t('beta.limitChat', {value: String(limits.maxChatMessagesPerDay)}),
     t('beta.limitIndexing', {value: String(limits.maxRagJobsPerDay)}),

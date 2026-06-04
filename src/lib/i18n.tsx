@@ -34,6 +34,7 @@ export type TranslationKey =
   | 'beta.limitsDescription'
   | 'beta.paused'
   | 'beta.limitPdfSize'
+  | 'beta.limitPdfPages'
   | 'beta.limitPdfCount'
   | 'beta.limitChat'
   | 'beta.limitIndexing'
@@ -278,6 +279,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'beta.limitsDescription': 'These limits keep the beta stable while we test with real users.',
     'beta.paused': 'Beta paused',
     'beta.limitPdfSize': 'PDF upload: up to {value} MB per file',
+    'beta.limitPdfPages': 'PDF length: up to {value} pages per file',
     'beta.limitPdfCount': 'PDF library: up to {value} PDFs per account',
     'beta.limitChat': 'Chat: up to {value} messages per day',
     'beta.limitIndexing': 'Indexing: up to {value} material updates per day',
@@ -521,6 +523,7 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'beta.limitsDescription': 'Diese Limits halten die Beta stabil, w\u00e4hrend wir mit echten Nutzern testen.',
     'beta.paused': 'Beta pausiert',
     'beta.limitPdfSize': 'PDF-Upload: bis zu {value} MB pro Datei',
+    'beta.limitPdfPages': 'PDF-Umfang: bis zu {value} Seiten pro Datei',
     'beta.limitPdfCount': 'PDF-Bibliothek: bis zu {value} PDFs pro Account',
     'beta.limitChat': 'Chat: bis zu {value} Nachrichten pro Tag',
     'beta.limitIndexing': 'Indexierung: bis zu {value} Material-Updates pro Tag',

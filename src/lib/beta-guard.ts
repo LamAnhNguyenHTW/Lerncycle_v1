@@ -12,6 +12,10 @@ const PDF_TYPE_ERROR =
   'Nur PDF-Dateien sind erlaubt. / Only PDF files are allowed.';
 const PDF_SIZE_ERROR =
   'Die PDF-Datei ist zu gro\u00df. / The PDF file is too large.';
+const PDF_PAGES_ERROR =
+  'Die PDF-Datei hat zu viele Seiten f\u00fcr die Beta. / Too many pages for the Beta.';
+const PDF_UNREADABLE_ERROR =
+  'Die PDF-Datei konnte nicht gelesen werden. / The PDF file could not be read.';
 const PDF_COUNT_ERROR =
   'Du hast das PDF-Limit f\u00fcr die Beta erreicht. / You have reached the Beta PDF limit.';
 const CHAT_DAILY_LIMIT_ERROR =
@@ -58,6 +62,28 @@ export function assertPdfWithinLimits(file: File): void {
   const maxBytes = readPositiveInteger('BETA_MAX_PDF_BYTES', 25 * 1024 * 1024);
   if (file.size > maxBytes) {
     throw new BetaGuardError(PDF_SIZE_ERROR, 413);
+  }
+}
+
+export async function assertPdfPagesBelowLimit(file: File): Promise<void> {
+  const maxPages = readPositiveInteger('BETA_MAX_PDF_PAGES', 30);
+  let numPages: number;
+  try {
+    const buffer = new Uint8Array(await file.arrayBuffer());
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.js');
+    const doc = await pdfjs.getDocument({
+      data: buffer,
+      useSystemFonts: false,
+      isEvalSupported: false,
+    }).promise;
+    numPages = doc.numPages;
+    await doc.destroy();
+  } catch {
+    throw new BetaGuardError(PDF_UNREADABLE_ERROR, 400);
+  }
+
+  if (numPages > maxPages) {
+    throw new BetaGuardError(PDF_PAGES_ERROR, 413);
   }
 }
 
