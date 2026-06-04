@@ -367,8 +367,12 @@ def rewrite_query_for_retrieval(
         return query
 
 
-def _is_active_learning_mode(chat_mode: str) -> bool:
+def _is_active_learning_mode(chat_mode: str | None) -> bool:
     return chat_mode in {"guided_learning", "feynman"}
+
+
+def _uses_document_primer(chat_mode: str | None) -> bool:
+    return chat_mode == "guided_learning"
 
 
 def _select_system_prompt(
@@ -425,6 +429,20 @@ def _append_active_learning_state(user_prompt: str, active_learning_state: dict[
     except TypeError:
         state_json = "{}"
     return f"{user_prompt}\n\n[Current learning state]: {state_json}"
+
+
+def _append_document_primer(user_prompt: str, chat_mode: str | None, document_primer: str | None) -> str:
+    if not _uses_document_primer(chat_mode):
+        return user_prompt
+    primer = (document_primer or "").strip()
+    if not primer:
+        return user_prompt
+    return (
+        f"{user_prompt}\n\n"
+        "[Document orientation - use only to suggest topics and orient the learner; "
+        "for document-specific claims rely on retrieved context]:\n"
+        f"{primer[:2000]}"
+    )
 
 
 def _language_instruction(chat_language: str | None) -> str:
@@ -487,6 +505,7 @@ def answer_with_rag(
     active_learning_state: dict[str, Any] | None = None,
     active_learning_control: dict[str, Any] | None = None,
     chat_language: str | None = None,
+    document_primer: str | None = None,
     enable_timing: bool = False,
     vector_retrieve_timeout_s: float = 4.0,
     graph_retrieve_timeout_s: float = 2.0,
@@ -556,6 +575,7 @@ def answer_with_rag(
                 active_learning_state=active_learning_state,
                 active_learning_control=active_learning_control,
                 chat_language=chat_language,
+                document_primer=document_primer,
                 enable_timing=False,
                 vector_retrieve_timeout_s=vector_retrieve_timeout_s,
                 graph_retrieve_timeout_s=graph_retrieve_timeout_s,
@@ -923,6 +943,7 @@ def answer_with_rag(
         ) + _language_instruction(chat_language)
 
         if _is_active_learning_mode(chat_mode):
+            user_prompt = _append_document_primer(user_prompt, chat_mode, document_primer)
             state_for_prompt = _state_with_nudge(active_learning_state, active_learning_control)
             user_prompt = _append_active_learning_state(user_prompt, state_for_prompt)
 
@@ -1078,6 +1099,7 @@ def answer_with_rag(
             generate_final_result=_should_generate_final_result(chat_mode, active_learning_control),
         ) + _language_instruction(chat_language)
     if _is_active_learning_mode(chat_mode):
+        user_prompt = _append_document_primer(user_prompt, chat_mode, document_primer)
         state_for_prompt = _state_with_nudge(active_learning_state, active_learning_control)
         user_prompt = _append_active_learning_state(user_prompt, state_for_prompt)
     with Timer("llm_total"):
@@ -1301,7 +1323,7 @@ def _should_answer_without_retrieval(
 ) -> bool:
     if has_results:
         return False
-    if chat_mode == "feynman":
+    if _is_active_learning_mode(chat_mode):
         return True
     if understanding is not None:
         if understanding.route in {

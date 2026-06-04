@@ -20,6 +20,14 @@ def test_guided_learning_prompt_mentions_question_and_tutor():
     assert "do not ask multiple questions at once" in prompt
 
 
+def test_guided_learning_prompt_uses_document_orientation_for_topic_start():
+    prompt = GUIDED_LEARNING_SYSTEM_PROMPT.lower()
+
+    assert "document orientation" in prompt
+    assert "concrete topics" in prompt
+    assert "treat the orientation as a map" in prompt
+
+
 def test_feynman_prompt_mentions_beginner_explanation():
     assert isinstance(FEYNMAN_SYSTEM_PROMPT, str)
     assert FEYNMAN_SYSTEM_PROMPT.strip()

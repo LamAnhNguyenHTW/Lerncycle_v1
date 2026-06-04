@@ -116,6 +116,7 @@ class RagAnswerRequest(BaseModel):
     active_learning_state: dict[str, Any] | None = None
     active_learning_control: dict[str, Any] | None = None
     chat_language: ChatLanguage | None = None
+    document_primer: str | None = Field(default=None, max_length=4000)
 
     @model_validator(mode="after")
     def validate_reranking_bounds(self) -> "RagAnswerRequest":
@@ -468,6 +469,7 @@ def rag_answer(request: RagAnswerRequest, debug_timing: str | None = None) -> di
             active_learning_state=request.active_learning_state,
             active_learning_control=request.active_learning_control,
             chat_language=request.chat_language,
+            document_primer=request.document_primer,
             enable_timing=bool(debug_timing == "1" and config.rag_debug_timing_enabled),
             vector_retrieve_timeout_s=config.vector_retrieve_timeout_s,
             graph_retrieve_timeout_s=config.graph_retrieve_timeout_s,
@@ -602,6 +604,7 @@ def _answer_kwargs(
         "active_learning_state": request.active_learning_state,
         "active_learning_control": request.active_learning_control,
         "chat_language": request.chat_language,
+        "document_primer": request.document_primer,
         "enable_timing": debug_timing,
         "vector_retrieve_timeout_s": config.vector_retrieve_timeout_s,
         "graph_retrieve_timeout_s": config.graph_retrieve_timeout_s,

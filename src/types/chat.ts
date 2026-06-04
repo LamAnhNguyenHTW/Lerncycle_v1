@@ -69,6 +69,28 @@ export interface ChatRequest {
   };
 }
 
+export interface RagAnswerRequestBody {
+  query: string;
+  user_id: string;
+  source_types: ChatSourceType[];
+  top_k: number;
+  pdf_ids?: string[];
+  recent_messages: RecentChatMessage[];
+  session_id: string;
+  memory_source_ids: string[];
+  memory_mode: 'auto';
+  graph_mode: 'auto' | 'off';
+  context_summary?: string;
+  web_mode: 'on' | 'off';
+  use_intent_classifier: boolean;
+  use_retrieval_planner: boolean;
+  chat_mode: ChatMode;
+  active_learning_state: ActiveLearningState;
+  active_learning_control?: ActiveLearningControl;
+  chat_language?: LearningLanguage;
+  document_primer?: string;
+}
+
 export interface ChatSource {
   chunk_id: string;
   source_type: ChatSourceType;

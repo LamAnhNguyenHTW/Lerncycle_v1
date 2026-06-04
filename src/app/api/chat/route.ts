@@ -4,11 +4,16 @@ import {
   assertUserChatMessagesUnderDailyLimit,
   BetaGuardError,
 } from '@/lib/beta-guard';
+import {
+  buildDocumentPrimerText,
+  loadDocumentPrimers,
+  loadOwnedPdfs,
+} from '@/lib/documentPrimer';
 import {assertUsageQuota, recordUsage, UsageQuotaError, type UsageClient, type UsageFeature} from '@/lib/limits/guard';
 import {createClient} from '@/lib/supabase/server';
 import {createServiceClient} from '@/lib/supabase/service';
 import type {SupabaseClient} from '@supabase/supabase-js';
-import type {ActiveLearningControl, ActiveLearningState, ChatMode, ChatRequest, ChatResponse, ChatRole, ChatSourceType, RecentChatMessage} from '@/types/chat';
+import type {ActiveLearningControl, ActiveLearningState, ChatMode, ChatRequest, ChatResponse, ChatRole, ChatSourceType, RagAnswerRequestBody, RecentChatMessage} from '@/types/chat';
 
 const MATERIAL_SOURCE_TYPES: ChatSourceType[] = ['pdf', 'note', 'annotation_comment'];
 const SOURCE_TYPES: ChatSourceType[] = [...MATERIAL_SOURCE_TYPES, 'chat_memory', 'web'];
@@ -25,6 +30,7 @@ const PROMPT_COMPACTION_DEFAULT_THRESHOLD = 12;
 const PROMPT_COMPACTION_DEFAULT_INTERVAL = 4;
 const PROMPT_COMPACTION_DEFAULT_KEEP_RECENT = 6;
 const PROMPT_COMPACTION_DEFAULT_MAX_CHARS = 1500;
+const ACTIVE_LEARNING_PRIMER_DEFAULT_MAX_CHARS = 1200;
 const FORBIDDEN_RAG_TOOL_FIELDS = [
   'tools',
   'tool',
@@ -42,6 +48,7 @@ const FORBIDDEN_RAG_TOOL_FIELDS = [
   'max_tool_calls',
   'max_refinement_rounds',
   'raw_tool_calls',
+  'document_primer',
 ] as const;
 
 class SessionNotFoundError extends Error {}
@@ -705,7 +712,7 @@ async function loadRelatedMemorySourceIds(
   return Array.from(ids);
 }
 
-function buildRagRequestBody({
+export function buildRagRequestBody({
   trimmedMessage,
   userId,
   sourceTypes,
@@ -722,6 +729,7 @@ function buildRagRequestBody({
   requestActiveLearningState,
   activeLearningControl,
   language,
+  documentPrimer,
 }: {
   trimmedMessage: string;
   userId: string;
@@ -739,7 +747,8 @@ function buildRagRequestBody({
   requestActiveLearningState: ActiveLearningState;
   activeLearningControl: ActiveLearningControl | undefined;
   language: 'de' | 'en' | undefined;
-}) {
+  documentPrimer?: string;
+}): RagAnswerRequestBody {
   return {
     query: trimmedMessage,
     user_id: userId,
@@ -759,7 +768,35 @@ function buildRagRequestBody({
     active_learning_state: requestActiveLearningState,
     active_learning_control: activeLearningControl,
     chat_language: language,
+    document_primer: sessionMode === 'guided_learning' ? documentPrimer || undefined : undefined,
   };
+}
+
+export async function loadGuidedLearningDocumentPrimer({
+  supabase,
+  userId,
+  sessionMode,
+  pdfIds,
+  maxChars,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  userId: string;
+  sessionMode: ChatMode;
+  pdfIds: string[];
+  maxChars: number;
+}) {
+  if (sessionMode !== 'guided_learning' || pdfIds.length === 0) {
+    return undefined;
+  }
+  const selectedPdfs = await loadOwnedPdfs(supabase, userId, pdfIds);
+  const allowedPdfIds = selectedPdfs.map((pdf) => pdf.id);
+  const primers = await loadDocumentPrimers(supabase, userId, allowedPdfIds);
+  const primerText = buildDocumentPrimerText({
+    pdfs: selectedPdfs,
+    primers,
+    maxChars,
+  });
+  return primerText || undefined;
 }
 
 async function persistAssistantMessageOnce({
@@ -819,7 +856,7 @@ async function fetchNonStreamingRagAnswer({
 }: {
   ragApiUrl: string;
   internalApiKey: string;
-  requestBody: Record<string, unknown>;
+  requestBody: RagAnswerRequestBody;
   signal?: AbortSignal;
 }) {
   const response = await fetch(ragAnswerEndpoint(ragApiUrl), {
@@ -855,7 +892,7 @@ async function streamRagAnswer({
   supabase: SupabaseClient;
   ragApiUrl: string;
   internalApiKey: string;
-  requestBody: Record<string, unknown>;
+  requestBody: RagAnswerRequestBody;
   sessionId: string;
   userId: string;
   userMessageId: string;
@@ -1160,6 +1197,18 @@ export async function POST(request: Request) {
       courseId,
       pdfIds,
     );
+    let documentPrimer: string | undefined;
+    try {
+      documentPrimer = await loadGuidedLearningDocumentPrimer({
+        supabase,
+        userId: user.id,
+        sessionMode,
+        pdfIds,
+        maxChars: parseIntEnv(process.env.ACTIVE_LEARNING_PRIMER_MAX_CHARS, ACTIVE_LEARNING_PRIMER_DEFAULT_MAX_CHARS),
+      });
+    } catch (error) {
+      console.error('Failed to load guided learning document primer', error);
+    }
     const ragRequestBody = buildRagRequestBody({
       trimmedMessage,
       userId: user.id,
@@ -1177,6 +1226,7 @@ export async function POST(request: Request) {
       requestActiveLearningState,
       activeLearningControl,
       language: body.language,
+      documentPrimer,
     });
 
     const {data: userMessage} = await supabase.from('chat_messages').insert({

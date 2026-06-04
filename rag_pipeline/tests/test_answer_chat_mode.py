@@ -1,5 +1,7 @@
 from rag_pipeline.pedagogical_prompts import AL_STATE_CLOSE, AL_STATE_OPEN
-from rag_pipeline.rag_answer import FALLBACK_ANSWER, answer_with_rag
+from rag_pipeline.rag_answer import FALLBACK_ANSWER, _is_active_learning_mode
+from rag_pipeline.rag_answer import _uses_document_primer
+from rag_pipeline.rag_answer import _should_answer_without_retrieval, answer_with_rag
 
 
 class FakeLlmClient:
@@ -171,17 +173,188 @@ def test_active_learning_state_merge_preserves_mode() -> None:
     assert response["updated_active_learning_state"]["current_step"] == "evaluate_answer"
 
 
-def test_fallback_answer_unchanged_for_active_learning_without_results() -> None:
+def test_active_learning_mode_helper_accepts_only_active_learning_modes() -> None:
+    assert _is_active_learning_mode("guided_learning") is True
+    assert _is_active_learning_mode("feynman") is True
+    assert _is_active_learning_mode("normal") is False
+    assert _is_active_learning_mode(None) is False
+
+
+def test_guided_learning_answers_without_retrieval_when_results_empty() -> None:
+    assert _should_answer_without_retrieval(
+        None,
+        conversation_only_followup=False,
+        recent_messages=None,
+        retrieval_query="Ich wuerde gerne alle Themen gemeinsam durchgehen.",
+        query="Ich wuerde gerne alle Themen gemeinsam durchgehen.",
+        web_allowed=False,
+        has_results=False,
+        chat_mode="guided_learning",
+    ) is True
+
+
+def test_guided_learning_does_not_answer_without_retrieval_when_results_exist() -> None:
+    assert _should_answer_without_retrieval(
+        None,
+        conversation_only_followup=False,
+        recent_messages=None,
+        retrieval_query="Process Mining",
+        query="Process Mining",
+        web_allowed=False,
+        has_results=True,
+        chat_mode="guided_learning",
+    ) is False
+
+
+def test_feynman_empty_retrieval_fallback_behavior_is_unchanged() -> None:
+    assert _should_answer_without_retrieval(
+        None,
+        conversation_only_followup=False,
+        recent_messages=None,
+        retrieval_query="Process Mining",
+        query="Process Mining",
+        web_allowed=False,
+        has_results=False,
+        chat_mode="feynman",
+    ) is True
+
+
+def test_normal_empty_retrieval_fallback_behavior_is_unchanged() -> None:
+    assert _should_answer_without_retrieval(
+        None,
+        conversation_only_followup=False,
+        recent_messages=None,
+        retrieval_query="Process Mining",
+        query="Process Mining",
+        web_allowed=False,
+        has_results=False,
+        chat_mode="normal",
+    ) is False
+
+
+def test_guided_learning_without_retrieval_continues_session_instead_of_static_fallback() -> None:
+    llm = FakeLlmClient(
+        f"Lass uns mit einem Thema starten, das du zuerst greifen willst.{AL_STATE_OPEN}"
+        '{"current_step":"choose_topic","last_question":"Welches Thema sollen wir zuerst gemeinsam durchgehen?"}'
+        f"{AL_STATE_CLOSE}"
+    )
+
     response = answer_with_rag(
-        "Frage",
+        "Ich wuerde gerne alle Themen gemeinsam durchgehen.",
         "user-1",
         chat_mode="guided_learning",
-        llm_client=FakeLlmClient(),
+        active_learning_state={"mode": "guided_learning", "language": "de"},
+        llm_client=llm,
         retrieval_fn=lambda **_: [],
     )
 
-    assert response["answer"] == FALLBACK_ANSWER
-    assert "updated_active_learning_state" not in response
+    assert response["answer"].startswith("Lass uns mit einem Thema starten")
+    assert response["answer"] != FALLBACK_ANSWER
+    assert not response["answer"].startswith("[NO_INFO]")
+    assert response["updated_active_learning_state"]["current_step"] == "choose_topic"
+
+    system_prompt = llm.calls[-1]["system_prompt"]
+    user_prompt = llm.calls[-1]["user_prompt"]
+    assert "socratic tutor" in system_prompt.lower()
+    assert "Continue the active-learning session" in user_prompt
+    assert "Do not greet the user" in user_prompt
+    assert "Ich wuerde gerne alle Themen" in user_prompt
+
+
+def test_document_primer_gate_accepts_guided_learning_only() -> None:
+    assert _uses_document_primer("guided_learning") is True
+    assert _uses_document_primer("feynman") is False
+    assert _uses_document_primer("normal") is False
+    assert _uses_document_primer(None) is False
+
+
+def test_guided_learning_injects_document_primer_into_grounded_prompt() -> None:
+    llm = FakeLlmClient("Welche dieser Themen sollen wir zuerst nehmen?")
+
+    answer_with_rag(
+        "Können wir die Themen in der Datei gemeinsam durchgehen?",
+        "user-1",
+        chat_mode="guided_learning",
+        active_learning_state={"mode": "guided_learning", "language": "de"},
+        document_primer="Topics: Ist-Prozess, BPMN",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    user_prompt = llm.calls[-1]["user_prompt"]
+    assert "[Document orientation" in user_prompt
+    assert "Topics: Ist-Prozess, BPMN" in user_prompt
+
+
+def test_guided_learning_injects_document_primer_without_retrieval() -> None:
+    llm = FakeLlmClient(
+        f"Die Datei nennt Ist-Prozess und BPMN. Womit möchtest du starten?{AL_STATE_OPEN}"
+        '{"current_step":"choose_topic"}'
+        f"{AL_STATE_CLOSE}"
+    )
+
+    answer_with_rag(
+        "Können wir die Themen in der Datei gemeinsam durchgehen?",
+        "user-1",
+        chat_mode="guided_learning",
+        active_learning_state={"mode": "guided_learning", "language": "de"},
+        document_primer="Topics: Ist-Prozess, BPMN",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [],
+    )
+
+    user_prompt = llm.calls[-1]["user_prompt"]
+    assert "[Document orientation" in user_prompt
+    assert "Topics: Ist-Prozess, BPMN" in user_prompt
+
+
+def test_feynman_ignores_document_primer_from_direct_api_call() -> None:
+    llm = FakeLlmClient("Reaction")
+
+    answer_with_rag(
+        "Ich erkläre Process Mining.",
+        "user-1",
+        chat_mode="feynman",
+        active_learning_state={"mode": "feynman"},
+        document_primer="Topics: Should not appear",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    assert "Should not appear" not in llm.calls[-1]["user_prompt"]
+    assert "[Document orientation" not in llm.calls[-1]["user_prompt"]
+
+
+def test_normal_mode_ignores_document_primer_from_direct_api_call() -> None:
+    llm = FakeLlmClient("Antwort")
+
+    answer_with_rag(
+        "Was ist Process Mining?",
+        "user-1",
+        chat_mode="normal",
+        document_primer="Topics: Should not appear",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    assert "Should not appear" not in llm.calls[-1]["user_prompt"]
+    assert "[Document orientation" not in llm.calls[-1]["user_prompt"]
+
+
+def test_empty_document_primer_is_not_injected() -> None:
+    llm = FakeLlmClient("Antwort")
+
+    answer_with_rag(
+        "Können wir die Themen gemeinsam durchgehen?",
+        "user-1",
+        chat_mode="guided_learning",
+        active_learning_state={"mode": "guided_learning"},
+        document_primer="   ",
+        llm_client=llm,
+        retrieval_fn=lambda **_: [_result()],
+    )
+
+    assert "[Document orientation" not in llm.calls[-1]["user_prompt"]
 
 
 def test_feynman_without_retrieval_continues_session_instead_of_static_fallback() -> None:

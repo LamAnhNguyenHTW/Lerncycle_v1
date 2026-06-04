@@ -434,6 +434,29 @@ def test_rag_answer_passes_chat_mode_and_active_learning_state(client, monkeypat
     assert response.json()["updated_active_learning_state"]["current_step"] == "ask_question"
 
 
+def test_rag_answer_passes_document_primer_to_answer_with_rag(client, monkeypatch) -> None:
+    test_client, api = client
+    calls = []
+
+    def fake_answer_with_rag(**kwargs):
+        calls.append(kwargs)
+        return {"answer": "ok", "sources": []}
+
+    monkeypatch.setattr(api, "answer_with_rag", fake_answer_with_rag)
+
+    response = test_client.post(
+        "/rag/answer",
+        headers=_headers(),
+        json=_payload(
+            chat_mode="guided_learning",
+            document_primer="Topics: Ist-Prozess, BPMN",
+        ),
+    )
+
+    assert response.status_code == 200
+    assert calls[0]["document_primer"] == "Topics: Ist-Prozess, BPMN"
+
+
 def test_rag_answer_rejects_invalid_chat_mode(client) -> None:
     test_client, _ = client
 

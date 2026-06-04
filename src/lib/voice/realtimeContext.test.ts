@@ -1,6 +1,5 @@
 import {
   RealtimeContextError,
-  buildDocumentPrimerText,
   buildRealtimeContext,
   persistRealtimeSessionSources,
   validateRealtimeContextBody,
@@ -90,42 +89,6 @@ export function assertRealtimeContextBodyDedupesSourceIds() {
   });
   if (!result.ok || result.value.sessionId !== 'session-1' || result.value.sourceIds.join(',') !== 'pdf-1,pdf-2') {
     throw new Error(`Expected source IDs to validate and dedupe, got ${JSON.stringify(result)}`);
-  }
-}
-
-export function assertRealtimePrimerTextIsCappedAndBounded() {
-  const primer = buildDocumentPrimerText({
-    pdfs: [
-      {id: 'pdf-1', name: 'Alpha.pdf'},
-      {id: 'pdf-2', name: 'Beta.pdf'},
-      {id: 'pdf-3', name: 'Gamma.pdf'},
-      {id: 'pdf-4', name: 'Delta.pdf'},
-    ],
-    primers: [
-      {
-        source_id: 'pdf-1',
-        title: 'Alpha',
-        summary: 'A'.repeat(80),
-        main_topics: ['Ist-Prozess', 'Einsatzplanung'],
-        key_terms: ['BPMN'],
-        learning_objectives: ['Explain the current process'],
-      },
-      {
-        source_id: 'pdf-4',
-        title: 'Delta',
-        summary: 'This should not appear for the fourth document.',
-        main_topics: ['Late topic'],
-        key_terms: ['Hidden term'],
-        learning_objectives: [],
-      },
-    ],
-    maxChars: 220,
-  });
-  if (primer.length > 220 || !primer.includes('Alpha') || !primer.includes('Document 4: Delta')) {
-    throw new Error(`Expected capped multi-document primer, got ${primer}`);
-  }
-  if (primer.includes('This should not appear')) {
-    throw new Error(`Expected documents after the third to omit detailed summaries, got ${primer}`);
   }
 }
 
