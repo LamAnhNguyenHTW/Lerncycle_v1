@@ -28,6 +28,7 @@ from rag_pipeline.learning_structure.coverage import compute_coverage
 from rag_pipeline.learning_structure.extractor import LearningExtraction, LearningExtractionError, LearningExtractor
 from rag_pipeline.learning_structure.hierarchy_builder import build_hierarchy
 from rag_pipeline.learning_structure.models import ChunkForExtraction, ExtractionReport
+from rag_pipeline.learning_structure.neo4j_store import delete_learning_graph
 from rag_pipeline.learning_structure.neo4j_store import write_learning_graph
 from rag_pipeline.learning_structure.normalizer import merge_duplicates
 from rag_pipeline.learning_structure.topic_consolidator import TopicConsolidator
@@ -49,6 +50,7 @@ from rag_pipeline.source_ingestion import chunks_from_note
 LOGGER = logging.getLogger(__name__)
 PDF_BUCKET = "pdfs"
 GRAPH_INDEXABLE_SOURCE_TYPES = {"pdf", "note", "annotation_comment"}
+DELETABLE_SOURCE_TYPES = {"pdf", "note", "annotation_comment"}
 
 
 def beta_frozen() -> bool:
@@ -246,6 +248,9 @@ class RagWorker:
         if job_kind == "extract_learning_graph":
             self._process_learning_graph_job(job)
             return
+        if job_kind == "delete_source":
+            self._process_delete_source_job(job)
+            return
         if job_kind != "index_source":
             raise RuntimeError(f"Unsupported RAG job_kind: {job_kind}")
         source_type = str(job.get("source_type") or "pdf")
@@ -306,6 +311,127 @@ class RagWorker:
         self._mark_job_completed(str(job["id"]))
         self._maybe_enqueue_graph_job(source)
         self._maybe_enqueue_learning_graph_job(source)
+
+    def _process_delete_source_job(self, job: dict[str, Any]) -> None:
+        """Remove every derived artifact of a deleted source (idempotent).
+
+        Cleans Qdrant points, rag_chunks rows, both Neo4j graph layers,
+        rag_documents, and rag_document_primers. The Supabase source row is
+        already gone (or about to be); running against an already-clean source
+        is a no-op success.
+        """
+        job_id = str(job["id"])
+        source_type = str(job.get("source_type") or "")
+        if source_type not in DELETABLE_SOURCE_TYPES:
+            self._mark_job_completed(
+                job_id,
+                metadata={"skipped": "unsupported_delete_source_type"},
+            )
+            return
+
+        user_id = str(job["user_id"])
+        source_id = str(job["source_id"])
+        metadata = dict(job.get("metadata") or {})
+        deleted_pdf_id = (
+            str(metadata.get("deleted_pdf_id") or "")
+            or (source_id if source_type == "pdf" else "")
+        ) or None
+
+        store = self._get_qdrant_store()
+        if source_type == "pdf" and deleted_pdf_id:
+            # Covers pdf, note, and annotation_comment points of this PDF.
+            store.delete_points_by_pdf_id(user_id, deleted_pdf_id)
+        else:
+            store.delete_points_by_source(user_id, source_type, source_id)
+
+        self._delete_chunk_rows(user_id, source_type, source_id, deleted_pdf_id)
+        self._delete_graph_layers(user_id, source_type, source_id, deleted_pdf_id)
+        self._delete_document_rows(user_id, source_type, source_id, deleted_pdf_id)
+
+        self._mark_job_completed(
+            job_id,
+            metadata={**metadata, "cleanup": "completed"},
+        )
+
+    def _delete_chunk_rows(
+        self,
+        user_id: str,
+        source_type: str,
+        source_id: str,
+        deleted_pdf_id: str | None,
+    ) -> None:
+        query = self._supabase.table("rag_chunks").delete().eq("user_id", user_id)
+        if source_type == "pdf" and deleted_pdf_id:
+            query = query.eq("pdf_id", deleted_pdf_id)
+        else:
+            query = query.eq("source_type", source_type).eq("source_id", source_id)
+        query.execute()
+
+    def _delete_document_rows(
+        self,
+        user_id: str,
+        source_type: str,
+        source_id: str,
+        deleted_pdf_id: str | None,
+    ) -> None:
+        documents = self._supabase.table("rag_documents").delete().eq("user_id", user_id)
+        if source_type == "pdf" and deleted_pdf_id:
+            documents = documents.eq("pdf_id", deleted_pdf_id)
+        else:
+            documents = documents.eq("source_type", source_type).eq("source_id", source_id)
+        documents.execute()
+        self._supabase.table("rag_document_primers").delete().eq(
+            "user_id", user_id
+        ).eq("source_type", source_type).eq("source_id", source_id).execute()
+
+    def _delete_graph_layers(
+        self,
+        user_id: str,
+        source_type: str,
+        source_id: str,
+        deleted_pdf_id: str | None,
+    ) -> None:
+        graph_store = self._graph_store
+        if graph_store is None and self._neo4j_configured():
+            graph_store = create_graph_store(self._config)
+            self._graph_store = graph_store
+        if graph_store is not None:
+            if source_type == "pdf" and deleted_pdf_id:
+                graph_store.delete_by_pdf_id(user_id, deleted_pdf_id)
+            graph_store.delete_by_source(user_id, source_type, source_id)
+        self._delete_learning_graph_for_source(user_id, source_type, source_id)
+
+    def _neo4j_configured(self) -> bool:
+        return bool(
+            getattr(self._config, "neo4j_uri", None)
+            and getattr(self._config, "neo4j_user", None)
+            and getattr(self._config, "neo4j_password", None)
+        )
+
+    def _delete_learning_graph_for_source(
+        self,
+        user_id: str,
+        source_type: str,
+        source_id: str,
+    ) -> None:
+        if not self._neo4j_configured():
+            return
+        from neo4j import GraphDatabase
+
+        driver = GraphDatabase.driver(
+            self._config.neo4j_uri,
+            auth=(self._config.neo4j_user, self._config.neo4j_password),
+        )
+        try:
+            delete_learning_graph(
+                user_id,
+                source_id,
+                driver=driver,
+                source_type=source_type,
+                database=getattr(self._config, "neo4j_database", None),
+            )
+        finally:
+            driver.close()
 
     def _upsert_document_primer(self, chunks: list[RagChunk]) -> None:
         if not chunks or chunks[0].source.source_type != "pdf":

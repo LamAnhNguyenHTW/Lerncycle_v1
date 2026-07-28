@@ -68,6 +68,42 @@ def write_learning_graph(
         _write_node_recursive(driver, child, parent=None, base=base, database=database)
 
 
+def delete_learning_graph(
+    user_id: str,
+    source_id: str,
+    *,
+    driver: Any,
+    source_type: str = "pdf",
+    database: str | None = None,
+) -> None:
+    """Remove one user's Learning Graph for a source, including Document and Chunk nodes.
+
+    Idempotent: deleting an already-clean source is a no-op. Concept-GraphRAG
+    data (Concept nodes, RELATED/MENTIONED_IN relationships) is not touched
+    beyond DETACH-deleting shared Chunk nodes of this source.
+    """
+    base = {"user_id": user_id, "source_id": source_id, "source_type": source_type}
+    _delete_existing_learning_layer(driver, base, database)
+    _run(
+        driver,
+        """
+        MATCH (chunk:Chunk {user_id: $user_id, source_type: $source_type, source_id: $source_id})
+        DETACH DELETE chunk
+        """,
+        base,
+        database,
+    )
+    _run(
+        driver,
+        """
+        MATCH (doc:Document {user_id: $user_id, source_type: $source_type, source_id: $source_id})
+        DETACH DELETE doc
+        """,
+        base,
+        database,
+    )
+
+
 def _delete_existing_learning_layer(driver: Any, base: dict[str, str], database: str | None) -> None:
     _run(
         driver,

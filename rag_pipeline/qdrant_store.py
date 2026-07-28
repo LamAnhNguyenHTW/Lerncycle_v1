@@ -134,6 +134,21 @@ class QdrantStore:
             ),
         )
 
+    def delete_points_by_pdf_id(self, user_id: str, pdf_id: str) -> None:
+        """Delete every point of one PDF including its note/annotation chunks.
+
+        All chunk payloads carry `pdf_id` regardless of source_type, so this
+        single filter covers pdf, note, and annotation_comment points.
+        """
+        if not self._collection_exists():
+            return
+        self._client.delete(
+            collection_name=self.collection_name,
+            points_selector=_filter_selector(
+                _filter({"user_id": user_id, "pdf_id": pdf_id})
+            ),
+        )
+
     def search_chunks(
         self,
         query_vector: list[float],

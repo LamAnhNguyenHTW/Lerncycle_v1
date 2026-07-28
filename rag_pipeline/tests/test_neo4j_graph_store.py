@@ -88,6 +88,26 @@ def test_neo4j_store_search_concepts_respects_source_filters() -> None:
     assert driver.calls[-1][1]["source_ids"] == ["pdf-1"]
 
 
+def test_neo4j_store_search_concepts_matches_query_terms_not_whole_question() -> None:
+    store, driver = _store()
+
+    store.search_concepts(
+        "user-1",
+        "Wie hängen Process Mining und Event Logs zusammen?",
+        ["pdf"],
+        ["pdf-1"],
+    )
+
+    statement, parameters = driver.calls[-1]
+    assert "OPTIONAL MATCH" not in statement
+    assert "any(term IN $terms" in statement
+    assert statement.index("ORDER BY match_count") < statement.index(
+        "RETURN DISTINCT concept.name"
+    )
+    assert "head(collect(concept)) AS concept" in statement
+    assert parameters["terms"] == ["process", "mining", "event", "logs"]
+
+
 def test_neo4j_store_neighborhood_respects_source_filters() -> None:
     store, driver = _store()
 

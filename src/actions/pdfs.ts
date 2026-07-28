@@ -9,6 +9,7 @@ import {
   BetaGuardError,
 } from '@/lib/beta-guard';
 import {assertUsageQuota, recordUsage, UsageQuotaError, type UsageClient} from '@/lib/limits/guard';
+import {enqueueSourceDeleteJob} from '@/lib/rag-cleanup';
 import {createClient} from '@/lib/supabase/server';
 import {createServiceClient} from '@/lib/supabase/service';
 import {revalidatePath} from 'next/cache';
@@ -174,12 +175,22 @@ export async function getPdfSignedUrl(
   return {url: data.signedUrl};
 }
 
-/** Deletes a PDF from Storage and removes its metadata row. */
+/**
+ * Deletes a PDF from Storage, removes its metadata row, and queues a
+ * `delete_source` cleanup job so the worker removes Qdrant points, Neo4j
+ * graph data, and derived rows (notes/annotations rows cascade in Supabase;
+ * their index artifacts are cleaned via the PDF-wide cleanup job).
+ */
 export async function deletePdf(
   id: string,
   storagePath: string,
-): Promise<{error?: string}> {
+): Promise<{error?: string; cleanupQueued?: boolean}> {
   const supabase = await createClient();
+  const {data: {user}} = await supabase.auth.getUser();
+
+  if (!user) {
+    return {error: 'Not authenticated.'};
+  }
 
   const {error: storageError} = await supabase.storage
     .from(BUCKET)
@@ -189,12 +200,28 @@ export async function deletePdf(
     return {error: storageError.message};
   }
 
-  const {error: dbError} = await supabase.from('pdfs').delete().eq('id', id);
+  const {error: dbError} = await supabase
+    .from('pdfs')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (dbError) {
     return {error: dbError.message};
   }
 
+  // Cleanup failures must not block the deletion; orphaned index data is
+  // repairable, a blocked user-facing delete is not.
+  const {error: cleanupError} = await enqueueSourceDeleteJob({
+    userId: user.id,
+    sourceType: 'pdf',
+    sourceId: id,
+    deletedPdfId: id,
+  });
+  if (cleanupError) {
+    console.error(`deletePdf: cleanup job for ${id} not queued: ${cleanupError}`);
+  }
+
   revalidatePath('/');
-  return {};
+  return {cleanupQueued: !cleanupError};
 }

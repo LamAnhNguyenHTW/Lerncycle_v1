@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -22,6 +23,26 @@ def _transient_error_types() -> tuple[type[Exception], ...]:
 _TRANSIENT_ERRORS = _transient_error_types()
 _MAX_RETRIES = 3
 _RETRY_BACKOFF_SECONDS = 0.5
+_CONCEPT_QUERY_STOPWORDS = {
+    "a", "an", "and", "are", "as", "between", "by", "did", "do", "does",
+    "for", "from", "how", "in", "into", "is", "of", "on", "or", "the",
+    "these", "to", "together", "was", "were", "what", "when", "where",
+    "which", "why", "with", "without", "das", "dem", "den", "der", "des",
+    "die", "ein", "eine", "einem", "einen", "einer", "eines", "für", "hängen",
+    "ist", "mit", "nach", "oder", "sind", "und", "von", "warum", "welche",
+    "welcher", "welches", "werden", "wie", "wird", "wurden", "zwischen",
+    "zusammen", "zum", "zur",
+}
+
+
+def _concept_search_terms(query: str) -> list[str]:
+    """Return deterministic content terms for lexical Concept lookup."""
+    terms: list[str] = []
+    for token in re.findall(r"[\w-]+", query.casefold(), flags=re.UNICODE):
+        if len(token) < 3 or token in _CONCEPT_QUERY_STOPWORDS or token in terms:
+            continue
+        terms.append(token)
+    return terms[:20]
 
 
 class Neo4jGraphStore:
@@ -162,7 +183,21 @@ class Neo4jGraphStore:
         params = {"user_id": user_id, "source_type": source_type, "source_id": source_id}
         self._run("MATCH ()-[r:RELATED {user_id: $user_id, source_type: $source_type, source_id: $source_id}]-() DELETE r", params)
         self._run("MATCH ()-[r:MENTIONED_IN {user_id: $user_id, source_type: $source_type, source_id: $source_id}]-() DELETE r", params)
-        self._run("MATCH (chunk:Chunk {user_id: $user_id, source_type: $source_type, source_id: $source_id}) DELETE chunk", params)
+        # DETACH: learning-structure SUPPORTED_BY relationships may still attach
+        # to shared Chunk nodes; a plain DELETE would fail in that case.
+        self._run("MATCH (chunk:Chunk {user_id: $user_id, source_type: $source_type, source_id: $source_id}) DETACH DELETE chunk", params)
+        self._run("MATCH (concept:Concept {user_id: $user_id}) WHERE NOT (concept)--() DELETE concept", {"user_id": user_id})
+
+    def delete_by_pdf_id(self, user_id: str, pdf_id: str) -> None:
+        """Delete graph data for one PDF including its note/annotation chunks.
+
+        Chunk nodes and RELATED relationships carry `pdf_id` for every
+        source_type derived from the PDF, so this covers dependent note and
+        annotation_comment graph data in one pass.
+        """
+        params = {"user_id": user_id, "pdf_id": pdf_id}
+        self._run("MATCH ()-[r:RELATED {user_id: $user_id}]-() WHERE r.pdf_id = $pdf_id DELETE r", params)
+        self._run("MATCH (chunk:Chunk {user_id: $user_id}) WHERE chunk.pdf_id = $pdf_id DETACH DELETE chunk", params)
         self._run("MATCH (concept:Concept {user_id: $user_id}) WHERE NOT (concept)--() DELETE concept", {"user_id": user_id})
 
     def search_concepts(
@@ -174,22 +209,31 @@ class Neo4jGraphStore:
         top_k: int = 10,
     ) -> list[dict[str, Any]]:
         """Search concepts by substring, scoped by user and optional source filters."""
+        terms = _concept_search_terms(query)
+        if not terms:
+            return []
         return self._records(
             """
             MATCH (concept:Concept {user_id: $user_id})
-            OPTIONAL MATCH (concept)-[:MENTIONED_IN]->(chunk:Chunk {user_id: $user_id})
-            WHERE toLower(concept.name) CONTAINS toLower($query)
-              AND ($source_types IS NULL OR chunk.source_type IN $source_types)
+            WHERE any(term IN $terms WHERE toLower(concept.name) CONTAINS term)
+            MATCH (concept)-[:MENTIONED_IN]->(chunk:Chunk {user_id: $user_id})
+            WHERE ($source_types IS NULL OR chunk.source_type IN $source_types)
               AND ($source_ids IS NULL OR chunk.source_id IN $source_ids)
+            WITH DISTINCT concept,
+                 size([term IN $terms WHERE toLower(concept.name) CONTAINS term]) AS match_count
+            WITH concept.normalized_name AS normalized_name,
+                 head(collect(concept)) AS concept,
+                 max(match_count) AS match_count
+            ORDER BY match_count DESC, concept.name
             RETURN DISTINCT concept.name AS name,
                    concept.normalized_name AS normalized_name,
                    concept.node_type AS node_type,
-                   concept.description AS description
+                   null AS description
             LIMIT $top_k
             """,
             {
                 "user_id": user_id,
-                "query": query,
+                "terms": terms,
                 "source_types": source_types,
                 "source_ids": source_ids,
                 "top_k": top_k,
@@ -215,7 +259,7 @@ class Neo4jGraphStore:
             RETURN source.name AS source,
                    target.name AS target,
                    rel.relation_type AS relation_type,
-                   rel.description AS description,
+                   null AS description,
                    rel.chunk_id AS chunk_id,
                    rel.source_type AS source_type,
                    rel.source_id AS source_id,

@@ -4,6 +4,7 @@ import {
   assertBetaNotFrozen,
   assertUserRagJobsUnderDailyLimit,
 } from '@/lib/beta-guard';
+import {enqueueSourceDeleteJob} from '@/lib/rag-cleanup';
 import {createClient} from '@/lib/supabase/server';
 import {revalidatePath} from 'next/cache';
 
@@ -132,10 +133,13 @@ export async function createAnnotation(
   return {annotation: row as Annotation};
 }
 
-/** Deletes an annotation by id. */
+/**
+ * Deletes an annotation by id and queues a `delete_source` cleanup job that
+ * removes its Qdrant points, `rag_chunks` rows, and Neo4j graph data.
+ */
 export async function deleteAnnotation(
   id: string,
-): Promise<{error?: string}> {
+): Promise<{error?: string; cleanupQueued?: boolean}> {
   const supabase = await createClient();
   const {data: {user}} = await supabase.auth.getUser();
 
@@ -150,6 +154,13 @@ export async function deleteAnnotation(
     };
   }
 
+  const {data: row} = await supabase
+    .from('pdf_annotations')
+    .select('pdf_id')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
   const {error} = await supabase
     .from('pdf_annotations')
     .delete()
@@ -158,15 +169,18 @@ export async function deleteAnnotation(
 
   if (error) return {error: error.message};
 
-  await supabase
-    .from('rag_chunks')
-    .delete()
-    .eq('source_type', 'annotation_comment')
-    .eq('source_id', id)
-    .eq('user_id', user.id);
+  const {error: cleanupError} = await enqueueSourceDeleteJob({
+    userId: user.id,
+    sourceType: 'annotation_comment',
+    sourceId: id,
+    deletedPdfId: row?.pdf_id ?? undefined,
+  });
+  if (cleanupError) {
+    console.error(`deleteAnnotation: cleanup job for ${id} not queued: ${cleanupError}`);
+  }
 
   revalidatePath('/');
-  return {};
+  return {cleanupQueued: !cleanupError};
 }
 
 /** Updates editable fields of an annotation (currently comment and color). */

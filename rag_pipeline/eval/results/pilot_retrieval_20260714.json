@@ -1,0 +1,3246 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-14T05:48:36.749855+00:00",
+  "evaluation_kind": "chunking_pilot",
+  "interpretation_status": "pilot_only_no_strategy_decision",
+  "query_count": 15,
+  "metric_evaluable_queries": 14,
+  "negative_control_queries": 1,
+  "retrieval_configuration": {
+    "mode": "hybrid",
+    "reranking_enabled": false,
+    "top_k": 5,
+    "hybrid_prefetch_limit": 30,
+    "hybrid_fusion": "rrf",
+    "qdrant_native_hybrid_enabled": true,
+    "embedding_provider": "openai",
+    "embedding_model": "text-embedding-3-small",
+    "sparse_provider": "fastembed",
+    "sparse_model": "Qdrant/bm25",
+    "caches_disabled": true,
+    "query_embedding_cache_enabled": false,
+    "retrieval_result_cache_enabled": false,
+    "reranker_cache_enabled": false
+  },
+  "extraction_errors": [],
+  "extraction_diagnostics": [
+    {
+      "strategy": "docling",
+      "source_id": "se-prozess-uebersicht-2023",
+      "total_pages": 15,
+      "chunked_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "missing_pages": [],
+      "fallback_pages": [
+        2,
+        12
+      ],
+      "retry_error_keys": [],
+      "page_batch_size": 1
+    },
+    {
+      "strategy": "docling",
+      "source_id": "gpaa-geschaeftsprozessmanagement",
+      "total_pages": 30,
+      "chunked_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "missing_pages": [],
+      "fallback_pages": [],
+      "retry_error_keys": [],
+      "page_batch_size": 1
+    },
+    {
+      "strategy": "docling",
+      "source_id": "self-rag-iclr-2024",
+      "total_pages": 30,
+      "chunked_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "missing_pages": [],
+      "fallback_pages": [
+        15
+      ],
+      "retry_error_keys": [],
+      "page_batch_size": 1
+    },
+    {
+      "strategy": "docling",
+      "source_id": "pwl-logistik-wise-2025",
+      "total_pages": 50,
+      "chunked_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7,
+        8,
+        9,
+        11,
+        12,
+        13,
+        14,
+        16,
+        17,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        38,
+        39,
+        40,
+        41,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "missing_pages": [
+        6,
+        10,
+        15,
+        21,
+        25,
+        37,
+        42
+      ],
+      "fallback_pages": [
+        2,
+        12,
+        13,
+        23
+      ],
+      "retry_error_keys": [],
+      "page_batch_size": 1
+    },
+    {
+      "strategy": "docling",
+      "source_id": "verteilte-anwendungen-http",
+      "total_pages": 25,
+      "chunked_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25
+      ],
+      "missing_pages": [],
+      "fallback_pages": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        10,
+        16,
+        17,
+        18,
+        21,
+        23
+      ],
+      "retry_error_keys": [],
+      "page_batch_size": 1
+    },
+    {
+      "strategy": "docling_semantic",
+      "source_id": "se-prozess-uebersicht-2023",
+      "total_pages": 15,
+      "chunked_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "missing_pages": [],
+      "fallback_pages": [
+        2,
+        12
+      ],
+      "retry_error_keys": [],
+      "page_batch_size": 1
+    },
+    {
+      "strategy": "docling_semantic",
+      "source_id": "gpaa-geschaeftsprozessmanagement",
+      "total_pages": 30,
+      "chunked_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "missing_pages": [],
+      "fallback_pages": [],
+      "retry_error_keys": [],
+      "page_batch_size": 1
+    },
+    {
+      "strategy": "docling_semantic",
+      "source_id": "self-rag-iclr-2024",
+      "total_pages": 30,
+      "chunked_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "missing_pages": [],
+      "fallback_pages": [
+        15
+      ],
+      "retry_error_keys": [],
+      "page_batch_size": 1
+    },
+    {
+      "strategy": "docling_semantic",
+      "source_id": "pwl-logistik-wise-2025",
+      "total_pages": 50,
+      "chunked_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7,
+        8,
+        9,
+        11,
+        12,
+        13,
+        14,
+        16,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        38,
+        39,
+        40,
+        41,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "missing_pages": [
+        6,
+        10,
+        15,
+        17,
+        21,
+        25,
+        37,
+        42
+      ],
+      "fallback_pages": [
+        2,
+        12,
+        13,
+        23
+      ],
+      "retry_error_keys": [],
+      "page_batch_size": 1
+    },
+    {
+      "strategy": "docling_semantic",
+      "source_id": "verteilte-anwendungen-http",
+      "total_pages": 25,
+      "chunked_pages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25
+      ],
+      "missing_pages": [],
+      "fallback_pages": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        10,
+        16,
+        17,
+        18,
+        21,
+        23
+      ],
+      "retry_error_keys": [],
+      "page_batch_size": 1
+    }
+  ],
+  "runs": {
+    "fixed_size": {
+      "schema_version": 1,
+      "generated_at": "2026-07-14T05:48:20.099427+00:00",
+      "strategy": "fixed_size",
+      "collection": "eval_fixed_size",
+      "k": 5,
+      "ground_truth_path": "rag_pipeline/eval/queries_pilot.json",
+      "config": {
+        "mode": "hybrid",
+        "reranking_enabled": false,
+        "top_k": 5,
+        "hybrid_prefetch_limit": 30,
+        "hybrid_fusion": "rrf",
+        "qdrant_native_hybrid_enabled": true,
+        "embedding_provider": "openai",
+        "embedding_model": "text-embedding-3-small",
+        "sparse_provider": "fastembed",
+        "sparse_model": "Qdrant/bm25",
+        "caches_disabled": true,
+        "query_embedding_cache_enabled": false,
+        "retrieval_result_cache_enabled": false,
+        "reranker_cache_enabled": false
+      },
+      "modes": {
+        "hybrid": {
+          "aggregate": {
+            "evaluated_queries": 14,
+            "hit_at_1": 0.7857142857142857,
+            "hit_at_3": 0.9285714285714286,
+            "hit_at_5": 1.0,
+            "precision_at_5": 0.35714285714285715,
+            "recall_at_5": 0.8023809523809523,
+            "ndcg_at_5": 0.8768836046475795,
+            "mrr": 0.8630952380952381,
+            "latency_ms": {
+              "mean": 762.9912199937584,
+              "p50": 420.63030001008883,
+              "p95": 1945.4078799870285,
+              "min": 381.09609999810345,
+              "max": 4904.307599994354,
+              "count": 15
+            },
+            "total_queries": 15,
+            "negative_control_queries": 1
+          },
+          "by_language": {
+            "de": {
+              "evaluated_queries": 10,
+              "hit_at_1": 0.8,
+              "hit_at_3": 0.9,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.3,
+              "recall_at_5": 0.8316666666666667,
+              "ndcg_at_5": 0.8906289610472069,
+              "mrr": 0.875
+            },
+            "en": {
+              "evaluated_queries": 4,
+              "hit_at_1": 0.75,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.5,
+              "recall_at_5": 0.7291666666666666,
+              "ndcg_at_5": 0.8425202136485112,
+              "mrr": 0.8333333333333334
+            }
+          },
+          "by_question_type": {
+            "contextual": {
+              "evaluated_queries": 1,
+              "hit_at_1": 0.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 0.5,
+              "mrr": 0.3333333333333333
+            },
+            "fact": {
+              "evaluated_queries": 2,
+              "hit_at_1": 0.5,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.8154648767857288,
+              "mrr": 0.75
+            },
+            "multi_hop": {
+              "evaluated_queries": 3,
+              "hit_at_1": 0.6666666666666666,
+              "hit_at_3": 0.6666666666666666,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.39999999999999997,
+              "recall_at_5": 0.5499999999999999,
+              "ndcg_at_5": 0.7993815138541874,
+              "mrr": 0.75
+            },
+            "relational": {
+              "evaluated_queries": 2,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.7,
+              "recall_at_5": 0.7083333333333333,
+              "ndcg_at_5": 0.9751800327229285,
+              "mrr": 1.0
+            },
+            "semantic_paraphrase": {
+              "evaluated_queries": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 1.0,
+              "mrr": 1.0
+            },
+            "table_or_figure": {
+              "evaluated_queries": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.3333333333333333,
+              "recall_at_5": 0.8888888888888888,
+              "ndcg_at_5": 0.9590717717793499,
+              "mrr": 1.0
+            },
+            "terminology": {
+              "evaluated_queries": 2,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.30000000000000004,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.9598603945740938,
+              "mrr": 1.0
+            }
+          },
+          "per_query": [
+            {
+              "query_id": "pilot-gpm-01",
+              "language": "de",
+              "question_type": "fact",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 5,
+                  "chunk_id": "780176c2-4060-534a-b16d-1ee965a847be",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 6,
+                  "chunk_id": "dc941604-77eb-5c85-ba34-ca189a4c0449",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 18,
+                  "chunk_id": "e58b694c-4d72-57d9-96db-583ba05064fb",
+                  "score": 0.29347825
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 9,
+                  "chunk_id": "d8b33dce-1e29-5e6d-be3f-02d70a18749a",
+                  "score": 0.26666668
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 28,
+                  "chunk_id": "3f8a8a70-38d0-5ec0-99e7-7f76f303b8fd",
+                  "score": 0.25263157
+                }
+              ],
+              "latency_ms": 4904.307599994354
+            },
+            {
+              "query_id": "pilot-gpm-02",
+              "language": "de",
+              "question_type": "relational",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.75,
+              "ndcg_at_5": 0.9674679834891693,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 14,
+                  "chunk_id": "ef32413c-0cca-5078-8ee1-5ee6cd4d2543",
+                  "score": 0.8333334
+                },
+                {
+                  "rank": 2,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 9,
+                  "chunk_id": "d8b33dce-1e29-5e6d-be3f-02d70a18749a",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 12,
+                  "chunk_id": "d051d79f-a354-5b50-bc11-b39647527c50",
+                  "score": 0.4761905
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 13,
+                  "chunk_id": "19c1b13a-4bae-580e-854d-f8afd7c2f986",
+                  "score": 0.45
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 11,
+                  "chunk_id": "c774d5fd-ef93-581f-9b3d-f40e2be5d49d",
+                  "score": 0.45
+                }
+              ],
+              "latency_ms": 677.3079999838956
+            },
+            {
+              "query_id": "pilot-gpm-03",
+              "language": "de",
+              "question_type": "table_or_figure",
+              "num_retrieved": 5,
+              "relevant_in_topk": 2,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.4,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 24,
+                  "chunk_id": "a832fc42-06a5-56a1-9beb-58f43b166584",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 25,
+                  "chunk_id": "4b382864-b70e-5933-aae6-d455f6d9c884",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 17,
+                  "chunk_id": "28c2d359-17cd-579a-b07d-eeeadbb80c78",
+                  "score": 0.45
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 20,
+                  "chunk_id": "23f30781-ba29-51b4-b876-8c2d90b12c95",
+                  "score": 0.3611111
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 30,
+                  "chunk_id": "ad164ca6-cd81-5142-a0cb-d8a61c59a6ec",
+                  "score": 0.26666668
+                }
+              ],
+              "latency_ms": 657.1326999983285
+            },
+            {
+              "query_id": "pilot-pwl-01",
+              "language": "de",
+              "question_type": "terminology",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 7,
+                  "chunk_id": "1545df33-44ff-5e1a-8130-0049706a8613",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 18,
+                  "chunk_id": "377454ee-8dcd-5b8b-b597-3b47b674a3dd",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 3,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 3,
+                  "chunk_id": "566c208c-201d-5077-a34c-6b258f7f3f30",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 17,
+                  "chunk_id": "e768cf06-e545-5b62-a131-8a90c76e066a",
+                  "score": 0.25
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 41,
+                  "chunk_id": "1ddef576-518d-58b2-8966-6d09d22a1ed1",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 415.65010001068003
+            },
+            {
+              "query_id": "pilot-pwl-02",
+              "language": "de",
+              "question_type": "multi_hop",
+              "num_retrieved": 5,
+              "relevant_in_topk": 2,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.4,
+              "recall_at_5": 0.4,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 23,
+                  "chunk_id": "6fd49cc0-d2c9-5dc5-9447-68ec48acb5c5",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 24,
+                  "chunk_id": "44b36ba7-dce1-5eb9-9ecb-c699e1792fec",
+                  "score": 0.5
+                },
+                {
+                  "rank": 3,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 3,
+                  "chunk_id": "647cb8fc-7fa7-5408-8af6-3548c8fa368d",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 21,
+                  "chunk_id": "0a0aff87-8d03-53f9-acfa-43db039e9e79",
+                  "score": 0.3026316
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 38,
+                  "chunk_id": "8452d160-7409-569b-a68c-72d79be937e3",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 405.98829998634756
+            },
+            {
+              "query_id": "pilot-pwl-03",
+              "language": "de",
+              "question_type": "table_or_figure",
+              "num_retrieved": 5,
+              "relevant_in_topk": 2,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.4,
+              "recall_at_5": 0.6666666666666666,
+              "ndcg_at_5": 0.8772153153380493,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 35,
+                  "chunk_id": "1ff42fb2-394c-555e-9a60-1c2d1fa5a1b4",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 36,
+                  "chunk_id": "4903ba78-b430-5d14-b202-76197996f65d",
+                  "score": 0.53333336
+                },
+                {
+                  "rank": 3,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 31,
+                  "chunk_id": "374c07fb-528d-5283-8d7f-98defc190034",
+                  "score": 0.5
+                },
+                {
+                  "rank": 4,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 30,
+                  "chunk_id": "c548ddbe-11fa-51cd-a539-7169b5808b82",
+                  "score": 0.44444445
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 34,
+                  "chunk_id": "62e141a3-82a1-5fc5-b7be-c8902a3d5897",
+                  "score": 0.31111112
+                }
+              ],
+              "latency_ms": 422.84519999520853
+            },
+            {
+              "query_id": "pilot-http-01",
+              "language": "de",
+              "question_type": "semantic_paraphrase",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "df6893e2-3cb1-5dc9-8c71-efb1e64d9056",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 21,
+                  "chunk_id": "130b1266-c0e5-5a1b-8d80-375185343421",
+                  "score": 0.5833334
+                },
+                {
+                  "rank": 3,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 14,
+                  "chunk_id": "7d3a5788-0bf9-58f2-b03c-1e7c73339122",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 44,
+                  "chunk_id": "331778e6-6af8-5930-89ad-61042d2121eb",
+                  "score": 0.25
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 40,
+                  "chunk_id": "3a425e15-c55f-5e95-be03-dbf7ca5fed02",
+                  "score": 0.20952383
+                }
+              ],
+              "latency_ms": 385.66780000110157
+            },
+            {
+              "query_id": "pilot-http-02",
+              "language": "de",
+              "question_type": "table_or_figure",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 21,
+                  "chunk_id": "130b1266-c0e5-5a1b-8d80-375185343421",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "df6893e2-3cb1-5dc9-8c71-efb1e64d9056",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 10,
+                  "chunk_id": "743875a7-8b3e-5881-b210-669e5ce7e04b",
+                  "score": 0.4166667
+                },
+                {
+                  "rank": 4,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 3,
+                  "chunk_id": "566c208c-201d-5077-a34c-6b258f7f3f30",
+                  "score": 0.2625
+                },
+                {
+                  "rank": 5,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 14,
+                  "chunk_id": "360a8e82-0d85-54cc-9c4c-08e6e591f111",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 503.63459999789484
+            },
+            {
+              "query_id": "pilot-http-03",
+              "language": "de",
+              "question_type": "multi_hop",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 0.0,
+              "hit_at_3": 0.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 0.25,
+              "precision_at_5": 0.2,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 0.43067655807339306,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 7,
+                  "chunk_id": "ffee85bf-8807-5eef-9ebe-c3ac1b0308b7",
+                  "score": 0.5
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 44,
+                  "chunk_id": "331778e6-6af8-5930-89ad-61042d2121eb",
+                  "score": 0.5
+                },
+                {
+                  "rank": 3,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 43,
+                  "chunk_id": "e6c80a71-19c5-5361-9a76-d11ae5794650",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 16,
+                  "chunk_id": "75745eda-8515-5322-b30c-ab241956388f",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 4,
+                  "chunk_id": "8d77f44c-5b79-5afa-be15-4ff691387481",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 381.09609999810345
+            },
+            {
+              "query_id": "pilot-se-01",
+              "language": "de",
+              "question_type": "fact",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 0.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 0.5,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.6309297535714575,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 14,
+                  "chunk_id": "360a8e82-0d85-54cc-9c4c-08e6e591f111",
+                  "score": 0.7
+                },
+                {
+                  "rank": 2,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 2,
+                  "chunk_id": "49be084c-1a92-5c2c-a15b-883ef4e3f74a",
+                  "score": 0.53333336
+                },
+                {
+                  "rank": 3,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 3,
+                  "chunk_id": "566c208c-201d-5077-a34c-6b258f7f3f30",
+                  "score": 0.42424244
+                },
+                {
+                  "rank": 4,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 12,
+                  "chunk_id": "b3c9099d-302d-53b7-95d9-f33594d5a0ac",
+                  "score": 0.3678161
+                },
+                {
+                  "rank": 5,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 10,
+                  "chunk_id": "743875a7-8b3e-5881-b210-669e5ce7e04b",
+                  "score": 0.3611111
+                }
+              ],
+              "latency_ms": 483.6113999772351
+            },
+            {
+              "query_id": "pilot-selfrag-01",
+              "language": "en",
+              "question_type": "contextual",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 0.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 0.3333333333333333,
+              "precision_at_5": 0.2,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 0.5,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "78f68157-198f-5152-84b0-fae2025de1e2",
+                  "score": 0.8333334
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 15,
+                  "chunk_id": "fd4e8d2b-b877-57d7-863f-15eec4f16451",
+                  "score": 0.5714286
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 1,
+                  "chunk_id": "2f7f5c8b-f73d-5888-bdcb-90d539c49577",
+                  "score": 0.53333336
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "f46c49a3-3d97-5a5a-9e68-b097f8568698",
+                  "score": 0.4166667
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 5,
+                  "chunk_id": "b5450856-23c9-5a1e-a7f3-fa29db1fad52",
+                  "score": 0.3125
+                }
+              ],
+              "latency_ms": 549.7305000026245
+            },
+            {
+              "query_id": "pilot-selfrag-02",
+              "language": "en",
+              "question_type": "terminology",
+              "num_retrieved": 5,
+              "relevant_in_topk": 2,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.4,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.9197207891481876,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 16,
+                  "chunk_id": "0112a084-f063-5dc2-a1f9-573c01697381",
+                  "score": 0.5833333
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 6,
+                  "chunk_id": "f0bf442b-4c34-56c3-a077-ecb22362fceb",
+                  "score": 0.5
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 3,
+                  "chunk_id": "6bc1dcf3-8aea-5955-a734-ae43787f14b4",
+                  "score": 0.45
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 24,
+                  "chunk_id": "ffee5564-b13d-5d76-a29e-7daea63f230b",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 21,
+                  "chunk_id": "71b56abe-6112-5f07-81a1-8a5c28e78732",
+                  "score": 0.33333334
+                }
+              ],
+              "latency_ms": 415.2668999740854
+            },
+            {
+              "query_id": "pilot-selfrag-03",
+              "language": "en",
+              "question_type": "multi_hop",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.75,
+              "ndcg_at_5": 0.9674679834891693,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 4,
+                  "chunk_id": "28e3a727-1e80-5288-8601-859d1ce39d98",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 5,
+                  "chunk_id": "d9d470d0-f7fd-5ee1-8b3b-cb7e02272d60",
+                  "score": 0.5
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 2,
+                  "chunk_id": "9a648aca-9e55-5878-bc69-90600cf99b62",
+                  "score": 0.44444445
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 17,
+                  "chunk_id": "75e651e8-4198-574f-a1f0-d34503491adb",
+                  "score": 0.43333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 1,
+                  "chunk_id": "2f7f5c8b-f73d-5888-bdcb-90d539c49577",
+                  "score": 0.33333334
+                }
+              ],
+              "latency_ms": 420.63030001008883
+            },
+            {
+              "query_id": "pilot-selfrag-04",
+              "language": "en",
+              "question_type": "relational",
+              "num_retrieved": 5,
+              "relevant_in_topk": 4,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.8,
+              "recall_at_5": 0.6666666666666666,
+              "ndcg_at_5": 0.9828920819566879,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "f46c49a3-3d97-5a5a-9e68-b097f8568698",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "bcc6a429-f35e-5cbb-b26a-8302dd085f29",
+                  "score": 0.53333336
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 5,
+                  "chunk_id": "670027e5-765e-56f3-be28-e6152847d91f",
+                  "score": 0.39285713
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 1,
+                  "chunk_id": "2f7f5c8b-f73d-5888-bdcb-90d539c49577",
+                  "score": 0.3703704
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "eeb53a27-f220-5f73-96f5-0b5550a18787",
+                  "score": 0.30952382
+                }
+              ],
+              "latency_ms": 409.4516999903135
+            }
+          ],
+          "negative_controls": [
+            {
+              "query_id": "pilot-se-02",
+              "language": "de",
+              "question_type": "unanswerable",
+              "num_retrieved": 5,
+              "returned_any": true,
+              "metric_status": "not_applicable_no_relevance_labels",
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 9,
+                  "chunk_id": "d9939d23-5d47-5837-869f-ce98a5c7f5ae",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 5,
+                  "chunk_id": "f4faacb2-307d-56d6-a27f-1faf34374471",
+                  "score": 0.3655914
+                },
+                {
+                  "rank": 3,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 8,
+                  "chunk_id": "e748027d-b46c-597b-af1a-7d1755774ae2",
+                  "score": 0.3611111
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 18,
+                  "chunk_id": "e58b694c-4d72-57d9-96db-583ba05064fb",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 1,
+                  "chunk_id": "d8c40a29-d78c-5623-b2ba-9d55f3ea94c0",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 412.5470999861136
+            }
+          ]
+        }
+      }
+    },
+    "docling": {
+      "schema_version": 1,
+      "generated_at": "2026-07-14T05:48:26.313386+00:00",
+      "strategy": "docling",
+      "collection": "eval_docling",
+      "k": 5,
+      "ground_truth_path": "rag_pipeline/eval/queries_pilot.json",
+      "config": {
+        "mode": "hybrid",
+        "reranking_enabled": false,
+        "top_k": 5,
+        "hybrid_prefetch_limit": 30,
+        "hybrid_fusion": "rrf",
+        "qdrant_native_hybrid_enabled": true,
+        "embedding_provider": "openai",
+        "embedding_model": "text-embedding-3-small",
+        "sparse_provider": "fastembed",
+        "sparse_model": "Qdrant/bm25",
+        "caches_disabled": true,
+        "query_embedding_cache_enabled": false,
+        "retrieval_result_cache_enabled": false,
+        "reranker_cache_enabled": false
+      },
+      "modes": {
+        "hybrid": {
+          "aggregate": {
+            "evaluated_queries": 14,
+            "hit_at_1": 0.7142857142857143,
+            "hit_at_3": 0.9285714285714286,
+            "hit_at_5": 0.9285714285714286,
+            "precision_at_5": 0.41428571428571426,
+            "recall_at_5": 0.7214285714285714,
+            "ndcg_at_5": 0.8122928923829141,
+            "mrr": 0.7976190476190476,
+            "latency_ms": {
+              "mean": 394.59890666961047,
+              "p50": 395.37000001291744,
+              "p95": 504.35041000309866,
+              "min": 240.90200001955964,
+              "max": 512.3931999842171,
+              "count": 15
+            },
+            "total_queries": 15,
+            "negative_control_queries": 1
+          },
+          "by_language": {
+            "de": {
+              "evaluated_queries": 10,
+              "hit_at_1": 0.7,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.38,
+              "recall_at_5": 0.7933333333333333,
+              "ndcg_at_5": 0.845237970421261,
+              "mrr": 0.8166666666666667
+            },
+            "en": {
+              "evaluated_queries": 4,
+              "hit_at_1": 0.75,
+              "hit_at_3": 0.75,
+              "hit_at_5": 0.75,
+              "precision_at_5": 0.5,
+              "recall_at_5": 0.5416666666666666,
+              "ndcg_at_5": 0.7299301972870469,
+              "mrr": 0.75
+            }
+          },
+          "by_question_type": {
+            "contextual": {
+              "evaluated_queries": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.4,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.9197207891481876,
+              "mrr": 1.0
+            },
+            "fact": {
+              "evaluated_queries": 2,
+              "hit_at_1": 0.5,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.30000000000000004,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.7098603945740938,
+              "mrr": 0.6666666666666666
+            },
+            "multi_hop": {
+              "evaluated_queries": 3,
+              "hit_at_1": 0.6666666666666666,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.5333333333333333,
+              "ndcg_at_5": 0.8333333333333334,
+              "mrr": 0.7777777777777778
+            },
+            "relational": {
+              "evaluated_queries": 2,
+              "hit_at_1": 0.5,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.5833333333333333,
+              "ndcg_at_5": 0.8398655250018827,
+              "mrr": 0.75
+            },
+            "semantic_paraphrase": {
+              "evaluated_queries": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.8854598815714874,
+              "mrr": 1.0
+            },
+            "table_or_figure": {
+              "evaluated_queries": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.3333333333333333,
+              "recall_at_5": 0.7777777777777778,
+              "ndcg_at_5": 0.9891559944963898,
+              "mrr": 1.0
+            },
+            "terminology": {
+              "evaluated_queries": 2,
+              "hit_at_1": 0.5,
+              "hit_at_3": 0.5,
+              "hit_at_5": 0.5,
+              "precision_at_5": 0.1,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 0.5,
+              "mrr": 0.5
+            }
+          },
+          "per_query": [
+            {
+              "query_id": "pilot-gpm-01",
+              "language": "de",
+              "question_type": "fact",
+              "num_retrieved": 5,
+              "relevant_in_topk": 2,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.4,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.9197207891481876,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 5,
+                  "chunk_id": "ab8d463b-1c03-5be3-8907-bd461547b063",
+                  "score": 0.8333334
+                },
+                {
+                  "rank": 2,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 18,
+                  "chunk_id": "b5bd09b7-60f9-59be-9608-96c793855554",
+                  "score": 0.5
+                },
+                {
+                  "rank": 3,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 5,
+                  "chunk_id": "629cc6a5-035c-50a7-8cbd-da62e8bfd033",
+                  "score": 0.4166667
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 6,
+                  "chunk_id": "9e157f74-9504-5404-b2bf-7258157110bf",
+                  "score": 0.325
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 15,
+                  "chunk_id": "ba433de3-c7bc-5ed1-9b71-708115987266",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 342.0652999775484
+            },
+            {
+              "query_id": "pilot-gpm-02",
+              "language": "de",
+              "question_type": "relational",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 0.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 0.5,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 0.6797310500037655,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 11,
+                  "chunk_id": "f7467816-b8f2-5afc-b3e4-c10edcc25189",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 2,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 14,
+                  "chunk_id": "6ea265e3-ed6b-54cb-bc06-63f812177c8c",
+                  "score": 0.64285713
+                },
+                {
+                  "rank": 3,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 12,
+                  "chunk_id": "1fa271a3-4662-51a0-b63e-c0473911fdbb",
+                  "score": 0.55
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 13,
+                  "chunk_id": "70861d28-f77e-5d70-b4f9-9d5c95bdc3ac",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 13,
+                  "chunk_id": "72a8e985-90d0-512d-a084-6579ccd0b970",
+                  "score": 0.3026316
+                }
+              ],
+              "latency_ms": 438.9155000098981
+            },
+            {
+              "query_id": "pilot-gpm-03",
+              "language": "de",
+              "question_type": "table_or_figure",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.9674679834891693,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 24,
+                  "chunk_id": "10806d35-bf1c-5e33-92da-61c67ded7eb7",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 25,
+                  "chunk_id": "d0cc063d-2ccc-5438-a9b5-3da2a05d70ed",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 17,
+                  "chunk_id": "5031465d-3a01-536a-9bbd-a655b3c32a1e",
+                  "score": 0.45
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 25,
+                  "chunk_id": "dba860af-a014-5768-9e7a-60a53e7f680d",
+                  "score": 0.4166667
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 30,
+                  "chunk_id": "03971a3c-6292-53fe-a07d-3e11e153dcda",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 338.9855000132229
+            },
+            {
+              "query_id": "pilot-pwl-01",
+              "language": "de",
+              "question_type": "terminology",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 7,
+                  "chunk_id": "8e0479d9-caf9-5141-b037-1b0a427e9231",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 43,
+                  "chunk_id": "44f516c5-461d-50c5-bc22-393474c1823e",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 3,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 11,
+                  "chunk_id": "58356f1a-562f-5fd5-ba8f-4fdd4a62f9a7",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 41,
+                  "chunk_id": "1aa0c65a-7b41-5f9e-adc5-88781318b66a",
+                  "score": 0.25
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 18,
+                  "chunk_id": "12103139-dadc-58a0-982b-2d6f603c269c",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 349.3038000015076
+            },
+            {
+              "query_id": "pilot-pwl-02",
+              "language": "de",
+              "question_type": "multi_hop",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.6,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 23,
+                  "chunk_id": "358854ee-9d3f-5adb-8738-97c9a6e9e4a0",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 24,
+                  "chunk_id": "eba8a79e-b846-5c34-920a-1bd4064d157d",
+                  "score": 0.36666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 16,
+                  "chunk_id": "0c9144b6-6dc3-5cad-8b26-3eda7bf2206f",
+                  "score": 0.35
+                },
+                {
+                  "rank": 4,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 3,
+                  "chunk_id": "2cc4c971-d27d-522e-aeb8-9d33048d088d",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 17,
+                  "chunk_id": "8188753a-aae5-5645-abbd-75c5680b7e33",
+                  "score": 0.28333333
+                }
+              ],
+              "latency_ms": 512.3931999842171
+            },
+            {
+              "query_id": "pilot-pwl-03",
+              "language": "de",
+              "question_type": "table_or_figure",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 0.3333333333333333,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 35,
+                  "chunk_id": "7bb26bb4-6069-5425-b000-c4d95fdc31af",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 36,
+                  "chunk_id": "9f18a206-4455-5c55-b23a-bcd203bc92fa",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 31,
+                  "chunk_id": "907fc2a5-e326-5be5-b2cb-fd6aabbedaad",
+                  "score": 0.4166667
+                },
+                {
+                  "rank": 4,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 32,
+                  "chunk_id": "6c970908-2110-5ddd-b666-f2fbdff47c12",
+                  "score": 0.32692307
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 34,
+                  "chunk_id": "2c2fdb98-63db-561f-be44-afe6227cafcc",
+                  "score": 0.31111112
+                }
+              ],
+              "latency_ms": 403.94930000184104
+            },
+            {
+              "query_id": "pilot-http-01",
+              "language": "de",
+              "question_type": "semantic_paraphrase",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.8854598815714874,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "da544b16-6659-5a93-a4f0-1973671aa7b7",
+                  "score": 0.5769231
+                },
+                {
+                  "rank": 2,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 21,
+                  "chunk_id": "db779d80-8ca7-5e96-8812-1aadaf4d0105",
+                  "score": 0.5555556
+                },
+                {
+                  "rank": 3,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "891dade8-97d0-5074-97f8-c60735a0e348",
+                  "score": 0.39583334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 24,
+                  "chunk_id": "10806d35-bf1c-5e33-92da-61c67ded7eb7",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "04c3e970-9077-5021-ba86-d7047f451bad",
+                  "score": 0.32142857
+                }
+              ],
+              "latency_ms": 500.9035000111908
+            },
+            {
+              "query_id": "pilot-http-02",
+              "language": "de",
+              "question_type": "table_or_figure",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 21,
+                  "chunk_id": "db779d80-8ca7-5e96-8812-1aadaf4d0105",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "891dade8-97d0-5074-97f8-c60735a0e348",
+                  "score": 0.37179488
+                },
+                {
+                  "rank": 3,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 14,
+                  "chunk_id": "68d4f6de-1e3b-5564-afce-d19974670f77",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "04c3e970-9077-5021-ba86-d7047f451bad",
+                  "score": 0.29545456
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 3,
+                  "chunk_id": "a13aff3f-039d-5114-989b-541a69468301",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 387.0488000102341
+            },
+            {
+              "query_id": "pilot-http-03",
+              "language": "de",
+              "question_type": "multi_hop",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 0.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 0.3333333333333333,
+              "precision_at_5": 0.2,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 0.5,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 44,
+                  "chunk_id": "eade84d2-2b98-53b1-b4f3-1c0b346601ea",
+                  "score": 0.5
+                },
+                {
+                  "rank": 2,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 7,
+                  "chunk_id": "792dc3f2-2efa-5619-8eb2-e636aaa399d2",
+                  "score": 0.5
+                },
+                {
+                  "rank": 3,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 16,
+                  "chunk_id": "504d0391-69f3-5a9d-be09-77d8fd8bc524",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 6,
+                  "chunk_id": "9e157f74-9504-5404-b2bf-7258157110bf",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 40,
+                  "chunk_id": "602ad9e2-1e0e-5df6-915a-49770efd146b",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 395.37000001291744
+            },
+            {
+              "query_id": "pilot-se-01",
+              "language": "de",
+              "question_type": "fact",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 0.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 0.3333333333333333,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.5,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 14,
+                  "chunk_id": "68d4f6de-1e3b-5564-afce-d19974670f77",
+                  "score": 0.7
+                },
+                {
+                  "rank": 2,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 1,
+                  "chunk_id": "58df1f32-90c9-5f8a-af24-94944ca8ce39",
+                  "score": 0.6111111
+                },
+                {
+                  "rank": 3,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 2,
+                  "chunk_id": "5139bfe8-78d4-5483-b3ac-797ff651b3dd",
+                  "score": 0.38333336
+                },
+                {
+                  "rank": 4,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 12,
+                  "chunk_id": "56dedfda-2a60-546f-bf39-259365ad9180",
+                  "score": 0.3409091
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 34,
+                  "chunk_id": "2c2fdb98-63db-561f-be44-afe6227cafcc",
+                  "score": 0.33333334
+                }
+              ],
+              "latency_ms": 360.974500013981
+            },
+            {
+              "query_id": "pilot-selfrag-01",
+              "language": "en",
+              "question_type": "contextual",
+              "num_retrieved": 5,
+              "relevant_in_topk": 2,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.4,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.9197207891481876,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 1,
+                  "chunk_id": "1dea11f4-aa1c-566a-b87a-b486c072ba6f",
+                  "score": 0.8333334
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "cf7324ef-c88e-567e-959b-b6cfdb52d234",
+                  "score": 0.625
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 2,
+                  "chunk_id": "f2aa9f79-536b-5664-a1dd-83dbf5b198d3",
+                  "score": 0.3888889
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 15,
+                  "chunk_id": "167db1b3-4e4f-5460-8f5e-531acf6def7a",
+                  "score": 0.32692307
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 3,
+                  "chunk_id": "25f2f1b6-03cf-5797-8e7a-992d39b936be",
+                  "score": 0.3
+                }
+              ],
+              "latency_ms": 240.90200001955964
+            },
+            {
+              "query_id": "pilot-selfrag-02",
+              "language": "en",
+              "question_type": "terminology",
+              "num_retrieved": 5,
+              "relevant_in_topk": 0,
+              "hit_at_1": 0.0,
+              "hit_at_3": 0.0,
+              "hit_at_5": 0.0,
+              "reciprocal_rank": 0.0,
+              "precision_at_5": 0.0,
+              "recall_at_5": 0.0,
+              "ndcg_at_5": 0.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 24,
+                  "chunk_id": "6ef311f2-69fe-5b1a-8443-1aa611ff5a9d",
+                  "score": 0.54761904
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 21,
+                  "chunk_id": "24a3fe3e-e639-5959-8db3-1b0e8bd41cfd",
+                  "score": 0.54
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 19,
+                  "chunk_id": "f14cfb4a-b043-580f-b6b7-080d8a312003",
+                  "score": 0.4
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 24,
+                  "chunk_id": "8fbafa07-3469-57ce-8ef7-1fa257c9acf1",
+                  "score": 0.34285715
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 5,
+                  "chunk_id": "8e08fba3-8a5d-5a40-bf6b-336b0b8dcac8",
+                  "score": 0.33333334
+                }
+              ],
+              "latency_ms": 377.7469999913592
+            },
+            {
+              "query_id": "pilot-selfrag-03",
+              "language": "en",
+              "question_type": "multi_hop",
+              "num_retrieved": 5,
+              "relevant_in_topk": 5,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 1.0,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 4,
+                  "chunk_id": "d1cc2ed8-6c57-5064-aaab-b6b7bd5b7bca",
+                  "score": 0.7
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 4,
+                  "chunk_id": "2e0d6b32-2d0d-5bd8-99d6-bab45c323f3b",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 4,
+                  "chunk_id": "27c46473-a467-5c9e-9712-76e575698682",
+                  "score": 0.5833334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 5,
+                  "chunk_id": "41c4be06-6e66-53a9-9342-98dd4ffd5258",
+                  "score": 0.36666667
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 4,
+                  "chunk_id": "7a772dbf-2047-5cf8-8e60-9eb0310c728d",
+                  "score": 0.3611111
+                }
+              ],
+              "latency_ms": 405.00189998419955
+            },
+            {
+              "query_id": "pilot-selfrag-04",
+              "language": "en",
+              "question_type": "relational",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.6666666666666666,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "1e03e521-82a5-5ec8-8d01-c4a33ad47328",
+                  "score": 0.8333334
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 5,
+                  "chunk_id": "cdf1cd98-7187-5f08-98f0-dbfb9e13b525",
+                  "score": 0.75
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "47a4ccc8-8a2d-5fb2-a6f2-215191535c16",
+                  "score": 0.4761905
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 19,
+                  "chunk_id": "f14cfb4a-b043-580f-b6b7-080d8a312003",
+                  "score": 0.36666667
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 1,
+                  "chunk_id": "08f0b108-6835-5383-beeb-3dc97d2ee9e3",
+                  "score": 0.325
+                }
+              ],
+              "latency_ms": 397.8205000166781
+            }
+          ],
+          "negative_controls": [
+            {
+              "query_id": "pilot-se-02",
+              "language": "de",
+              "question_type": "unanswerable",
+              "num_retrieved": 5,
+              "returned_any": true,
+              "metric_status": "not_applicable_no_relevance_labels",
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 41,
+                  "chunk_id": "1aa0c65a-7b41-5f9e-adc5-88781318b66a",
+                  "score": 0.5
+                },
+                {
+                  "rank": 2,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 1,
+                  "chunk_id": "58df1f32-90c9-5f8a-af24-94944ca8ce39",
+                  "score": 0.5
+                },
+                {
+                  "rank": 3,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 9,
+                  "chunk_id": "bcc03c76-abe4-5e85-8115-c3c68283655d",
+                  "score": 0.36904764
+                },
+                {
+                  "rank": 4,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 8,
+                  "chunk_id": "3d48b579-84e1-5452-b05f-5fcbc1b0a1c9",
+                  "score": 0.3409091
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 18,
+                  "chunk_id": "b5bd09b7-60f9-59be-9608-96c793855554",
+                  "score": 0.33333334
+                }
+              ],
+              "latency_ms": 467.60279999580234
+            }
+          ]
+        }
+      }
+    },
+    "docling_semantic": {
+      "schema_version": 1,
+      "generated_at": "2026-07-14T05:48:36.749855+00:00",
+      "strategy": "docling_semantic",
+      "collection": "eval_docling_semantic",
+      "k": 5,
+      "ground_truth_path": "rag_pipeline/eval/queries_pilot.json",
+      "config": {
+        "mode": "hybrid",
+        "reranking_enabled": false,
+        "top_k": 5,
+        "hybrid_prefetch_limit": 30,
+        "hybrid_fusion": "rrf",
+        "qdrant_native_hybrid_enabled": true,
+        "embedding_provider": "openai",
+        "embedding_model": "text-embedding-3-small",
+        "sparse_provider": "fastembed",
+        "sparse_model": "Qdrant/bm25",
+        "caches_disabled": true,
+        "query_embedding_cache_enabled": false,
+        "retrieval_result_cache_enabled": false,
+        "reranker_cache_enabled": false
+      },
+      "modes": {
+        "hybrid": {
+          "aggregate": {
+            "evaluated_queries": 14,
+            "hit_at_1": 0.7142857142857143,
+            "hit_at_3": 0.8571428571428571,
+            "hit_at_5": 0.9285714285714286,
+            "precision_at_5": 0.41428571428571426,
+            "recall_at_5": 0.7214285714285714,
+            "ndcg_at_5": 0.807341217959585,
+            "mrr": 0.7916666666666667,
+            "latency_ms": {
+              "mean": 676.0682933342954,
+              "p50": 386.4201999967918,
+              "p95": 1715.541080001272,
+              "min": 349.34690000955015,
+              "max": 4508.213200024329,
+              "count": 15
+            },
+            "total_queries": 15,
+            "negative_control_queries": 1
+          },
+          "by_language": {
+            "de": {
+              "evaluated_queries": 10,
+              "hit_at_1": 0.7,
+              "hit_at_3": 0.9,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.38,
+              "recall_at_5": 0.7933333333333333,
+              "ndcg_at_5": 0.8383056262286003,
+              "mrr": 0.8083333333333333
+            },
+            "en": {
+              "evaluated_queries": 4,
+              "hit_at_1": 0.75,
+              "hit_at_3": 0.75,
+              "hit_at_5": 0.75,
+              "precision_at_5": 0.5,
+              "recall_at_5": 0.5416666666666666,
+              "ndcg_at_5": 0.7299301972870469,
+              "mrr": 0.75
+            }
+          },
+          "by_question_type": {
+            "contextual": {
+              "evaluated_queries": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.4,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.9197207891481876,
+              "mrr": 1.0
+            },
+            "fact": {
+              "evaluated_queries": 2,
+              "hit_at_1": 0.5,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.30000000000000004,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.7098603945740938,
+              "mrr": 0.6666666666666666
+            },
+            "multi_hop": {
+              "evaluated_queries": 3,
+              "hit_at_1": 0.6666666666666666,
+              "hit_at_3": 0.6666666666666666,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.5333333333333333,
+              "ndcg_at_5": 0.8102255193577976,
+              "mrr": 0.75
+            },
+            "relational": {
+              "evaluated_queries": 2,
+              "hit_at_1": 0.5,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.5833333333333333,
+              "ndcg_at_5": 0.8398655250018827,
+              "mrr": 0.75
+            },
+            "semantic_paraphrase": {
+              "evaluated_queries": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.8854598815714874,
+              "mrr": 1.0
+            },
+            "table_or_figure": {
+              "evaluated_queries": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "precision_at_5": 0.3333333333333333,
+              "recall_at_5": 0.7777777777777778,
+              "ndcg_at_5": 0.9891559944963898,
+              "mrr": 1.0
+            },
+            "terminology": {
+              "evaluated_queries": 2,
+              "hit_at_1": 0.5,
+              "hit_at_3": 0.5,
+              "hit_at_5": 0.5,
+              "precision_at_5": 0.1,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 0.5,
+              "mrr": 0.5
+            }
+          },
+          "per_query": [
+            {
+              "query_id": "pilot-gpm-01",
+              "language": "de",
+              "question_type": "fact",
+              "num_retrieved": 5,
+              "relevant_in_topk": 2,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.4,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.9197207891481876,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 5,
+                  "chunk_id": "7f594450-a7d6-516f-9d25-f68bf64aa2af",
+                  "score": 0.8333334
+                },
+                {
+                  "rank": 2,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 18,
+                  "chunk_id": "40179343-3c83-5a79-9902-b70991e725ea",
+                  "score": 0.5
+                },
+                {
+                  "rank": 3,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 5,
+                  "chunk_id": "200e721f-6f40-5066-aa7c-6aa9c8d0c072",
+                  "score": 0.4166667
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 6,
+                  "chunk_id": "2a70040e-4817-5560-8608-8eca12f6c3be",
+                  "score": 0.325
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 15,
+                  "chunk_id": "538acdcf-5130-5b03-8533-d2892b3ced8f",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 471.9219999969937
+            },
+            {
+              "query_id": "pilot-gpm-02",
+              "language": "de",
+              "question_type": "relational",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 0.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 0.5,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 0.6797310500037655,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 11,
+                  "chunk_id": "470cf990-4d0c-5c5d-8251-affb4ceda81e",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 2,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 14,
+                  "chunk_id": "ca393b70-97b6-5e74-8111-a976bfbdb583",
+                  "score": 0.64285713
+                },
+                {
+                  "rank": 3,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 12,
+                  "chunk_id": "b708d341-0c24-576a-b424-8735f81e8bf0",
+                  "score": 0.55
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 13,
+                  "chunk_id": "fc42751c-55e2-5a0e-9c3d-6da1534236b5",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 13,
+                  "chunk_id": "f9158e3f-e792-5db1-a437-5001375604d9",
+                  "score": 0.3026316
+                }
+              ],
+              "latency_ms": 4508.213200024329
+            },
+            {
+              "query_id": "pilot-gpm-03",
+              "language": "de",
+              "question_type": "table_or_figure",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.9674679834891693,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 24,
+                  "chunk_id": "6c355462-4fad-5c02-8bf7-1f9bf9499658",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 25,
+                  "chunk_id": "b76c6e4d-7856-506b-8600-3fb9a68a9158",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 17,
+                  "chunk_id": "41ff2aa3-cdb7-59a8-94c3-261b203d8546",
+                  "score": 0.45
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 25,
+                  "chunk_id": "e26925ee-c945-5c17-be19-60b4b7d0d6cb",
+                  "score": 0.4166667
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 30,
+                  "chunk_id": "bc954041-788e-52c4-8509-29c12dad2d82",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 386.4201999967918
+            },
+            {
+              "query_id": "pilot-pwl-01",
+              "language": "de",
+              "question_type": "terminology",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 7,
+                  "chunk_id": "7e3fad90-b00d-5bf7-9e2d-450c042ccaf8",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 43,
+                  "chunk_id": "4eb1158e-0d8a-58f1-aa07-4a0b74a958ef",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 3,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 11,
+                  "chunk_id": "207f2099-e894-5d92-aa82-e26abdc29002",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 18,
+                  "chunk_id": "0636244d-b4e5-57c8-9eba-8b8c79bed08a",
+                  "score": 0.25
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 41,
+                  "chunk_id": "8edc6c31-a3a8-5d9c-b4c2-10cf4f1f5ac4",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 399.938899994595
+            },
+            {
+              "query_id": "pilot-pwl-02",
+              "language": "de",
+              "question_type": "multi_hop",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.6,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 23,
+                  "chunk_id": "e2a98e1c-c0ce-5a0d-af2c-7a712bbb6ce2",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 24,
+                  "chunk_id": "1b1be17c-bb1f-54fc-ab8b-512b1718d0bd",
+                  "score": 0.3678161
+                },
+                {
+                  "rank": 3,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 16,
+                  "chunk_id": "e75d77c8-6b1f-5c5f-b46a-1f7bccd4f755",
+                  "score": 0.35
+                },
+                {
+                  "rank": 4,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 3,
+                  "chunk_id": "2e209f54-d41c-5eb8-9407-2febe3d96748",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 38,
+                  "chunk_id": "a6999200-bc56-5822-ab7e-9397ee9c9086",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 349.34690000955015
+            },
+            {
+              "query_id": "pilot-pwl-03",
+              "language": "de",
+              "question_type": "table_or_figure",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 0.3333333333333333,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 35,
+                  "chunk_id": "2ff38a7c-2f30-5315-827d-d3bbc9297c69",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 36,
+                  "chunk_id": "ffc8242f-0e21-55f7-b110-c055f7c6d819",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 31,
+                  "chunk_id": "2eed2951-c405-5928-971d-e6ee0510cbc7",
+                  "score": 0.4166667
+                },
+                {
+                  "rank": 4,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 32,
+                  "chunk_id": "8397091d-e2ea-5b4e-a55c-3301fd40aaa4",
+                  "score": 0.32692307
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 34,
+                  "chunk_id": "15663b91-5d1a-5587-9e28-972129d78c08",
+                  "score": 0.31111112
+                }
+              ],
+              "latency_ms": 370.4648000129964
+            },
+            {
+              "query_id": "pilot-http-01",
+              "language": "de",
+              "question_type": "semantic_paraphrase",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.8854598815714874,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "2692f7bf-f3ae-5832-aa1a-fba09c885df2",
+                  "score": 0.5769231
+                },
+                {
+                  "rank": 2,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 21,
+                  "chunk_id": "71d45406-b457-52e1-a690-16888a13fc1a",
+                  "score": 0.5555556
+                },
+                {
+                  "rank": 3,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "418a5f80-c9cf-5806-8f28-92c06b6c9d90",
+                  "score": 0.39583334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 24,
+                  "chunk_id": "6c355462-4fad-5c02-8bf7-1f9bf9499658",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "c303bca6-477b-51e8-90b2-822a2e0646e3",
+                  "score": 0.32142857
+                }
+              ],
+              "latency_ms": 518.6815999913961
+            },
+            {
+              "query_id": "pilot-http-02",
+              "language": "de",
+              "question_type": "table_or_figure",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 21,
+                  "chunk_id": "71d45406-b457-52e1-a690-16888a13fc1a",
+                  "score": 1.0
+                },
+                {
+                  "rank": 2,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "418a5f80-c9cf-5806-8f28-92c06b6c9d90",
+                  "score": 0.37179488
+                },
+                {
+                  "rank": 3,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 14,
+                  "chunk_id": "a837b8ce-00ad-56ba-9825-10ebde7be3da",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 11,
+                  "chunk_id": "c303bca6-477b-51e8-90b2-822a2e0646e3",
+                  "score": 0.29545456
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 3,
+                  "chunk_id": "018232b4-bd41-5bb0-b82b-67b531ab4510",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 353.553799999645
+            },
+            {
+              "query_id": "pilot-http-03",
+              "language": "de",
+              "question_type": "multi_hop",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 0.0,
+              "hit_at_3": 0.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 0.25,
+              "precision_at_5": 0.2,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 0.43067655807339306,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 7,
+                  "chunk_id": "d9974190-5852-5a3f-8877-30d0aab3fb78",
+                  "score": 0.5
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 44,
+                  "chunk_id": "e396bfa3-d35a-571b-b42e-52a9b041511e",
+                  "score": 0.5
+                },
+                {
+                  "rank": 3,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 6,
+                  "chunk_id": "2a70040e-4817-5560-8608-8eca12f6c3be",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 16,
+                  "chunk_id": "e7506654-7865-5d68-bd9b-abd5228fdb93",
+                  "score": 0.33333334
+                },
+                {
+                  "rank": 5,
+                  "source_id": "verteilte-anwendungen-http",
+                  "page": 4,
+                  "chunk_id": "eb8ae490-8135-5860-82df-69679e0a6058",
+                  "score": 0.25
+                }
+              ],
+              "latency_ms": 392.95989999664016
+            },
+            {
+              "query_id": "pilot-se-01",
+              "language": "de",
+              "question_type": "fact",
+              "num_retrieved": 5,
+              "relevant_in_topk": 1,
+              "hit_at_1": 0.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 0.3333333333333333,
+              "precision_at_5": 0.2,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.5,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 14,
+                  "chunk_id": "a837b8ce-00ad-56ba-9825-10ebde7be3da",
+                  "score": 0.7
+                },
+                {
+                  "rank": 2,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 1,
+                  "chunk_id": "908c8fea-d350-5551-a86e-ed5caa661697",
+                  "score": 0.6111111
+                },
+                {
+                  "rank": 3,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 2,
+                  "chunk_id": "2b754f01-4706-531a-be5e-f02cdb28a48d",
+                  "score": 0.38333336
+                },
+                {
+                  "rank": 4,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 12,
+                  "chunk_id": "2efccff1-72ee-5798-9985-e88965cdfc67",
+                  "score": 0.3409091
+                },
+                {
+                  "rank": 5,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 34,
+                  "chunk_id": "15663b91-5d1a-5587-9e28-972129d78c08",
+                  "score": 0.33333334
+                }
+              ],
+              "latency_ms": 393.86429998558015
+            },
+            {
+              "query_id": "pilot-selfrag-01",
+              "language": "en",
+              "question_type": "contextual",
+              "num_retrieved": 5,
+              "relevant_in_topk": 2,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.4,
+              "recall_at_5": 1.0,
+              "ndcg_at_5": 0.9197207891481876,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 1,
+                  "chunk_id": "f012d988-a131-53f2-8046-8ffe16b322a1",
+                  "score": 0.8333334
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "beb7d535-4539-5e82-a288-4a1103f8c1d3",
+                  "score": 0.625
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 2,
+                  "chunk_id": "2de0ac80-3c73-5766-868c-6709f8258dd2",
+                  "score": 0.3888889
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 15,
+                  "chunk_id": "3a3db562-80c5-51b9-8bba-36ee1876c088",
+                  "score": 0.32692307
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 3,
+                  "chunk_id": "f0393f1e-1971-586b-8656-dacc4b6c7028",
+                  "score": 0.3
+                }
+              ],
+              "latency_ms": 374.19460000819527
+            },
+            {
+              "query_id": "pilot-selfrag-02",
+              "language": "en",
+              "question_type": "terminology",
+              "num_retrieved": 5,
+              "relevant_in_topk": 0,
+              "hit_at_1": 0.0,
+              "hit_at_3": 0.0,
+              "hit_at_5": 0.0,
+              "reciprocal_rank": 0.0,
+              "precision_at_5": 0.0,
+              "recall_at_5": 0.0,
+              "ndcg_at_5": 0.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 24,
+                  "chunk_id": "1daf9bb2-f007-5dab-8d5a-035e3f2aaf00",
+                  "score": 0.54545456
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 21,
+                  "chunk_id": "0afdbae1-154c-5f17-b66b-4b56e1c78925",
+                  "score": 0.54
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 19,
+                  "chunk_id": "7328b07b-cc47-5d02-84d8-330f3272a8a6",
+                  "score": 0.4
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 24,
+                  "chunk_id": "92441383-e299-51e0-9019-b6d39b256a60",
+                  "score": 0.34285715
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 5,
+                  "chunk_id": "ef495fcb-2214-50a8-8ef8-1e922b01e91c",
+                  "score": 0.33333334
+                }
+              ],
+              "latency_ms": 513.6647000035737
+            },
+            {
+              "query_id": "pilot-selfrag-03",
+              "language": "en",
+              "question_type": "multi_hop",
+              "num_retrieved": 5,
+              "relevant_in_topk": 5,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 1.0,
+              "recall_at_5": 0.5,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 4,
+                  "chunk_id": "872b0787-aa8b-5ccd-b1f1-bace5c87577b",
+                  "score": 0.7
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 4,
+                  "chunk_id": "067969c6-8de6-5669-985d-d2ffca33cea3",
+                  "score": 0.6666667
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 4,
+                  "chunk_id": "13209695-73ba-539d-b2c4-bb74b933f1cb",
+                  "score": 0.5833334
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 5,
+                  "chunk_id": "9036a4ef-ea69-52d0-86f3-c28a8c85ecc1",
+                  "score": 0.36666667
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 4,
+                  "chunk_id": "69a54821-0531-58a0-b98f-835988763761",
+                  "score": 0.3611111
+                }
+              ],
+              "latency_ms": 358.5134999884758
+            },
+            {
+              "query_id": "pilot-selfrag-04",
+              "language": "en",
+              "question_type": "relational",
+              "num_retrieved": 5,
+              "relevant_in_topk": 3,
+              "hit_at_1": 1.0,
+              "hit_at_3": 1.0,
+              "hit_at_5": 1.0,
+              "reciprocal_rank": 1.0,
+              "precision_at_5": 0.6,
+              "recall_at_5": 0.6666666666666666,
+              "ndcg_at_5": 1.0,
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "26225f90-b4a8-5441-a80d-404b3847de41",
+                  "score": 0.8333334
+                },
+                {
+                  "rank": 2,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 5,
+                  "chunk_id": "0a996aaf-2a6b-578e-90d6-ee6951f86076",
+                  "score": 0.75
+                },
+                {
+                  "rank": 3,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 9,
+                  "chunk_id": "067697d9-573d-577c-8a53-4c9e16a11c78",
+                  "score": 0.4761905
+                },
+                {
+                  "rank": 4,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 19,
+                  "chunk_id": "7328b07b-cc47-5d02-84d8-330f3272a8a6",
+                  "score": 0.36666667
+                },
+                {
+                  "rank": 5,
+                  "source_id": "self-rag-iclr-2024",
+                  "page": 1,
+                  "chunk_id": "c3411bfc-17ea-55b6-8a42-2ee7f8a0cca9",
+                  "score": 0.325
+                }
+              ],
+              "latency_ms": 375.45740001951344
+            }
+          ],
+          "negative_controls": [
+            {
+              "query_id": "pilot-se-02",
+              "language": "de",
+              "question_type": "unanswerable",
+              "num_retrieved": 5,
+              "returned_any": true,
+              "metric_status": "not_applicable_no_relevance_labels",
+              "retrieved_hits": [
+                {
+                  "rank": 1,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 1,
+                  "chunk_id": "908c8fea-d350-5551-a86e-ed5caa661697",
+                  "score": 0.5
+                },
+                {
+                  "rank": 2,
+                  "source_id": "pwl-logistik-wise-2025",
+                  "page": 41,
+                  "chunk_id": "8edc6c31-a3a8-5d9c-b4c2-10cf4f1f5ac4",
+                  "score": 0.5
+                },
+                {
+                  "rank": 3,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 9,
+                  "chunk_id": "caf99f2c-1517-59f3-9fff-12e4bbd3640b",
+                  "score": 0.3703704
+                },
+                {
+                  "rank": 4,
+                  "source_id": "se-prozess-uebersicht-2023",
+                  "page": 8,
+                  "chunk_id": "d6d118b9-767f-503a-b297-5d3b36028e66",
+                  "score": 0.3409091
+                },
+                {
+                  "rank": 5,
+                  "source_id": "gpaa-geschaeftsprozessmanagement",
+                  "page": 18,
+                  "chunk_id": "40179343-3c83-5a79-9902-b70991e725ea",
+                  "score": 0.33333334
+                }
+              ],
+              "latency_ms": 373.8285999861546
+            }
+          ]
+        }
+      }
+    }
+  }
+}

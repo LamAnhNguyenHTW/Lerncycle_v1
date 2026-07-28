@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "evaluation_kind": "concept_graph_index",
+  "strategy": "fixed_size",
+  "collection": "eval_fixed_size",
+  "user_scope": "isolated_eval_user",
+  "configuration": {
+    "model": "gpt-4o-mini",
+    "max_nodes_per_chunk": 12,
+    "max_edges_per_chunk": 20,
+    "concurrency": 2,
+    "retry_mode": true,
+    "retry_of": "concept_graph_index_fixed_size_final_v1_20260721.json"
+  },
+  "stats": {
+    "chunks_requested": 82,
+    "chunks_indexed": 38,
+    "nodes_upserted": 326,
+    "relationships_upserted": 259,
+    "failures": [
+      {
+        "chunk_id": "05cddaf4-5efc-5956-b97f-d743a0727ec2",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "0a286ce4-9282-50f5-b5c3-9dfedc1234ca",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "0dd8b1d2-457b-5ac2-9233-38a168a3d666",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "13f35b2c-5f77-55d9-8011-446325363ca3",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "1ddef576-518d-58b2-8966-6d09d22a1ed1",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "21856706-2a75-574d-9af5-0b2228cffe67",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "2765b589-44f1-5531-be3b-00fafcd18ab3",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "3972ab61-bf8e-5b61-99bd-8b71e2a95249",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "3a425e15-c55f-5e95-be03-dbf7ca5fed02",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "414f9cca-32ee-5219-97a0-b474c198f7c0",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "441c9ca4-8049-5562-9fe1-692f9444072b",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "48cd0b2d-f3a5-59ad-bd42-08730392732c",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "4903ba78-b430-5d14-b202-76197996f65d",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "4db5f2d8-40a3-55fe-b5ad-9a713430b46b",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "4df9b696-6103-57af-b649-f6d5c0fa0a8b",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "4f8454b3-4f9b-5e66-9fba-2279df49f791",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "532f9042-8c76-516a-b461-4605bbab3571",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "5dc8685d-fb58-5f4b-b201-ac2b4c102bbf",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "5fcf25a2-f765-5234-9ca2-e87b6524d389",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "65bac18e-d3b5-5afb-83cb-543c8af7ae81",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "743875a7-8b3e-5881-b210-669e5ce7e04b",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "788b3e9a-a898-58fe-87c1-0593648c3a8f",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "7c56d304-e6dd-5cfc-904d-f449ea72aa35",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "7cacd661-3d66-58cf-a07f-227b780256cd",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "7fcec5f0-51be-5b89-8075-38062d2ad661",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "87b0961e-0f91-5df5-86f4-460cf857c058",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "a666a305-8cc5-56fa-bba9-5e21544800af",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "a743a8a9-b74e-55b3-8311-b44eee9b25ab",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "bbc7f2ca-2c52-51bc-a1ce-e8a37a4690dd",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "be2af1dc-09dc-5f69-a77e-acd6026c2ac6",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "c05dc0d9-c1bd-5f91-903f-5f6366ad5a55",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "c774d5fd-ef93-581f-9b3d-f40e2be5d49d",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "cdf56960-dd4a-562c-b215-f417ed94c24e",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "d0a4d786-d69c-5f45-ae52-7a4ced1a0620",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "d1b0b907-ab3e-5dea-abe5-5921aaac128c",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "dc941604-77eb-5c85-ba34-ca189a4c0449",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "df6893e2-3cb1-5dc9-8c71-efb1e64d9056",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "e07db170-19ec-56e0-ab69-047ff67bd84e",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "e58b694c-4d72-57d9-96db-583ba05064fb",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "e82cac14-ccb3-56ac-865b-65199355e59a",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "e83bc89e-7f9b-5164-9506-0f3a3485dca6",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "e8a70bbb-0651-5e4d-bb54-f5c5aaeec3f8",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "eeb53a27-f220-5f73-96f5-0b5550a18787",
+        "error_type": "GraphExtractionError"
+      },
+      {
+        "chunk_id": "f7020ad5-abbd-5663-b04e-f972d8a78cac",
+        "error_type": "GraphExtractionError"
+      }
+    ],
+    "indexing_seconds": 340.9784452999993
+  }
+}

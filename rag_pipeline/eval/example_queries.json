@@ -1,0 +1,59 @@
+{
+  "queries": [
+    {
+      "query_id": "q001",
+      "question": "Was versteht man unter Process Mining?",
+      "language": "de",
+      "question_type": "factual",
+      "expected_source_ids": ["pdf-process-mining-101"],
+      "expected_pages": [3],
+      "expected_phrases": ["Process Mining"],
+      "reference_answer": "Process Mining ist eine Technik zur Analyse von Geschäftsprozessen auf Basis von Ereignisprotokollen (Event Logs).",
+      "notes": "Definition steht auf Folie 3; Beleg auch über die exakte Phrase möglich."
+    },
+    {
+      "query_id": "q002",
+      "question": "Welche drei Perspektiven des Process Mining werden unterschieden und wie hängen sie zusammen?",
+      "language": "de",
+      "question_type": "contextual",
+      "expected_source_ids": ["pdf-process-mining-101"],
+      "expected_pages": [7, 8],
+      "expected_phrases": ["Discovery", "Conformance", "Enhancement"],
+      "reference_answer": "Discovery erzeugt ein Modell aus dem Log, Conformance vergleicht Modell und Log, Enhancement erweitert ein bestehendes Modell.",
+      "notes": "Antwort verteilt sich über zwei Folien (7 und 8)."
+    },
+    {
+      "query_id": "q003",
+      "question": "Which quality dimensions are listed in the evaluation table?",
+      "language": "en",
+      "question_type": "table",
+      "expected_source_ids": ["pdf-rag-eval-en"],
+      "expected_pages": [12],
+      "expected_phrases": ["faithfulness", "answer relevance", "context relevance"],
+      "reference_answer": "The table lists faithfulness, answer relevance, and context relevance.",
+      "notes": "Requires table-structure content; OCR/tables disabled in Beta — expect degraded recall here."
+    },
+    {
+      "query_id": "q004",
+      "question": "How does dense passage retrieval relate to BM25 sparse retrieval?",
+      "language": "en",
+      "question_type": "relational",
+      "expected_source_ids": ["pdf-rag-eval-en", "pdf-ir-basics-en"],
+      "expected_pages": [],
+      "expected_phrases": ["dense", "BM25"],
+      "reference_answer": "Dense retrieval captures semantic similarity via learned embeddings, BM25 captures lexical overlap; hybrid retrieval fuses both.",
+      "notes": "Relational question; graph-leaning. Relevance labeled by source id + phrases, no single page."
+    },
+    {
+      "query_id": "q005",
+      "question": "Vergleiche die Chunking-Strategien aus dem Skript und dem Paper.",
+      "language": "de",
+      "question_type": "cross_document",
+      "expected_source_ids": ["pdf-process-mining-101", "pdf-rag-eval-en"],
+      "expected_pages": [],
+      "expected_phrases": ["Chunking"],
+      "reference_answer": "Antwort muss Inhalte aus beiden Quellen kombinieren.",
+      "notes": "Dokumentübergreifende Frage; Recall wird über die Quellen-IDs gemessen."
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "documents": [
+    {
+      "source_id": "pdf-process-mining-101",
+      "pdf_path": "corpus/process-mining-101.pdf",
+      "title": "Process Mining 101 (Foliensatz)",
+      "language": "de",
+      "source_type": "pdf"
+    },
+    {
+      "source_id": "pdf-rag-eval-en",
+      "pdf_path": "corpus/rag-evaluation.pdf",
+      "title": "Evaluating RAG Systems",
+      "language": "en",
+      "source_type": "pdf"
+    },
+    {
+      "source_id": "pdf-ir-basics-en",
+      "pdf_path": "corpus/ir-basics.pdf",
+      "title": "Information Retrieval Basics",
+      "language": "en",
+      "source_type": "pdf"
+    }
+  ]
+}

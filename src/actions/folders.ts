@@ -1,5 +1,6 @@
 'use server';
 
+import {enqueueSourceDeleteJob} from '@/lib/rag-cleanup';
 import {createClient} from '@/lib/supabase/server';
 import {revalidatePath} from 'next/cache';
 
@@ -32,16 +33,34 @@ export async function deleteFolder(
   keepFiles: boolean,
 ): Promise<{error?: string}> {
   const supabase = await createClient();
+  const {data: {user}} = await supabase.auth.getUser();
+
+  if (!user) return {error: 'Not authenticated.'};
 
   if (!keepFiles) {
     const {data: pdfs} = await supabase
       .from('pdfs')
       .select('id, storage_path')
-      .eq('folder_id', id);
+      .eq('folder_id', id)
+      .eq('user_id', user.id);
 
     if (pdfs && pdfs.length > 0) {
       await supabase.storage.from('pdfs').remove(pdfs.map((p) => p.storage_path));
-      await supabase.from('pdfs').delete().eq('folder_id', id);
+      await supabase.from('pdfs').delete().eq('folder_id', id).eq('user_id', user.id);
+
+      for (const pdf of pdfs) {
+        const {error: cleanupError} = await enqueueSourceDeleteJob({
+          userId: user.id,
+          sourceType: 'pdf',
+          sourceId: pdf.id,
+          deletedPdfId: pdf.id,
+        });
+        if (cleanupError) {
+          console.error(
+            `deleteFolder: cleanup job for pdf ${pdf.id} not queued: ${cleanupError}`,
+          );
+        }
+      }
     }
   }
   // When keepFiles=true the ON DELETE SET NULL constraint on folder_id

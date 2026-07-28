@@ -1,0 +1,4971 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-21T08:38:39.447957+00:00",
+  "evaluation_kind": "vector_plus_concept_graph",
+  "ground_truth_path": "rag_pipeline/eval/queries_final.json",
+  "strategy": "fixed_size",
+  "collection": "eval_fixed_size",
+  "configuration": {
+    "vector_mode": "dense",
+    "graph_mode": "production_retrieve_graph_context",
+    "question_types": [
+      "multi_hop",
+      "relational"
+    ],
+    "top_k": 5,
+    "repetitions": 3,
+    "warmup_enabled": true,
+    "caches_disabled": true
+  },
+  "summary": {
+    "questions": 16,
+    "observations": 48,
+    "graph_context_available_observations": 15,
+    "observations_with_added_relevant_pages": 0,
+    "relevant_graph_relationships": 0,
+    "vector_latency_ms": {
+      "mean": 504.91793958322734,
+      "p50": 460.8557000001383,
+      "p95": 881.9883749996733,
+      "min": 250.22469999930763,
+      "max": 1321.6042000003654,
+      "count": 48
+    },
+    "graph_latency_ms": {
+      "mean": 11.225649999990614,
+      "p50": 9.451150000131747,
+      "p95": 14.999329999591282,
+      "min": 6.689100000585313,
+      "max": 75.00900000013644,
+      "count": 48
+    }
+  },
+  "runs": [
+    {
+      "repetition": 1,
+      "results": [
+        {
+          "query_id": "pilot-gpm-02",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            9,
+            13,
+            14
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "pilot-gpm-02",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 0.75,
+            "ndcg_at_5": 0.8854598815714874
+          },
+          "vector_latency_ms": 1321.6042000003654,
+          "graph_latency_ms": 12.680899999395479
+        },
+        {
+          "query_id": "pilot-pwl-02",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            16,
+            23,
+            24
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "pilot-pwl-02",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 0.6,
+            "ndcg_at_5": 0.9674679834891693
+          },
+          "vector_latency_ms": 917.4991999989288,
+          "graph_latency_ms": 9.028599999510334
+        },
+        {
+          "query_id": "pilot-http-03",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            16
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "pilot-http-03",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 1,
+            "hit_at_1": 0.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 0.5,
+            "precision_at_5": 0.2,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.6309297535714575
+          },
+          "vector_latency_ms": 453.9040000017849,
+          "graph_latency_ms": 10.016099999120343
+        },
+        {
+          "query_id": "pilot-selfrag-03",
+          "question_type": "multi_hop",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            4,
+            5
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "pilot-selfrag-03",
+            "language": "en",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.9197207891481876
+          },
+          "vector_latency_ms": 404.9075000002631,
+          "graph_latency_ms": 18.279699999766308
+        },
+        {
+          "query_id": "pilot-selfrag-04",
+          "question_type": "relational",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            5,
+            9
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "pilot-selfrag-04",
+            "language": "en",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 0.6666666666666666,
+            "ndcg_at_5": 0.9060254355346823
+          },
+          "vector_latency_ms": 370.89800000103423,
+          "graph_latency_ms": 12.25450000129058
+        },
+        {
+          "query_id": "final-gpm-10",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            18,
+            19
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-gpm-10",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 0.9674679834891693
+          },
+          "vector_latency_ms": 925.8625999991636,
+          "graph_latency_ms": 8.217799999329145
+        },
+        {
+          "query_id": "final-gpm-11",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            28,
+            29,
+            30
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-gpm-11",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 466.03569999933825,
+          "graph_latency_ms": 9.47939999969094
+        },
+        {
+          "query_id": "final-pwl-12",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            43,
+            44
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-pwl-12",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 478.3659999993688,
+          "graph_latency_ms": 8.178100000804989
+        },
+        {
+          "query_id": "final-pwl-13",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            40,
+            41
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-pwl-13",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 609.7862000005989,
+          "graph_latency_ms": 8.01090000095428
+        },
+        {
+          "query_id": "final-http-10",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            22,
+            23
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-http-10",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 542.0130000002246,
+          "graph_latency_ms": 75.00900000013644
+        },
+        {
+          "query_id": "final-http-11",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            14,
+            15
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-http-11",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 512.5690999993822,
+          "graph_latency_ms": 14.1710999996576
+        },
+        {
+          "query_id": "final-se-08",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            7,
+            8
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-se-08",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 475.9364999990794,
+          "graph_latency_ms": 10.004200001276331
+        },
+        {
+          "query_id": "final-se-09",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            3,
+            10
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-se-09",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.6666666666666666,
+            "ndcg_at_5": 0.8772153153380493
+          },
+          "vector_latency_ms": 446.1578999998892,
+          "graph_latency_ms": 9.628300000258605
+        },
+        {
+          "query_id": "final-selfrag-10",
+          "question_type": "relational",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            16
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "final-selfrag-10",
+            "language": "en",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 1,
+            "hit_at_1": 0.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 0.5,
+            "precision_at_5": 0.2,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.6309297535714575
+          },
+          "vector_latency_ms": 446.86149999870395,
+          "graph_latency_ms": 12.02729999931762
+        },
+        {
+          "query_id": "final-selfrag-11",
+          "question_type": "relational",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            5
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "final-selfrag-11",
+            "language": "en",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 0.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 0.5,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.6240505200038379
+          },
+          "vector_latency_ms": 497.2749999997177,
+          "graph_latency_ms": 10.926900000413298
+        },
+        {
+          "query_id": "final-selfrag-12",
+          "question_type": "multi_hop",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            8,
+            9
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "final-selfrag-12",
+            "language": "en",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 4,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.8,
+            "recall_at_5": 0.6666666666666666,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 449.8500999998214,
+          "graph_latency_ms": 12.676199999987148
+        }
+      ]
+    },
+    {
+      "repetition": 2,
+      "results": [
+        {
+          "query_id": "pilot-pwl-02",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            16,
+            23,
+            24
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "pilot-pwl-02",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 0.6,
+            "ndcg_at_5": 0.9674679834891693
+          },
+          "vector_latency_ms": 585.0847000001522,
+          "graph_latency_ms": 9.422900000572554
+        },
+        {
+          "query_id": "pilot-http-03",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            16
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "pilot-http-03",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 1,
+            "hit_at_1": 0.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 0.5,
+            "precision_at_5": 0.2,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.6309297535714575
+          },
+          "vector_latency_ms": 443.5935999990761,
+          "graph_latency_ms": 8.080699999482022
+        },
+        {
+          "query_id": "pilot-selfrag-03",
+          "question_type": "multi_hop",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            4,
+            5
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "pilot-selfrag-03",
+            "language": "en",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.9197207891481876
+          },
+          "vector_latency_ms": 531.6414000008081,
+          "graph_latency_ms": 10.457299998961389
+        },
+        {
+          "query_id": "pilot-selfrag-04",
+          "question_type": "relational",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            5,
+            9
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "pilot-selfrag-04",
+            "language": "en",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 0.6666666666666666,
+            "ndcg_at_5": 0.9060254355346823
+          },
+          "vector_latency_ms": 451.5267999995558,
+          "graph_latency_ms": 10.82700000006298
+        },
+        {
+          "query_id": "final-gpm-10",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            18,
+            19
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-gpm-10",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 0.9674679834891693
+          },
+          "vector_latency_ms": 532.3275000009744,
+          "graph_latency_ms": 9.359499999845866
+        },
+        {
+          "query_id": "final-gpm-11",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            28,
+            29,
+            30
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-gpm-11",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 816.0397000010562,
+          "graph_latency_ms": 7.655699999304488
+        },
+        {
+          "query_id": "final-pwl-12",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            43,
+            44
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-pwl-12",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 444.2457999994076,
+          "graph_latency_ms": 7.920000000012806
+        },
+        {
+          "query_id": "final-pwl-13",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            40,
+            41
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-pwl-13",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 452.14909999958763,
+          "graph_latency_ms": 7.846900000004098
+        },
+        {
+          "query_id": "final-http-10",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            22,
+            23
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-http-10",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 362.8635999994003,
+          "graph_latency_ms": 7.407400000374764
+        },
+        {
+          "query_id": "final-http-11",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            14,
+            15
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-http-11",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 460.8270000007906,
+          "graph_latency_ms": 8.271499998954823
+        },
+        {
+          "query_id": "final-se-08",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            7,
+            8
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-se-08",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 280.4667000000336,
+          "graph_latency_ms": 7.175600001573912
+        },
+        {
+          "query_id": "final-se-09",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            3,
+            10
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-se-09",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.6666666666666666,
+            "ndcg_at_5": 0.8772153153380493
+          },
+          "vector_latency_ms": 436.0677000004216,
+          "graph_latency_ms": 7.679199999984121
+        },
+        {
+          "query_id": "final-selfrag-10",
+          "question_type": "relational",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            16
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "final-selfrag-10",
+            "language": "en",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 1,
+            "hit_at_1": 0.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 0.3333333333333333,
+            "precision_at_5": 0.2,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.5
+          },
+          "vector_latency_ms": 464.43490000092424,
+          "graph_latency_ms": 11.432200000854209
+        },
+        {
+          "query_id": "final-selfrag-11",
+          "question_type": "relational",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            5
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "final-selfrag-11",
+            "language": "en",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 0.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 0.5,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.6240505200038379
+          },
+          "vector_latency_ms": 504.9135000008391,
+          "graph_latency_ms": 15.445299999555573
+        },
+        {
+          "query_id": "final-selfrag-12",
+          "question_type": "multi_hop",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            8,
+            9
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "final-selfrag-12",
+            "language": "en",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 4,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.8,
+            "recall_at_5": 0.6666666666666666,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 357.6204000000871,
+          "graph_latency_ms": 12.625800000023446
+        },
+        {
+          "query_id": "pilot-gpm-02",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            9,
+            13,
+            14
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "pilot-gpm-02",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 0.75,
+            "ndcg_at_5": 0.8854598815714874
+          },
+          "vector_latency_ms": 562.5566999988223,
+          "graph_latency_ms": 8.460299999569543
+        }
+      ]
+    },
+    {
+      "repetition": 3,
+      "results": [
+        {
+          "query_id": "pilot-http-03",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            16
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "pilot-http-03",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 1,
+            "hit_at_1": 0.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 0.5,
+            "precision_at_5": 0.2,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.6309297535714575
+          },
+          "vector_latency_ms": 518.8906000003044,
+          "graph_latency_ms": 9.820100000069942
+        },
+        {
+          "query_id": "pilot-selfrag-03",
+          "question_type": "multi_hop",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            4,
+            5
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "pilot-selfrag-03",
+            "language": "en",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.9197207891481876
+          },
+          "vector_latency_ms": 545.7549999991897,
+          "graph_latency_ms": 9.787400000277557
+        },
+        {
+          "query_id": "pilot-selfrag-04",
+          "question_type": "relational",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            5,
+            9
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "pilot-selfrag-04",
+            "language": "en",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 0.6666666666666666,
+            "ndcg_at_5": 0.9060254355346823
+          },
+          "vector_latency_ms": 451.03279999966617,
+          "graph_latency_ms": 12.445200000001932
+        },
+        {
+          "query_id": "final-gpm-10",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            18,
+            19
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-gpm-10",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 0.9674679834891693
+          },
+          "vector_latency_ms": 451.6148000002431,
+          "graph_latency_ms": 8.938500001022476
+        },
+        {
+          "query_id": "final-gpm-11",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            28,
+            29,
+            30
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-gpm-11",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 483.15739999998186,
+          "graph_latency_ms": 7.898399999248795
+        },
+        {
+          "query_id": "final-pwl-12",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            43,
+            44
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-pwl-12",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 474.1701999992074,
+          "graph_latency_ms": 6.689100000585313
+        },
+        {
+          "query_id": "final-pwl-13",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            40,
+            41
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-pwl-13",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 250.22469999930763,
+          "graph_latency_ms": 7.3262000005343
+        },
+        {
+          "query_id": "final-http-10",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            22,
+            23
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-http-10",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 279.64499999870895,
+          "graph_latency_ms": 8.581399999457062
+        },
+        {
+          "query_id": "final-http-11",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            14,
+            15
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-http-11",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 1.0,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 458.28740000069956,
+          "graph_latency_ms": 8.302100000946666
+        },
+        {
+          "query_id": "final-se-08",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            7,
+            8
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-se-08",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 459.2873999990843,
+          "graph_latency_ms": 7.729599999947823
+        },
+        {
+          "query_id": "final-se-09",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            3,
+            10
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "final-se-09",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.6666666666666666,
+            "ndcg_at_5": 0.8772153153380493
+          },
+          "vector_latency_ms": 473.49209999993036,
+          "graph_latency_ms": 8.092699999906472
+        },
+        {
+          "query_id": "final-selfrag-10",
+          "question_type": "relational",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            16
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "final-selfrag-10",
+            "language": "en",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 1,
+            "hit_at_1": 0.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 0.3333333333333333,
+            "precision_at_5": 0.2,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.5
+          },
+          "vector_latency_ms": 460.88439999948605,
+          "graph_latency_ms": 10.70859999890672
+        },
+        {
+          "query_id": "final-selfrag-11",
+          "question_type": "relational",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            5
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "final-selfrag-11",
+            "language": "en",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 2,
+            "hit_at_1": 0.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 0.5,
+            "precision_at_5": 0.4,
+            "recall_at_5": 0.5,
+            "ndcg_at_5": 0.6240505200038379
+          },
+          "vector_latency_ms": 584.1577999999572,
+          "graph_latency_ms": 12.155799999163719
+        },
+        {
+          "query_id": "final-selfrag-12",
+          "question_type": "multi_hop",
+          "language": "en",
+          "graph_context_available": true,
+          "graph_node_count": 8,
+          "graph_relationship_count": 32,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            8,
+            9
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [
+            {
+              "source": "Vector Space",
+              "target": "Word embeddings",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Text classification",
+              "target": "Word embeddings",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Text classification",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "includes",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explicit representation method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Explainable knowledge base method",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Probabilistic models",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Dimensionality reduction",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Neural networks",
+              "relation_type": "uses",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_part_of",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding synonyms and analogies",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Analogy Detection",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Next Token Predictions",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Syntactic Parsing",
+              "relation_type": "boosts_performance_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "ICLR 2024",
+              "relation_type": "published_paper_about",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing",
+              "relation_type": "is_used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Evidence Support",
+              "relation_type": "supports",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Sentiment analysis",
+              "relation_type": "useful_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "used_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 29
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Analogies",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Understanding Synonyms",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Predicting the next word",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Text classification",
+              "relation_type": "applies_to",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Vector Space",
+              "relation_type": "is_represented_in",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            },
+            {
+              "source": "Word embeddings",
+              "target": "Natural Language Processing (NLP)",
+              "relation_type": "is_a_tool_for",
+              "source_id": "self-rag-iclr-2024",
+              "page": 27
+            }
+          ],
+          "vector_metrics": {
+            "query_id": "final-selfrag-12",
+            "language": "en",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 4,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.8,
+            "recall_at_5": 0.6666666666666666,
+            "ndcg_at_5": 1.0
+          },
+          "vector_latency_ms": 435.1083999990806,
+          "graph_latency_ms": 11.496099999931175
+        },
+        {
+          "query_id": "pilot-gpm-02",
+          "question_type": "relational",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            9,
+            13,
+            14
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "pilot-gpm-02",
+            "language": "de",
+            "question_type": "relational",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 0.75,
+            "ndcg_at_5": 0.8854598815714874
+          },
+          "vector_latency_ms": 447.3108999991382,
+          "graph_latency_ms": 10.111499999766238
+        },
+        {
+          "query_id": "pilot-pwl-02",
+          "question_type": "multi_hop",
+          "language": "de",
+          "graph_context_available": false,
+          "graph_node_count": 8,
+          "graph_relationship_count": 0,
+          "relevant_graph_relationships": 0,
+          "vector_relevant_pages": [
+            16,
+            23,
+            24
+          ],
+          "graph_relevant_pages": [],
+          "added_relevant_pages": [],
+          "relationships": [],
+          "vector_metrics": {
+            "query_id": "pilot-pwl-02",
+            "language": "de",
+            "question_type": "multi_hop",
+            "num_retrieved": 5,
+            "relevant_in_topk": 3,
+            "hit_at_1": 1.0,
+            "hit_at_3": 1.0,
+            "hit_at_5": 1.0,
+            "reciprocal_rank": 1.0,
+            "precision_at_5": 0.6,
+            "recall_at_5": 0.6,
+            "ndcg_at_5": 0.9674679834891693
+          },
+          "vector_latency_ms": 457.1566000013263,
+          "graph_latency_ms": 8.092199999737204
+        }
+      ]
+    }
+  ]
+}

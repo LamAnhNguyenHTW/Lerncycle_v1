@@ -1,13 +1,27 @@
-"""Evaluate dense, sparse, hybrid, and reranked retrieval against expected hits."""
+"""Evaluate dense, sparse, hybrid, and reranked retrieval against expected hits.
+
+Two layers live here:
+  - The original lightweight `evaluate_queries` / `create_searchers` API (Hit@K,
+    MRR over an expected-field dict). Kept unchanged for backward compatibility.
+  - A metric-rich labeled layer (`evaluate_labeled_queries`, `build_eval_report`,
+    `write_report`) that adds Recall@5, Precision@5, nDCG@5, per-query latency
+    with p50/p95, per-language / per-question-type breakdowns, and reproducible
+    JSON reports labeled with strategy, collection, and configuration.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlsplit
 
 from rag_pipeline.config import WorkerConfig
+from rag_pipeline.eval.ground_truth import GroundTruthQuery, load_ground_truth
+from rag_pipeline.eval.metrics import aggregate_metrics, breakdown_by, evaluate_query
 from rag_pipeline.retrieval import search_chunks
 from rag_pipeline.retrieval import search_hybrid_chunks
 from rag_pipeline.retrieval import search_sparse_chunks
@@ -66,9 +80,17 @@ def create_searchers(
     dense_fn: RetrievalFn = search_chunks,
     sparse_fn: RetrievalFn = search_sparse_chunks,
     hybrid_fn: RetrievalFn = search_hybrid_chunks,
+    retrieval_kwargs: dict[str, Any] | None = None,
 ) -> dict[str, SearchFn]:
-    """Build retrieval mode callables for CLI and tests."""
+    """Build retrieval mode callables for CLI and tests.
+
+    `retrieval_kwargs` is forwarded to every underlying retrieval call. Real
+    runs pass e.g. ``{"config": eval_config_with_caches_disabled(cfg),
+    "store": <eval-collection store>}`` so per-query latency is measured without
+    cache hits and against the correct evaluation collection.
+    """
     selected_modes = _selected_modes(mode)
+    extra = dict(retrieval_kwargs or {})
     searchers: dict[str, SearchFn] = {}
     if "dense" in selected_modes:
         searchers["dense"] = lambda query: dense_fn(
@@ -77,6 +99,7 @@ def create_searchers(
             source_types=source_types,
             top_k=top_k,
             pdf_ids=pdf_ids,
+            **extra,
         )
     if "sparse" in selected_modes:
         searchers["sparse"] = lambda query: sparse_fn(
@@ -85,6 +108,7 @@ def create_searchers(
             source_types=source_types,
             top_k=top_k,
             pdf_ids=pdf_ids,
+            **extra,
         )
     if "hybrid" in selected_modes:
         searchers["hybrid"] = lambda query: hybrid_fn(
@@ -93,6 +117,7 @@ def create_searchers(
             source_types=source_types,
             top_k=top_k,
             pdf_ids=pdf_ids,
+            **extra,
         )
     if "hybrid_reranked" in selected_modes:
         active_reranker = reranker or create_reranker(
@@ -108,10 +133,198 @@ def create_searchers(
                 source_types=source_types,
                 top_k=candidate_k,
                 pdf_ids=pdf_ids,
+                **extra,
             ),
             top_k=top_k,
         )
     return searchers
+
+
+def eval_config_with_caches_disabled(base_config: WorkerConfig) -> WorkerConfig:
+    """Return a config copy with all retrieval caches disabled for clean timing.
+
+    Real evaluation runs must not serve repeated queries from the process-local
+    query-embedding, retrieval-result, or reranker caches, otherwise latency and
+    ordering measurements are contaminated.
+    """
+    from dataclasses import replace
+
+    return replace(
+        base_config,
+        query_embedding_cache_enabled=False,
+        retrieval_result_cache_enabled=False,
+        reranker_cache_enabled=False,
+    )
+
+
+def evaluate_labeled_queries(
+    queries: list[GroundTruthQuery],
+    searchers: dict[str, SearchFn],
+    *,
+    k: int = 5,
+    capture_latency: bool = True,
+) -> dict[str, dict[str, Any]]:
+    """Evaluate labeled ground-truth queries per retrieval mode.
+
+    For each mode returns per-query metrics, an aggregate (Hit@K, MRR,
+    Precision@k, Recall@k, nDCG@k, latency percentiles), and breakdowns by
+    language and question type.
+
+    Args:
+        queries: Labeled queries with at least one relevance signal.
+        searchers: Mode name to a callable taking the query string and returning
+            ranked hit dicts.
+        k: Cutoff for @k metrics.
+        capture_latency: Measure wall-clock time per searcher call.
+    """
+    results: dict[str, dict[str, Any]] = {}
+    for mode, searcher in searchers.items():
+        per_query: list[dict[str, Any]] = []
+        negative_controls: list[dict[str, Any]] = []
+        latencies_ms: list[float] = []
+        for query in queries:
+            latency_ms: float | None = None
+            if capture_latency:
+                start = time.perf_counter()
+                hits = searcher(query.question)
+                latency_ms = (time.perf_counter() - start) * 1000.0
+                latencies_ms.append(latency_ms)
+            else:
+                hits = searcher(query.question)
+            if query.has_relevance_labels():
+                row = evaluate_query(query, hits, k=k)
+                row["retrieved_hits"] = _summarize_hits(hits, k=k)
+                if latency_ms is not None:
+                    row["latency_ms"] = latency_ms
+                per_query.append(row)
+                continue
+
+            negative_row: dict[str, Any] = {
+                "query_id": query.query_id,
+                "language": query.language,
+                "question_type": query.question_type,
+                "num_retrieved": len(hits),
+                "returned_any": bool(hits),
+                "metric_status": "not_applicable_no_relevance_labels",
+                "retrieved_hits": _summarize_hits(hits, k=k),
+            }
+            if latency_ms is not None:
+                negative_row["latency_ms"] = latency_ms
+            negative_controls.append(negative_row)
+        aggregate = aggregate_metrics(
+            per_query, latencies_ms if capture_latency else None, k=k
+        )
+        aggregate["total_queries"] = len(queries)
+        aggregate["negative_control_queries"] = len(negative_controls)
+        results[mode] = {
+            "aggregate": aggregate,
+            "by_language": breakdown_by(per_query, "language", k=k),
+            "by_question_type": breakdown_by(per_query, "question_type", k=k),
+            "per_query": per_query,
+            "negative_controls": negative_controls,
+        }
+    return results
+
+
+def _summarize_hits(
+    hits: list[dict[str, Any]],
+    *,
+    k: int,
+) -> list[dict[str, Any]]:
+    """Return audit-safe ranking metadata without persisting chunk text."""
+    summarized: list[dict[str, Any]] = []
+    for rank, hit in enumerate(hits[:k], start=1):
+        page_index = hit.get("page_index")
+        score = hit.get("score")
+        summarized.append(
+            {
+                "rank": rank,
+                "source_id": (
+                    str(hit["source_id"]) if hit.get("source_id") is not None else None
+                ),
+                "page": int(page_index) + 1 if page_index is not None else None,
+                "chunk_id": (
+                    str(hit["chunk_id"]) if hit.get("chunk_id") is not None else None
+                ),
+                "score": float(score) if score is not None else None,
+            }
+        )
+    return summarized
+
+
+def build_eval_report(
+    *,
+    mode_results: dict[str, dict[str, Any]],
+    strategy: str,
+    collection: str,
+    config: dict[str, Any],
+    k: int = 5,
+    ground_truth_path: str | None = None,
+) -> dict[str, Any]:
+    """Wrap per-mode results with reproducibility metadata.
+
+    `config` must contain only non-secret settings (embedding model, top_k,
+    cache flags, ...). Secret-like keys and credentialed URLs are rejected
+    before the report is built. Secret values are never included in errors.
+    """
+    _validate_non_secret_config(config)
+    return {
+        "schema_version": 1,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "strategy": strategy,
+        "collection": collection,
+        "k": k,
+        "ground_truth_path": ground_truth_path,
+        "config": config,
+        "modes": mode_results,
+    }
+
+
+_SECRET_KEY_FRAGMENTS = (
+    'api_key',
+    'apikey',
+    'credential',
+    'password',
+    'secret',
+    'service_role',
+    'token',
+)
+
+
+def _validate_non_secret_config(value: Any, *, path: str = 'config') -> None:
+    '''Reject credentials before reproducibility metadata reaches a report.'''
+    if isinstance(value, dict):
+        for raw_key, nested_value in value.items():
+            key = str(raw_key)
+            normalized_key = key.lower().replace('-', '_')
+            if any(fragment in normalized_key for fragment in _SECRET_KEY_FRAGMENTS):
+                raise ValueError(
+                    f'Evaluation report {path}.{key} must contain only non-secret settings.'
+                )
+            _validate_non_secret_config(nested_value, path=f'{path}.{key}')
+        return
+    if isinstance(value, (list, tuple)):
+        for index, nested_value in enumerate(value):
+            _validate_non_secret_config(nested_value, path=f'{path}[{index}]')
+        return
+    if isinstance(value, str):
+        parsed = urlsplit(value)
+        if parsed.scheme and parsed.netloc and (
+            parsed.username is not None or parsed.password is not None
+        ):
+            raise ValueError(
+                f'Evaluation report {path} must contain only non-secret settings.'
+            )
+
+
+def write_report(report: dict[str, Any], path: str | Path) -> Path:
+    """Write an evaluation report to JSON (UTF-8, pretty-printed)."""
+    out_path = Path(path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    return out_path
 
 
 def _selected_modes(mode: str) -> list[str]:

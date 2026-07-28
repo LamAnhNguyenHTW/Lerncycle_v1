@@ -66,3 +66,7 @@ supabase/migrations/20260507000001_chat_history.sql
 
 learncycle_logo_assets
 remotion
+# eval corpus: local PDFs / manifests / queries — do not commit copyrighted material
+rag_pipeline/eval/corpus/
+
+docs
