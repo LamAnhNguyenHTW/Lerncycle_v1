@@ -1,0 +1,35 @@
+{
+  "evaluation_id": "ground-truth-final-v1",
+  "query_count": 60,
+  "robustness_subset_query_count": 45,
+  "top_k": 5,
+  "repetitions": 3,
+  "warmup_enabled": true,
+  "order_rotation": "cyclic",
+  "caches_disabled": true,
+  "dense_embedding_provider": "openai",
+  "dense_embedding_model": "text-embedding-3-small",
+  "sparse_embedding_provider": "fastembed",
+  "sparse_embedding_model": "Qdrant/bm25",
+  "hybrid_fusion": "rrf",
+  "hybrid_prefetch_limit": 30,
+  "chunking_variants": [
+    "fixed_size",
+    "docling",
+    "docling_semantic"
+  ],
+  "retrieval_variants": [
+    "dense",
+    "sparse",
+    "hybrid"
+  ],
+  "reranking_variants": [
+    "without_reranking",
+    "cross_encoder_reranking",
+    "llm_reranking"
+  ],
+  "cross_encoder_model": "jinaai/jina-reranker-v2-base-multilingual",
+  "llm_reranker_model": "gpt-4o-mini",
+  "notes": "No credentials or endpoint URLs are included. See raw reports for phase-specific embedded configuration."
+}
+

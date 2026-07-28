@@ -1,0 +1,1544 @@
+{
+  "queries": [
+    {
+      "query_id": "pilot-gpm-01",
+      "question": "Wodurch unterscheidet sich ein Geschäftsprozess von einem allgemeinen Prozess?",
+      "language": "de",
+      "question_type": "fact",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        5
+      ],
+      "expected_phrases": [
+        "unternehmensbezogenes Ziel",
+        "Strategie des Unternehmens",
+        "Softwaresysteme"
+      ],
+      "reference_answer": "Ein Prozess besteht aus mehreren Einzelschritten, verarbeitet unter anderem Informationen als Input und führt zu einem gewünschten Output. Ein Geschäftsprozess verfolgt zusätzlich ein unternehmensbezogenes, aus der Unternehmensstrategie abgeleitetes Ziel und benötigt in der Regel Unterstützung durch Softwaresysteme und gegebenenfalls weitere Ressourcen.",
+      "relevance_notes": "Beide Definitionen stehen gemeinsam auf PDF-Seite 5.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-gpm-02",
+      "question": "Wie führen Ist-Analyse, Soll-Konzeption sowie Entscheidung und Umsetzung zu einem neuen Überwachungszyklus der Geschäftsprozessoptimierung?",
+      "language": "de",
+      "question_type": "relational",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        9,
+        10,
+        13,
+        14
+      ],
+      "expected_phrases": [
+        "Ist-Analyse",
+        "Soll-Konzeption",
+        "Entscheidung und Umsetzung",
+        "neuer Zyklus startet"
+      ],
+      "reference_answer": "Die Ist-Analyse erfasst den aktuellen Prozess, seine Abläufe, Systeme und Kennzahlen. Darauf aufbauend wird ein Soll-Prozess konzipiert und nach Kriterien wie Qualität, Zeit und Kosten bewertet. Nach der Entscheidung wird die gewählte Konzeption durch Prozesseinführung, Systemanpassungen und Schulungen umgesetzt. Die anschließende Prozessüberwachung vergleicht Ausführung und Soll; bei Abweichungen beginnt ein neuer Optimierungszyklus.",
+      "relevance_notes": "Die Antwort verbindet den Lebenszyklus auf Seite 9 mit Details der Phasen auf den Seiten 10, 13 und 14.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-gpm-03",
+      "question": "Wie unterscheiden sich ein datenbasiertes exklusives Gateway und ein paralleles Gateway hinsichtlich Pfadauswahl und Zusammenführung?",
+      "language": "de",
+      "question_type": "table_or_figure",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        24,
+        25
+      ],
+      "expected_phrases": [
+        "Datenbasiertes exklusives Gateway",
+        "Paralleles Gateway",
+        "alle Pfade abgeschlossen"
+      ],
+      "reference_answer": "Beim datenbasierten exklusiven Gateway schließen sich die Alternativen gegenseitig aus; die Auswahl basiert auf bereits vorliegenden Daten. Das parallele Gateway aktiviert beziehungsweise vereinigt parallele Pfade und wartet beim schließenden Gateway, bis alle Pfade abgeschlossen sind.",
+      "relevance_notes": "Die textlichen Erläuterungen stehen auf den Seiten 24 und 25; die BPMN-Symbole selbst sind grafisch.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": true,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-pwl-01",
+      "question": "Welche sechs 'R' beschreiben nach Jünnemann den logistischen Auftrag?",
+      "language": "de",
+      "question_type": "terminology",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        7
+      ],
+      "expected_phrases": [
+        "richtige Menge",
+        "richtigen Ort",
+        "richtigen Zeitpunkt",
+        "richtigen Kosten"
+      ],
+      "reference_answer": "Der logistische Auftrag stellt die richtige Menge der richtigen Objekte am richtigen Ort, zum richtigen Zeitpunkt, in der richtigen Qualität und zu den richtigen Kosten bereit.",
+      "relevance_notes": "Die klassische Definition mit vier bis sechs 'R' steht vollständig auf PDF-Seite 7.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-pwl-02",
+      "question": "Warum entsteht zwischen hoher Lieferfähigkeit und niedrigen Logistikkosten ein Zielkonflikt, und welche Lösung nennt die Vorlesung?",
+      "language": "de",
+      "question_type": "multi_hop",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        16,
+        18,
+        22,
+        23,
+        24
+      ],
+      "expected_phrases": [
+        "Logistikleistungen",
+        "Logistikkosten",
+        "Bestände",
+        "Lieferfähigkeit",
+        "Abteilungsübergreifende Kompromisse"
+      ],
+      "reference_answer": "Die Logistik soll geforderte Leistungen wie Lieferfähigkeit und Lieferzuverlässigkeit einhalten und zugleich die dafür notwendigen Kosten minimieren. Hohe Lieferfähigkeit kann durch Bestände oder Flexibilität unterstützt werden, während Bestands-, Transport-, Verpackungs- und Prozesskosten gesenkt werden sollen. Die Vorlesung fordert deshalb abteilungsübergreifende Kompromisse zur Lösung dieser Zielkonflikte.",
+      "relevance_notes": "Die beiden Zielrichtungen, Leistungsziele, Kostenarten und der konkrete Konflikt Bestände versus Lieferfähigkeit sind über mehrere Seiten verteilt.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-pwl-03",
+      "question": "Welche Bedeutung hat die Klasse AZ in einer kombinierten ABC/XYZ-Analyse?",
+      "language": "de",
+      "question_type": "table_or_figure",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        30,
+        33,
+        35
+      ],
+      "expected_phrases": [
+        "hohen Anteil zum Gesamtwert",
+        "stark schwankenden Verbrauch",
+        "Hoher Wertanteil",
+        "Unregelmäßiger Bedarf"
+      ],
+      "reference_answer": "A kennzeichnet einen hohen wertmäßigen Anteil am Gesamtwert, Z einen stark schwankenden beziehungsweise unregelmäßigen Bedarf. Ein AZ-Artikel verbindet daher einen hohen Wertanteil mit unregelmäßigem Bedarf.",
+      "relevance_notes": "Die Bedeutung muss aus den getrennten ABC- und XYZ-Definitionen sowie der Kombinationsmatrix abgeleitet werden.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": true,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-http-01",
+      "question": "Wie unterscheiden sich POST, PUT und PATCH hinsichtlich ihrer beabsichtigten Wirkung auf eine Ressource?",
+      "language": "de",
+      "question_type": "semantic_paraphrase",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        11
+      ],
+      "expected_phrases": [
+        "POST method submits",
+        "PUT method replaces",
+        "PATCH method applies partial modifications"
+      ],
+      "reference_answer": "POST übermittelt eine Entität an die angegebene Ressource und verursacht häufig eine Zustandsänderung oder andere Seiteneffekte. PUT ersetzt alle aktuellen Repräsentationen der Zielressource durch den Request-Payload. PATCH nimmt dagegen nur teilweise Änderungen an einer Ressource vor.",
+      "relevance_notes": "Die drei Methodendefinitionen stehen als fortlaufender Text auf PDF-Seite 11.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-http-02",
+      "question": "Welche der Methoden GET, POST, PUT und DELETE sind laut Übersicht sicher und welche sind idempotent?",
+      "language": "de",
+      "question_type": "table_or_figure",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        21
+      ],
+      "expected_phrases": [
+        "Safe",
+        "Idempotent",
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE"
+      ],
+      "reference_answer": "GET ist sicher und idempotent. POST ist weder sicher noch idempotent. PUT und DELETE sind nicht sicher, aber idempotent.",
+      "relevance_notes": "Die Eigenschaften stehen in der Methodentabelle auf PDF-Seite 21.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": true,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-http-03",
+      "question": "Welche HTTP-Methode ist für eine teilweise Änderung einer Ressource vorgesehen, und wie lassen sich danach erfolgreiche Antworten, Clientfehler und Serverfehler anhand des Statuscodes unterscheiden?",
+      "language": "de",
+      "question_type": "multi_hop",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        11,
+        16
+      ],
+      "expected_phrases": [
+        "PATCH method applies partial modifications",
+        "Successful responses",
+        "Client error responses",
+        "Server error responses"
+      ],
+      "reference_answer": "PATCH ist für teilweise Änderungen an einer Ressource vorgesehen. Statuscodes von 200 bis 299 kennzeichnen erfolgreiche Antworten, 400 bis 499 Clientfehler und 500 bis 599 Serverfehler.",
+      "relevance_notes": "Die Methodendefinition steht auf Seite 11; die textuelle Einteilung der Statuscodeklassen steht auf Seite 16.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-se-01",
+      "question": "Welche fünf Hauptphasen des Softwareentwicklungsprozesses zeigt die Übersicht?",
+      "language": "de",
+      "question_type": "fact",
+      "expected_source_ids": [
+        "se-prozess-uebersicht-2023"
+      ],
+      "expected_pages": [
+        2
+      ],
+      "expected_phrases": [
+        "Planung und Analyse",
+        "Anforderungsdefinition",
+        "Entwurf",
+        "Implementation",
+        "Abnahme"
+      ],
+      "reference_answer": "Die Übersicht nennt Planung und Analyse, Anforderungsdefinition, Entwurf, Implementation sowie Abnahme und Einführung.",
+      "relevance_notes": "Die fünf nummerierten Hauptphasen stehen gemeinsam auf PDF-Seite 2.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-se-02",
+      "question": "Welche konkrete Programmiersprache wird für die Implementierung im Softwareentwicklungsprozess vorgeschrieben?",
+      "language": "de",
+      "question_type": "unanswerable",
+      "expected_source_ids": [],
+      "expected_pages": [],
+      "expected_phrases": [],
+      "reference_answer": "Im Evaluationskorpus wird für diesen Softwareentwicklungsprozess keine konkrete Programmiersprache vorgeschrieben.",
+      "relevance_notes": "Die Unterlage beschreibt Implementierungsaktivitäten, nennt aber keine verbindliche Programmiersprache. Das muss manuell über das vollständige Dokument gegengeprüft werden.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-selfrag-01",
+      "question": "What limitations of conventional RAG motivate SELF-RAG?",
+      "language": "en",
+      "question_type": "contextual",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        1,
+        2
+      ],
+      "expected_phrases": [
+        "indiscriminately",
+        "fixed number",
+        "off-topic passages",
+        "not guaranteed to be consistent"
+      ],
+      "reference_answer": "Conventional RAG often retrieves a fixed number of passages whether retrieval is needed or not, may introduce irrelevant or off-topic context, and does not guarantee that generated claims follow the retrieved evidence. SELF-RAG is motivated by the goal of retrieving on demand and evaluating passage relevance and generation support without reducing the model's versatility.",
+      "relevance_notes": "The motivation is stated in the abstract and introduction on page 1 and contrasted with the Figure 1 workflow on page 2.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-selfrag-02",
+      "question": "How do Retrieve, ISREL, ISSUP, and ISUSE differ in what they evaluate and in their output values?",
+      "language": "en",
+      "question_type": "terminology",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        3,
+        16
+      ],
+      "expected_phrases": [
+        "Retrieve",
+        "ISREL",
+        "ISSUP",
+        "ISUSE",
+        "fully supported",
+        "five-scale"
+      ],
+      "reference_answer": "Retrieve decides whether retrieval is needed, with Yes, No, or Continue. ISREL judges whether a retrieved passage is relevant or irrelevant. ISSUP rates whether the output is fully supported, partially supported, or unsupported or contradictory with respect to evidence. ISUSE rates the response's perceived usefulness on a five-point scale from 1 to 5.",
+      "relevance_notes": "Table 1 on page 3 gives the compact token schema; Appendix A.1 on page 16 supplies the detailed definitions and scales.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": true,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-selfrag-03",
+      "question": "How are the SELF-RAG critic and generator trained, and how does the critic's output become generator training data?",
+      "language": "en",
+      "question_type": "multi_hop",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        4,
+        5,
+        17,
+        18
+      ],
+      "expected_phrases": [
+        "Training the critic model",
+        "Training the generator model",
+        "Algorithm 2",
+        "Dcritic",
+        "Dgen"
+      ],
+      "reference_answer": "GPT-4 feedback is first collected as reflection-token supervision and used to fine-tune a critic with a next-token objective. The trained critic then predicts retrieval and critique tokens for the original input-output data; when retrieval is needed, passages and relevance, support, and utility judgments are added. These augmented examples form Dgen, on which the generator learns both the task output and reflection tokens with a standard next-token objective, while retrieved text is masked from the loss.",
+      "relevance_notes": "The main training description spans pages 4 and 5; Algorithm 2 and the detailed generator-data construction are on pages 17 and 18.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": true,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "pilot-selfrag-04",
+      "question": "Why can always retrieving the top passage hurt SELF-RAG performance, and how do adaptive retrieval and critique weights provide an alternative?",
+      "language": "en",
+      "question_type": "relational",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        5,
+        6,
+        9
+      ],
+      "expected_phrases": [
+        "adaptive threshold",
+        "Retrieve top 1",
+        "Remove ISSUP",
+        "fine-grained multiple criteria"
+      ],
+      "reference_answer": "Always using the top retrieved passage can add evidence regardless of its relevance; the reported ablation lowers performance on PopQA and ASQA, while removing ISSUP also harms ASQA. SELF-RAG instead triggers retrieval from the predicted Retrieve token or a configurable threshold and ranks parallel continuations with weighted ISREL, ISSUP, and ISUSE scores. Those weights let practitioners emphasize evidence support or other behavior without retraining.",
+      "relevance_notes": "The adaptive threshold and critique-weighted decoding are described textually on pages 5 and 6; page 9 explains the Retrieve-top-1 and Remove-ISSUP ablation findings in prose.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-gpm-04",
+      "question": "Welche Aufgaben umfasst die strategische Ebene des integrierten Geschäftsprozessmanagements?",
+      "language": "de",
+      "question_type": "fact",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        2
+      ],
+      "expected_phrases": [
+        "Strategieentwicklung und –steuerung",
+        "kritischer Erfolgsfaktoren",
+        "Strategisches Prozesscontrolling"
+      ],
+      "reference_answer": "Die strategische Ebene umfasst Strategieentwicklung und -steuerung, die Betrachtung der Geschäftsfelder einschließlich kritischer Erfolgsfaktoren, die Identifikation, Planung und Umsetzung zentraler Unternehmensprozesse sowie strategisches Prozesscontrolling anhand von Kennzahlen und gegebenenfalls Korrekturmaßnahmen.",
+      "relevance_notes": "Die vier Aufgaben werden auf PDF-Seite 2 gemeinsam aufgelistet.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-gpm-05",
+      "question": "Welche typischen Schwachstellen können bei der Analyse eines Ist-Prozesses sichtbar werden?",
+      "language": "de",
+      "question_type": "fact",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        12
+      ],
+      "expected_phrases": [
+        "Doppelarbeiten",
+        "Lange Wartezeiten",
+        "Bearbeiterwechsel",
+        "Medienbrüche"
+      ],
+      "reference_answer": "Als typische Schwachstellen nennt die Unterlage Doppelarbeiten aufgrund unklarer Zuständigkeiten, lange Wartezeiten etwa wegen Rückfragen, häufige Bearbeiterwechsel sowie Medienbrüche und falsche Dateneingaben.",
+      "relevance_notes": "Die Beispiele stehen als Textliste auf PDF-Seite 12.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-gpm-06",
+      "question": "Warum werden sowohl Ist- als auch Soll-Modelle von Geschäftsprozessen erstellt?",
+      "language": "de",
+      "question_type": "semantic_paraphrase",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        7
+      ],
+      "expected_phrases": [
+        "Ist-Modelle",
+        "Schwachstellen-Analyse",
+        "Soll-Modelle",
+        "Restrukturierung"
+      ],
+      "reference_answer": "Ist-Modelle bilden den Ausgangspunkt für die Analyse vorhandener Schwachstellen. Soll-Modelle beschreiben die angestrebte Gestaltung und dienen als Ausgangspunkt für eine Restrukturierung; Prozessmodelle können außerdem Anforderungen an IT-Unterstützung und automatisierbare Workflows ableiten.",
+      "relevance_notes": "Die Funktionen der Modellierung werden auf PDF-Seite 7 textlich erläutert.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-gpm-07",
+      "question": "Wie unterscheiden sich ein BPMN-Prozessdiagramm und ein Kollaborationsdiagramm hinsichtlich Fokus und Pool-Nutzung?",
+      "language": "de",
+      "question_type": "semantic_paraphrase",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        18
+      ],
+      "expected_phrases": [
+        "unternehmensinternen Prozess",
+        "maximal einen Pool",
+        "Zusammenarbeit unabhängiger Prozesse",
+        "verschiedenen Pools"
+      ],
+      "reference_answer": "Ein Prozessdiagramm fokussiert einen unternehmensinternen Geschäftsprozess und benötigt höchstens einen Pool, der mehrere Lanes enthalten kann. Ein Kollaborationsdiagramm stellt dagegen die Zusammenarbeit unabhängiger Prozesse in verschiedenen Pools dar, beispielsweise zwischen Kunde und Lieferant.",
+      "relevance_notes": "Beide Diagrammtypen und ihre Pool-Nutzung werden auf PDF-Seite 18 gegenübergestellt.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-gpm-08",
+      "question": "Was ist in BPMN ein Gateway, und welche Funktion hat es ausdrücklich nicht?",
+      "language": "de",
+      "question_type": "terminology",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        17
+      ],
+      "expected_phrases": [
+        "Gateways ermöglichen Verzweigungen",
+        "Zusammenführungen",
+        "nur eine Logik",
+        "keine Tätigkeit"
+      ],
+      "reference_answer": "Ein Gateway bildet die Logik für Verzweigungen oder Zusammenführungen von Sequenzflüssen ab. Es führt selbst keine Tätigkeit aus.",
+      "relevance_notes": "Definition und Abgrenzung stehen gemeinsam auf PDF-Seite 17.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-gpm-09",
+      "question": "Wie beschreibt die Unterlage die wechselseitige Beziehung zwischen Geschäftsprozessen, IT-Systemen und Unternehmensstrategie?",
+      "language": "de",
+      "question_type": "contextual",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        6
+      ],
+      "expected_phrases": [
+        "Gestaltung von IT-Systemen",
+        "IT-Strategie",
+        "Geschäftsstrategie",
+        "Änderung der Geschäftsprozesse"
+      ],
+      "reference_answer": "IT-Systeme werden anhand der Geschäftsprozesse gestaltet, während die IT-Strategie an der Geschäftsstrategie ausgerichtet und ihr untergeordnet ist. Umgekehrt können IT-Systeme Geschäftsprozesse verändern und Innovationen ermöglichen.",
+      "relevance_notes": "Die wechselseitigen Wirkungsrichtungen sind auf PDF-Seite 6 textlich beschrieben.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-gpm-10",
+      "question": "Warum darf ein Sequenzfluss zwischen Lanes verlaufen, ein Nachrichtenfluss dagegen nur zwischen Pools?",
+      "language": "de",
+      "question_type": "relational",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        18,
+        19
+      ],
+      "expected_phrases": [
+        "Sequenzfluss kann verschiedene Lanes durchlaufen",
+        "nie die Pool-Grenze",
+        "Nachrichtenfluss",
+        "ZWISCHEN Pools"
+      ],
+      "reference_answer": "Lanes untergliedern Zuständigkeiten innerhalb desselben Prozess-Pools, deshalb kann der interne Sequenzfluss mehrere Lanes durchlaufen. Ein Nachrichtenfluss stellt dagegen die Informationsübermittlung zwischen unabhängigen Teilnehmern dar und muss deshalb eine Poolgrenze überschreiten; innerhalb eines Pools wird er nicht verwendet.",
+      "relevance_notes": "Die Regeln zu Pools und Lanes stehen auf Seite 18, die Abgrenzung des Nachrichtenflusses auf Seite 19.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-gpm-11",
+      "question": "Wie wird aus einem Prozessmodell ein Simulationsexperiment, und welche Ergebnisgrößen werden in der Demonstration sichtbar gemacht?",
+      "language": "de",
+      "question_type": "multi_hop",
+      "expected_source_ids": [
+        "gpaa-geschaeftsprozessmanagement"
+      ],
+      "expected_pages": [
+        28,
+        29,
+        30
+      ],
+      "expected_phrases": [
+        "Durchführung von Experimenten",
+        "Zielsetzung festlegen",
+        "Implementierung",
+        "Validierung",
+        "Zeit und Kosten je Aufgabe",
+        "Wahrscheinlichkeiten"
+      ],
+      "reference_answer": "Zunächst werden Zielsetzung und benötigte Informationen wie Durchführungszeiten und Kapazitäten festgelegt. Danach wird das Modell mit Bearbeitungsreihenfolgen gebildet, in einem Simulator implementiert und auf Übereinstimmung mit der Realität validiert. Es folgen Versuchsreihen und Ergebnisanalyse. In der Demonstration werden unter anderem Zeiten und Kosten je Aufgabe, Wahrscheinlichkeiten an Gateway-Sequenzflüssen sowie Wartezeiten hinterlegt und ausgewertet.",
+      "relevance_notes": "Grundidee, Vorgehensschritte und konkrete Parametrisierung verteilen sich über die Seiten 28 bis 30.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-gpm-12",
+      "question": "Welches konkrete Simulationssoftware-Produkt schreibt die Unterlage für Geschäftsprozesse verbindlich vor?",
+      "language": "de",
+      "question_type": "unanswerable",
+      "expected_source_ids": [],
+      "expected_pages": [],
+      "expected_phrases": [],
+      "reference_answer": "Im Evaluationskorpus wird kein konkretes Simulationssoftware-Produkt für Geschäftsprozesse verbindlich vorgeschrieben.",
+      "relevance_notes": "Die Unterlage beschreibt Simulation, Simulatoren und eine Demonstration, nennt aber kein verbindlich einzusetzendes Produkt; dies ist über das vollständige Dokument manuell gegenzuprüfen.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-04",
+      "question": "Welche klassischen Bereiche der Logistik nennt die Vorlesung?",
+      "language": "de",
+      "question_type": "fact",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        11
+      ],
+      "expected_phrases": [
+        "Beschaffungslogistik",
+        "Produktionslogistik",
+        "Distributionslogistik",
+        "Entsorgungs logistik"
+      ],
+      "reference_answer": "Genannt werden Beschaffungslogistik, Produktionslogistik und Distributionslogistik sowie als vierter Bereich die Entsorgungslogistik.",
+      "relevance_notes": "Die drei beziehungsweise vier klassischen Bereiche stehen auf PDF-Seite 11.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-05",
+      "question": "Wann gelten Logistikleistungen laut Fazit als optimal?",
+      "language": "de",
+      "question_type": "fact",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        20
+      ],
+      "expected_phrases": [
+        "immer verfügbar",
+        "geräuschlos",
+        "alle Informationen",
+        "Die Logistikleistungen sind dann optimal"
+      ],
+      "reference_answer": "Logistikleistungen gelten als optimal, wenn alle angebotenen Leistungen verfügbar sind, Schwierigkeiten geräuschlos beseitigt werden, die Logistik über alle Informationen verfügt und dadurch alles unbemerkt funktioniert.",
+      "relevance_notes": "Das Fazit zum Logistikservice steht vollständig auf PDF-Seite 20.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-06",
+      "question": "How do the modern logistics definitions connect material flows, information flows, and the customer?",
+      "language": "en",
+      "question_type": "semantic_paraphrase",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        8,
+        9
+      ],
+      "expected_phrases": [
+        "Material- und Informationsflüsse",
+        "vom Kunden bis zum Lieferanten",
+        "Anforderungen des Kunden",
+        "gesamte Kette"
+      ],
+      "reference_answer": "The definitions describe logistics as planning, controlling, executing, and monitoring material and information flows within and between companies. These flows and storage activities extend from suppliers to receiving points according to customer requirements, so logistics is treated as a holistic function across the whole chain.",
+      "relevance_notes": "The detailed definitions are on page 8 and their holistic summary is on page 9.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-07",
+      "question": "Weshalb können C-Artikel trotz ihres niedrigen Einzelwerts erhebliche Beschaffungskosten verursachen?",
+      "language": "de",
+      "question_type": "semantic_paraphrase",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        38
+      ],
+      "expected_phrases": [
+        "niedrigen Einzelwert",
+        "hohe Bestellhäufigkeit",
+        "Bestellhäufigkeit und -aufwand",
+        "hohen Kosten"
+      ],
+      "reference_answer": "C-Artikel besitzen zwar einen sehr niedrigen Einzelwert, werden aber häufig bestellt und verursachen dabei hohen administrativen Aufwand. Dieser Prozessaufwand kann zu hohen Kosten und Wettbewerbsnachteilen führen.",
+      "relevance_notes": "Die Begründung steht als fortlaufender Text auf PDF-Seite 38.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-08",
+      "question": "Wie grenzt die Vorlesung Supply Chain Management von den klassischen Logistikbereichen ab?",
+      "language": "de",
+      "question_type": "terminology",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        14
+      ],
+      "expected_phrases": [
+        "innerbetrieblichen Aufgaben",
+        "überbetriebliche Zusammenarbeit",
+        "Optimierung der gesamten Versorgungskette"
+      ],
+      "reference_answer": "Die klassischen Logistikbereiche fokussieren vor allem innerbetriebliche Material- und Informationsflüsse. Supply Chain Management ergänzt diese Perspektive um die überbetriebliche Zusammenarbeit mehrerer Unternehmen zur Optimierung der gesamten Versorgungskette.",
+      "relevance_notes": "Die begriffliche Abgrenzung steht vollständig auf PDF-Seite 14.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-09",
+      "question": "Nach welchem Kriterium klassifiziert die XYZ-Analyse Materialien als X-, Y- oder Z-Teile?",
+      "language": "de",
+      "question_type": "terminology",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        33
+      ],
+      "expected_phrases": [
+        "Vorhersagegenauigkeit",
+        "gleichmäßigen Verbrauch",
+        "größeren Schwankungen",
+        "stark schwankenden Verbrauch"
+      ],
+      "reference_answer": "Die XYZ-Analyse unterscheidet nach der Vorhersagegenauigkeit des Verbrauchs oder Absatzes, die aus vergangenen Verbrauchsschwankungen abgeleitet wird. X steht für gleichmäßigen, Y für stärker schwankenden und Z für stark schwankenden beziehungsweise unregelmäßigen Verbrauch.",
+      "relevance_notes": "Kriterium und Klassen sind auf PDF-Seite 33 definiert.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-10",
+      "question": "Welche gemeinsame Kernaussage leitet die Vorlesung aus den verschiedenen Logistikdefinitionen ab?",
+      "language": "de",
+      "question_type": "contextual",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        7,
+        8,
+        9
+      ],
+      "expected_phrases": [
+        "„Flüsse“ und Prozesse",
+        "Güter und Informationen",
+        "gesamte Kette",
+        "ganzheitliche Funktion"
+      ],
+      "reference_answer": "Über die unterschiedlichen Definitionen hinweg kümmert sich Logistik um Flüsse und Prozesse, umfasst sowohl Güter als auch Informationen und betrachtet die gesamte Kette als ganzheitliche Funktion.",
+      "relevance_notes": "Die klassischen und modernen Definitionen stehen auf den Seiten 7 und 8; das zusammenfassende Fazit folgt auf Seite 9.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-11",
+      "question": "Welche Ziele verfolgt das C-Artikel-Management, und mit welchen strategischen Ansätzen sollen sie erreicht werden?",
+      "language": "de",
+      "question_type": "contextual",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        39
+      ],
+      "expected_phrases": [
+        "Senkung der Prozesskosten",
+        "Verkürzung der Durchlaufzeiten",
+        "Bedarfsbündelung",
+        "Dezentralisierung",
+        "E-Procurement"
+      ],
+      "reference_answer": "Ziele sind unter anderem niedrigere Prozesskosten, kürzere Durchlaufzeiten, schlankere Beschaffungsprozesse, günstigere Einkaufspreise durch Bedarfsbündelung und gesicherte Artikelverfügbarkeit. Als Strategien nennt die Unterlage unter anderem dezentrale Beschaffung und Budgetverantwortung, Materialgruppenmanagement, die Bündelung auf weniger Lieferanten, Outsourcing und E-Procurement.",
+      "relevance_notes": "Ziele und Strategien werden auf PDF-Seite 39 gegenübergestellt.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-12",
+      "question": "Wie unterscheiden sich Wertanalyse und Target Costing hinsichtlich Ausgangspunkt und Ziel der Kostenbeeinflussung?",
+      "language": "de",
+      "question_type": "relational",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        43,
+        44
+      ],
+      "expected_phrases": [
+        "Funktion eines Produkts",
+        "geringstmöglichen Kosten",
+        "Orientierung am Markt",
+        "Kunde als Ausgangspunkt"
+      ],
+      "reference_answer": "Die Wertanalyse untersucht Funktionen, Kosten und Nutzen eines Produkts und sucht Lösungen, die benötigte Funktionen zu möglichst geringen Kosten realisieren. Target Costing beginnt dagegen beim Markt und beim Kunden, um zulässige Produktkosten und die Produktgestaltung festzulegen und so die Wettbewerbsfähigkeit zu erhöhen.",
+      "relevance_notes": "Die Wertanalyse wird auf Seite 43 und Target Costing auf Seite 44 erläutert.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-13",
+      "question": "Wie wird die Beschaffung von C-Artikeln von der Sortimentsanalyse bis zur Abrechnung organisatorisch verschlankt?",
+      "language": "de",
+      "question_type": "multi_hop",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        40,
+        41
+      ],
+      "expected_phrases": [
+        "Sortimentsanalysen",
+        "Bildung von Materialgruppen",
+        "wenige, leistungsfähige Lieferanten",
+        "Rahmenverträgen",
+        "E-Procurement",
+        "Sammelrechnung"
+      ],
+      "reference_answer": "C-Artikel werden in einem separaten Ablauf analysiert und zu Materialgruppen und Bedarfen gebündelt. Danach werden wenige leistungsfähige Lieferanten ausgewählt, Beschaffungs-, Budget- und teilweise Prozessverantwortung dezentralisiert und Rahmenverträge geschlossen. Webbasierte E-Procurement-Lösungen oder Vollsortimenter vereinfachen Bestellungen; die Abrechnung kann gebündelt über periodische Sammelrechnungen erfolgen.",
+      "relevance_notes": "Die aufeinander bezogenen organisatorischen Schritte verteilen sich über die Seiten 40 und 41.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-14",
+      "question": "Welche Gewinnwirkung zeigt das Rechenbeispiel für zehn Prozent mehr Umsatz im Vergleich zu zehn Prozent geringeren Materialkosten?",
+      "language": "de",
+      "question_type": "table_or_figure",
+      "expected_source_ids": [
+        "pwl-logistik-wise-2025"
+      ],
+      "expected_pages": [
+        3
+      ],
+      "expected_phrases": [
+        "Umsatz +10%",
+        "Materialkosten -10%",
+        "Gewinn",
+        "+10%",
+        "+50%"
+      ],
+      "reference_answer": "Im Beispiel steigt der Gewinn bei zehn Prozent mehr Umsatz von 10.000 auf 11.000 und damit um zehn Prozent. Werden die Materialkosten um zehn Prozent reduziert, steigt der Gewinn von 10.000 auf 15.000 und damit um fünfzig Prozent.",
+      "relevance_notes": "Die Zahlen der Tabelle auf PDF-Seite 3 wurden lokal vollständig als Text extrahiert; die visuelle Zuordnung ist dennoch manuell zu bestätigen.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-pwl-15",
+      "question": "Welches konkrete Softwareprodukt schreibt die Vorlesung zur Durchführung einer ABC-Analyse vor?",
+      "language": "de",
+      "question_type": "unanswerable",
+      "expected_source_ids": [],
+      "expected_pages": [],
+      "expected_phrases": [],
+      "reference_answer": "Im Evaluationskorpus wird kein konkretes Softwareprodukt zur Durchführung einer ABC-Analyse vorgeschrieben.",
+      "relevance_notes": "Die ABC-Analyse wird fachlich beschrieben, aber kein verbindliches Analysewerkzeug genannt; dies ist über das vollständige Dokument manuell gegenzuprüfen.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-http-04",
+      "question": "Welche Besonderheit hat die Antwort auf eine HEAD-Anfrage im Vergleich zu GET?",
+      "language": "de",
+      "question_type": "fact",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        12
+      ],
+      "expected_phrases": [
+        "HEAD method",
+        "identical to a GET request",
+        "without the response body"
+      ],
+      "reference_answer": "HEAD fordert eine Antwort an, die einer GET-Antwort entspricht, aber keinen Response Body enthält.",
+      "relevance_notes": "Die HEAD-Definition steht auf PDF-Seite 12.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-http-05",
+      "question": "Welche vier Cookie-Kategorien nennt die HTTP-Unterlage?",
+      "language": "de",
+      "question_type": "fact",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        22
+      ],
+      "expected_phrases": [
+        "Session Cookies",
+        "Persistent Cookies",
+        "First-Party Cookies",
+        "Third-Party Cookies"
+      ],
+      "reference_answer": "Die Unterlage nennt Session Cookies, Persistent Cookies, First-Party Cookies und Third-Party Cookies.",
+      "relevance_notes": "Die vier Kategorien stehen gemeinsam auf PDF-Seite 22.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-http-06",
+      "question": "How can HTTP be stateless while still supporting stateful user sessions?",
+      "language": "en",
+      "question_type": "semantic_paraphrase",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        22,
+        23,
+        24
+      ],
+      "expected_phrases": [
+        "Stateless",
+        "No link between two requests",
+        "Cookies",
+        "stateful sessions",
+        "Set-Cookie"
+      ],
+      "reference_answer": "HTTP itself is stateless because it does not inherently link two requests on the same connection. A server can nevertheless create a session by sending a cookie, the browser storing it, and the browser returning that cookie with later requests so the server can associate them with stored state.",
+      "relevance_notes": "The stateless/sessionful distinction is summarized on page 24, while pages 22 and 23 explain cookies and the request sequence.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-http-07",
+      "question": "Wie unterscheiden sich URN und URL als Formen eines URI?",
+      "language": "de",
+      "question_type": "semantic_paraphrase",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        13
+      ],
+      "expected_phrases": [
+        "Uniform Resource Name",
+        "urn:<NID>",
+        "Uniform Resource Locator",
+        "<scheme>:<scheme-specific-part>"
+      ],
+      "reference_answer": "Ein URN benennt eine Ressource über einen Namensraum und einen namensraumspezifischen Teil, etwa eine ISBN. Ein URL lokalisiert beziehungsweise adressiert eine Ressource über ein Schema und einen schemaspezifischen Teil, etwa mit http, mailto oder file. Beide werden als URI-Formen dargestellt.",
+      "relevance_notes": "Strukturen und Beispiele von URN und URL stehen auf PDF-Seite 13.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-http-08",
+      "question": "Wie ist ein MIME-Typ aufgebaut, und welches Beispiel zeigt einen zusätzlichen Parameter?",
+      "language": "de",
+      "question_type": "terminology",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        19
+      ],
+      "expected_phrases": [
+        "type/subtype;parameter=value",
+        "text/plain;charset=UTF-8"
+      ],
+      "reference_answer": "Ein MIME-Typ folgt der Struktur Typ/Untertyp und kann durch einen Parameter mit Wert ergänzt werden. Als Beispiel nennt die Unterlage text/plain;charset=UTF-8.",
+      "relevance_notes": "Struktur und Beispiel stehen gemeinsam auf PDF-Seite 19.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-http-09",
+      "question": "Wie wählt der Server bei servergesteuerter Content Negotiation eine passende Repräsentation aus?",
+      "language": "de",
+      "question_type": "contextual",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        17,
+        18
+      ],
+      "expected_phrases": [
+        "Accept",
+        "Accect-Language",
+        "Accept-Encoding",
+        "Content-Type",
+        "Content-Language",
+        "Content-Encoding"
+      ],
+      "reference_answer": "Der Client teilt im Request über Accept, Accept-Language und Accept-Encoding seine Präferenzen für Medientyp, Sprache und Kodierung mit. Der Server wählt daraus eine verfügbare Repräsentation und beschreibt sie in der Antwort unter anderem mit Content-Type, Content-Language und Content-Encoding.",
+      "relevance_notes": "Das vollständige Beispiel verteilt sich über die allgemeinen Header auf Seite 17 und die servergesteuerte Aushandlung auf Seite 18.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-http-10",
+      "question": "Welche Beziehung besteht zwischen Set-Cookie im Login-Response und Cookie in späteren Requests?",
+      "language": "de",
+      "question_type": "relational",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        22,
+        23
+      ],
+      "expected_phrases": [
+        "Set-Cookie",
+        "Browser stores the cookie",
+        "Cookie: sessionId",
+        "Server reads cookie"
+      ],
+      "reference_answer": "Der Server setzt im Login-Response mit Set-Cookie eine Sitzungskennung. Der Browser speichert sie lokal und sendet sie in späteren Requests im Cookie-Header zurück. Der Server liest die Kennung und kann dadurch mehrere ansonsten unabhängige HTTP-Anfragen einer Sitzung zuordnen.",
+      "relevance_notes": "Der Zweck von Cookies steht auf Seite 22; der konkrete Nachrichtenablauf auf Seite 23.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-http-11",
+      "question": "Wie wird aus der URL `http://server.example.org:8080/index.html?param1=A&param2=B` ein HTTP-Request-Pfad, und welche Zeichen trennen die Query-Parameter?",
+      "language": "de",
+      "question_type": "multi_hop",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        14,
+        15
+      ],
+      "expected_phrases": [
+        "GET /index.html?param1=A&param2=B",
+        "Host: server.example.org:8080",
+        "? leitet den Query String ein",
+        "= verbindet Namen und Wert",
+        "& ist das Trennzeichen"
+      ],
+      "reference_answer": "Im Request steht als Pfad `/index.html?param1=A&param2=B`, während Host und Port als `server.example.org:8080` im Host-Header erscheinen. Das Fragezeichen beginnt den Query String, das Gleichheitszeichen verbindet Parameternamen und Wert, und das kaufmännische Und trennt mehrere Parameter.",
+      "relevance_notes": "Die Zerlegung des Requests steht auf Seite 14 und die Bedeutung der reservierten Zeichen auf Seite 15.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-http-12",
+      "question": "Welchen TCP/IP-Schichten ordnet die Übersicht HTTP, TLS, TCP und IP zu?",
+      "language": "de",
+      "question_type": "table_or_figure",
+      "expected_source_ids": [
+        "verteilte-anwendungen-http"
+      ],
+      "expected_pages": [
+        6
+      ],
+      "expected_phrases": [
+        "Application",
+        "HTTP, HTTPS",
+        "TLS",
+        "Transport",
+        "TCP",
+        "Internet",
+        "IP"
+      ],
+      "reference_answer": "HTTP und HTTPS sind der Application-Schicht zugeordnet. TLS erscheint bei den OSI-Darstellungs- und Sitzungsschichten innerhalb des Application-Bereichs, TCP gehört zur Transport-Schicht und IP zur Internet-Schicht.",
+      "relevance_notes": "Die Zuordnung steht in der Tabelle auf PDF-Seite 6 und wurde lokal lesbar extrahiert; die genaue Zeilenzuordnung ist manuell zu bestätigen.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-se-03",
+      "question": "Welche vier wesentlichen Aktivitäten gehören zur Anforderungsdefinition?",
+      "language": "de",
+      "question_type": "fact",
+      "expected_source_ids": [
+        "se-prozess-uebersicht-2023"
+      ],
+      "expected_pages": [
+        3
+      ],
+      "expected_phrases": [
+        "Anforderungen ermitteln",
+        "Anforderungen dokumentieren",
+        "Anforderungen validieren und abstimmen",
+        "Anforderungen verwalten"
+      ],
+      "reference_answer": "Zur Anforderungsdefinition gehören das Ermitteln, Dokumentieren, Validieren und Abstimmen sowie das Verwalten von Anforderungen.",
+      "relevance_notes": "Die vier Aktivitäten stehen gemeinsam auf PDF-Seite 3.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-se-04",
+      "question": "Wie unterscheiden sich Kundenanforderungen, Anwendungsfälle und spezifizierte Produktanforderungen als Ergebnisse der Anforderungsdefinition?",
+      "language": "de",
+      "question_type": "semantic_paraphrase",
+      "expected_source_ids": [
+        "se-prozess-uebersicht-2023"
+      ],
+      "expected_pages": [
+        4
+      ],
+      "expected_phrases": [
+        "Kundenanforderungen",
+        "User Stories",
+        "Anwendungsfälle und Akteure",
+        "Produktanforderungen",
+        "detaillierte Beschreibung"
+      ],
+      "reference_answer": "Kundenanforderungen halten Wünsche etwa in User Stories oder Interviewprotokollen fest. Anwendungsfälle und Akteure beschreiben die Leistungen des Systems aus externer Sicht. Spezifizierte funktionale Produktanforderungen beschreiben diese Leistungen detaillierter, unter anderem durch Anwenderszenarien.",
+      "relevance_notes": "Die drei Artefaktarten werden auf PDF-Seite 4 voneinander abgegrenzt.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-se-05",
+      "question": "How do component, integration, system, and acceptance tests differ in scope and environment?",
+      "language": "en",
+      "question_type": "semantic_paraphrase",
+      "expected_source_ids": [
+        "se-prozess-uebersicht-2023"
+      ],
+      "expected_pages": [
+        10,
+        11
+      ],
+      "expected_phrases": [
+        "Komponententest",
+        "Integrationstest",
+        "Systemtest",
+        "Abnahmetest",
+        "Zielumgebung"
+      ],
+      "reference_answer": "A component test examines individual classes or components separately. An integration test checks the interaction and interfaces of multiple components. A system test verifies the complete system against the requirements specification and includes non-functional tests. An acceptance test is performed in the target environment under real user conditions and focuses on usability and external quality before handover.",
+      "relevance_notes": "The test levels are defined on page 10; page 11 places acceptance testing in the handover and introduction phase.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-se-06",
+      "question": "Was versteht die Unterlage unter einer Software-Architektur?",
+      "language": "de",
+      "question_type": "terminology",
+      "expected_source_ids": [
+        "se-prozess-uebersicht-2023"
+      ],
+      "expected_pages": [
+        6
+      ],
+      "expected_phrases": [
+        "Software-Architektur",
+        "Systemkomponenten",
+        "strukturierte und hierarchische Anordnung",
+        "Beziehungen untereinander"
+      ],
+      "reference_answer": "Die Software-Architektur ist die strukturierte und hierarchische Anordnung der Systemkomponenten und ihrer Beziehungen untereinander.",
+      "relevance_notes": "Die Definition steht als Ergebnis des Softwareentwurfs auf PDF-Seite 6.",
+      "difficulty": "easy",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-se-07",
+      "question": "Welche nicht-funktionalen Qualitätsziele soll die Software-Architektur berücksichtigen?",
+      "language": "de",
+      "question_type": "contextual",
+      "expected_source_ids": [
+        "se-prozess-uebersicht-2023"
+      ],
+      "expected_pages": [
+        7,
+        8
+      ],
+      "expected_phrases": [
+        "nicht-funktionale Anforderungen",
+        "Zuverlässigkeit",
+        "Leistung und Effizienz",
+        "Sicherheit",
+        "Bedienarten"
+      ],
+      "reference_answer": "Die Architektur soll nicht-funktionale Anforderungen wie Zuverlässigkeit und Fehlertoleranz, Leistung und Effizienz einschließlich Antwortzeiten und Ressourcenbedarf sowie Sicherheit mit Datenintegrität, Verfügbarkeit und Vertraulichkeit berücksichtigen. Auch Bedienarten und Technologievorgaben werden genannt.",
+      "relevance_notes": "Seite 7 formuliert die Architekturfrage; Seite 8 nennt die konkreten Qualitätsziele.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-se-08",
+      "question": "Wie verbindet die Software-Architektur Anforderungen mit der späteren Implementierung?",
+      "language": "de",
+      "question_type": "relational",
+      "expected_source_ids": [
+        "se-prozess-uebersicht-2023"
+      ],
+      "expected_pages": [
+        5,
+        7,
+        8,
+        9
+      ],
+      "expected_phrases": [
+        "funktionale Anforderungen",
+        "Leitfaden zur Implementierung",
+        "Entwurfsergebnisse",
+        "programmtechnische Umsetzung"
+      ],
+      "reference_answer": "Im Entwurf wird festgelegt, wie funktionale und nicht-funktionale Anforderungen durch Komponenten, Schnittstellen, technische Infrastruktur und Design umgesetzt werden. Die daraus entstehende Architektur dient als fachlicher und technischer Leitfaden. In der Implementierung werden diese Entwurfsergebnisse anschließend programmtechnisch in Konstrukte der verwendeten Programmiersprache übertragen.",
+      "relevance_notes": "Entwurfsaktivitäten und die Brückenfunktion der Architektur stehen auf den Seiten 5, 7 und 8; die Umsetzung folgt auf Seite 9.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-se-09",
+      "question": "Wie reicht die Qualitätssicherung von der Anforderungsermittlung über die Implementierung bis zum Systemtest?",
+      "language": "de",
+      "question_type": "multi_hop",
+      "expected_source_ids": [
+        "se-prozess-uebersicht-2023"
+      ],
+      "expected_pages": [
+        3,
+        9,
+        10
+      ],
+      "expected_phrases": [
+        "Qualitätskriterien",
+        "Testplanung und Testfallerstellung",
+        "Testfälle bereits während der Anforderungsermittlung",
+        "Anforderungsspezifikation"
+      ],
+      "reference_answer": "Anforderungen werden zunächst anhand ihrer Dokumentation, Spezifikation und Qualitätskriterien validiert. Während der Implementierung werden Test und Verifikation einschließlich Testplanung und Testfallerstellung durchgeführt. Beim späteren Systemtest wird das vollständige System gegen die Anforderungsspezifikation geprüft; die dafür verwendeten Testfälle entstehen bereits während der Anforderungsermittlung.",
+      "relevance_notes": "Die Kette verbindet Validierung auf Seite 3, Implementierungsaktivitäten auf Seite 9 und den Systemtest auf Seite 10.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-selfrag-05",
+      "question": "What hardware and principal optimization settings were used to train the reported SELF-RAG models?",
+      "language": "en",
+      "question_type": "fact",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        19
+      ],
+      "expected_phrases": [
+        "4 Nvidia A100",
+        "3 epochs",
+        "batch size of 128",
+        "peak learning rate of 2e-5",
+        "Deepspeed stage 3",
+        "Bfloat16"
+      ],
+      "reference_answer": "The models were trained on four Nvidia A100 GPUs with 80 GB memory for three epochs, using a batch size of 128, a peak learning rate of 2e-5, three percent warmup, and linear decay. The setup used DeepSpeed stage 3, Bfloat16 precision, and FlashAttention.",
+      "relevance_notes": "The hardware and training settings are stated together on PDF page 19.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-selfrag-06",
+      "question": "What does the paper's memory analysis suggest about SELF-RAG's reliance on evidence compared with instruction-tuned baselines?",
+      "language": "en",
+      "question_type": "semantic_paraphrase",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        20
+      ],
+      "expected_phrases": [
+        "parametric- and non-parametric memories",
+        "not included in the provided evidence",
+        "only 2% in SELF-RAG",
+        "ISREL =Irrelevant"
+      ],
+      "reference_answer": "Among correctly answered sampled questions, SELF-RAG produced answers absent from the retrieved evidence much less often than the instruction-tuned baselines: the paper reports two percent for SELF-RAG versus higher shares for the compared Alpaca and Llama2-chat models. When passages are irrelevant, SELF-RAG can also emit ISREL=Irrelevant instead of continuing with an apparently grounded answer.",
+      "relevance_notes": "The analysis and reported percentages are described in prose on PDF page 20.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-selfrag-07",
+      "question": "How is a SELF-RAG continuation scored during critique-guided tree decoding?",
+      "language": "en",
+      "question_type": "terminology",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        6,
+        19
+      ],
+      "expected_phrases": [
+        "linear weighted sum",
+        "ISREL",
+        "ISSUP",
+        "ISUSE",
+        "normalized probabilities",
+        "segment score"
+      ],
+      "reference_answer": "A continuation combines its generator probability with a critique score. That critique score is a weighted sum of normalized probabilities derived from the desirable ISREL, ISSUP, and ISUSE outcomes. The weights are inference-time hyperparameters, so the decoder can emphasize aspects such as evidential support; the appendix specifies the normalization and utility weights.",
+      "relevance_notes": "The scoring equation and interpretation are on page 6, with detailed normalized token-score formulas on page 19.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-selfrag-08",
+      "question": "What ethical limitation remains even after SELF-RAG improves factuality and citation accuracy?",
+      "language": "en",
+      "question_type": "contextual",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        10
+      ],
+      "expected_phrases": [
+        "can still generate outputs",
+        "not fully supported by the citations",
+        "self-reflection",
+        "verify factual errors"
+      ],
+      "reference_answer": "SELF-RAG can still generate outputs that are not fully supported by their citations. The authors therefore present explicit self-reflection and fine-grained attribution as aids for users to verify possible factual errors, not as a guarantee that errors are eliminated.",
+      "relevance_notes": "The limitation and intended mitigation are stated in the Ethical Concerns section on PDF page 10.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-selfrag-09",
+      "question": "Which two categories of retrieval baselines does the paper compare against, and how do they differ?",
+      "language": "en",
+      "question_type": "contextual",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        7
+      ],
+      "expected_phrases": [
+        "augmented with retrieval at test time",
+        "trained with retrieved text passages",
+        "standard RAG baselines",
+        "SAIL",
+        "Toolformer"
+      ],
+      "reference_answer": "One category augments an existing language model with retrieved documents at test time, as in the standard RAG and retrieval-augmented chat baselines. The other category consists of methods trained with retrieved text or retrieval-related calls, including SAIL and Toolformer.",
+      "relevance_notes": "The baseline taxonomy and examples are described on PDF page 7.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": false,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-selfrag-10",
+      "question": "Why are ISREL and ISSUP complementary rather than interchangeable judgments?",
+      "language": "en",
+      "question_type": "relational",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        3,
+        16
+      ],
+      "expected_phrases": [
+        "provides useful information",
+        "whether the output is fully supported",
+        "Relevant",
+        "Fully supported",
+        "Partially supported"
+      ],
+      "reference_answer": "ISREL asks whether a retrieved passage is useful for answering the input. ISSUP instead asks whether the verification-worthy claims in a particular generated segment are entailed by that evidence, with fully, partially, or no support outcomes. A passage may therefore be relevant to the topic without fully supporting every generated claim.",
+      "relevance_notes": "The compact distinction is in Table 1 on page 3 and the detailed definitions are on page 16.",
+      "difficulty": "medium",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-selfrag-11",
+      "question": "Why does SELF-RAG train the generator to predict reflection tokens while masking retrieved passage text from the loss?",
+      "language": "en",
+      "question_type": "relational",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        4,
+        5
+      ],
+      "expected_phrases": [
+        "generate reflection tokens by itself",
+        "standard next token objective",
+        "mask out the retrieved text chunks",
+        "loss calculation"
+      ],
+      "reference_answer": "The generator must learn to produce both task outputs and reflection decisions itself so that the critic is not required at inference time. Retrieved passages are conditioning evidence rather than target text, so their tokens are masked from the next-token loss while the output and reflection tokens remain training targets.",
+      "relevance_notes": "Page 4 explains independence from the critic at inference; page 5 states the generator objective and passage masking rule.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    },
+    {
+      "query_id": "final-selfrag-12",
+      "question": "How do the task-specific metrics and the ablation variants together test whether SELF-RAG's gains come from retrieval and self-reflection?",
+      "language": "en",
+      "question_type": "multi_hop",
+      "expected_source_ids": [
+        "self-rag-iclr-2024"
+      ],
+      "expected_pages": [
+        6,
+        8,
+        9
+      ],
+      "expected_phrases": [
+        "accuracy",
+        "FactScore",
+        "citation precision and recall",
+        "No Retriever",
+        "No Critic",
+        "No retrieval",
+        "Remove ISSUP"
+      ],
+      "reference_answer": "The evaluation uses task-appropriate outcomes: accuracy for closed-set and short-form tasks, and measures such as FactScore, exact match, ROUGE, MAUVE, and citation precision and recall for long-form generation. The ablations then remove training-time retrieval, critic supervision, inference-time retrieval, adaptive triggering, or the ISSUP score. Comparing those variants with full SELF-RAG tests whether improvements persist when retrieval or self-reflection components are absent.",
+      "relevance_notes": "Task and metric definitions begin on page 6 and are summarized in Table 2 on page 8; the training and inference ablations are defined on page 9.",
+      "difficulty": "hard",
+      "requires_multiple_chunks": true,
+      "requires_multiple_documents": false,
+      "extraction_risk": false,
+      "manual_review_required": false
+    }
+  ]
+}

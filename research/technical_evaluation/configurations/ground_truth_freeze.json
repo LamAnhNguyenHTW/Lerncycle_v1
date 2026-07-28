@@ -1,0 +1,13 @@
+{
+  "freeze_id": "ground-truth-final-v1",
+  "status": "frozen",
+  "frozen_at": "2026-07-21",
+  "approval": "manual_corpus_review_confirmed",
+  "query_file": "queries_final.json",
+  "query_count": 60,
+  "query_sha256": "185e284b520c661550696ae8738a64a7304d2cdfaaff85c49fb39e17f6c8af7e",
+  "review_file": "GROUND_TRUTH_FINAL_REVIEW.md",
+  "review_sha256": "34e7a6fd0f9aa64be82519a0d8e8dbef55727419355a969d6fb0a25299412a07",
+  "supersedes": "queries_pilot.json",
+  "change_policy": "Any content change requires a new freeze_id, renewed manual review, and new SHA-256 checksums."
+}
